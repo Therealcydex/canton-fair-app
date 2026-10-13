@@ -26,6 +26,6 @@ States: **Réalisé** (done and tested), **Partiel** (started), **À faire**, **
 | Item | State |
 |---|---|
 | Specification draft | Réalisé |
-| Database schema script + runner | Partiel |
-| Backend skeleton | Partiel |
-| Web frontend skeleton | À faire |
+| Database schema script + runner | Réalisé |
+| Backend skeleton | Réalisé |
+| Web frontend skeleton | Réalisé |

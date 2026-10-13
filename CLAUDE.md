@@ -2,72 +2,92 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Status
+## What this is
 
-This project has not been scaffolded yet. The only source of truth is
-`guide-nouveau-projet-smart360.md`. Read it before creating files: it sets the stack, the layout,
-and the conventions. This is a new app for Espace La Caverne (Bomexport) and must match the
-Smart360 ERP (the `esapcecaverne` repository). The guide says to copy these files from that
-repository rather than writing new code:
+**Sourcing** is a standalone app for buyers from several companies at a trade fair (Canton-Fair-style
+booths). Buyers keep suppliers and contacts, plan and log booth visits, record products (price in
+TND, MOQ, incoterm, photos) and share products between companies. It has its own database
+(`sourcing_db`) and its own login. It follows the Smart360 code conventions in
+`guide-nouveau-projet-smart360.md`, but none of the Smart360 data: no `LISTE_DES_SALARIES`, no
+`Boutique`, no UPPERCASE table names.
 
-- `backend/middleware/auth.js` provides `signToken`, `requireAuth`, `requireLevel`, `signGrant` and `verifyGrant`. Copy it as it is.
-- `backend/config/db.js` is the mysql2 promise pool.
-- `backend/config/ventesEnLigneParams.js` is the cached settings-table pattern.
-- `backend/sql/create_*.sql` and `run_*_setup.js` are the migration scripts and their runners.
-- `frontend/src/config/config.js` holds `API_BASE_URL` for each environment.
-- `mobile/src/config/api.ts` provides `authFetch` and `ensureOk`.
+- `docs/sourcing-spec.md` holds the actors, requirements (BF01–BF15, BNF01–BNF06) and decisions (D1–D8). The decisions are not yet validated by the Product Owner. Read it before working on a feature, and add a decision there when you make one.
+- `docs/sourcing-status.md` tracks the state of each requirement. Update it when a requirement is done.
+- The work plan is in sprints: 0 foundations, 1 auth and admin, 2 suppliers and contacts, 3 categories, booths and visits, 4 products, photos and sharing, 5 mobile, 6 hardening. Build the web app first; the mobile app (online only, no offline mode) comes in Sprint 5.
 
-When the project is scaffolded, update this file with the real commands and structure.
+## Commands
 
-## Stack (fixed: do not add frameworks, ORMs, NestJS or Next.js without the team's agreement)
+Backend (`backend/`, Node 20):
+- `npm run dev` runs the server with nodemon on port 3000. `npm start` runs it without reloading.
+- `npm run db:setup` creates `sourcing_db` if it is missing and runs `sql/create_sourcing_schema.sql`. It then seeds the super-admin from `SEED_ADMIN_USERNAME` and `SEED_ADMIN_PASSWORD`. It is safe to run twice.
+- Copy `.env.example` to `.env` and fill in the values. `JWT_SECRET` deliberately has no default.
+- The local database is XAMPP MariaDB 10.4 on port 3306 (`root`, no password). Its client is `/c/xampp/mysql/bin/mysql.exe`. The target is MySQL 8, so keep SQL portable to both.
 
-- **backend/**: Node 20, Express 5, mysql2 (promise pool, raw SQL), jsonwebtoken (12 h), dotenv, and MariaDB 11. Run `npm run dev` (nodemon) or `npm start`. PM2 runs it in production.
-- **frontend/**: React 18 (Create React App), Bootstrap 5.3, react-bootstrap, Ant Design 5, and axios with a token interceptor.
-- **mobile/**: Vite 4, React 18, TypeScript, Tailwind 3 and Capacitor 8 (Android).
-  - Run against a local API with `VITE_API_BASE_URL=http://localhost:3000/api npm run dev`.
-  - Build for Android with `npm run build && npx cap sync android && npx cap open android`.
-- **docs/**: `<module>-spec.md` holds requirements (BF/BNF), decisions (D1…) and the changelog. `<module>-status.md` tracks progress (Réalisé / Partiel / À valider). Keep both up to date.
+Frontend (`frontend/`, Create React App, React 18.3):
+- `npm start` runs the dev server on port 3000. Start the backend first, then accept CRA's offer of another port.
+- `npm run build` builds for production.
+- `CI=true npm test -- --watchAll=false` runs the tests once. Add `-t "<test name>"` to run a single test.
 
-There is no automated test suite in the stack. Test each rule twice, against the API and then
-in the UI:
+Mobile (`mobile/`, Sprint 5, not created yet): Vite 4, React, TypeScript, Tailwind 3 and Capacitor 8.
+- `VITE_API_BASE_URL=http://localhost:3000/api npm run dev` runs it against a local API.
 
-1. Send the request that must be refused and check its status: 401 without a token, 403 for another shop, 409 for a broken rule.
-2. Send the legitimate request and check that it still succeeds.
+## Data model and tenant rule
 
-## Backend rules (non-negotiable)
+These are the 10 tables of the diagram, with their links:
+- `companies` has many `users` and many `suppliers`.
+- A supplier has `contacts`, `booths` and `products`.
+- `booths` link to `categories`, a global tree with `parent_id` and `depth`.
+- `booth_visits` link a booth to a user.
+- `products` have a supplier, an optional booth and a `created_by` user. They have `product_images`.
+- `product_shares` (`product_id`, `company_id`) shares a product with another company.
 
-- **Load dotenv first.** `require('dotenv').config()` is the first line of `index.js`, because `db.js` reads `process.env` when it is required.
-- **Secrets**: `.env` is never committed. `JWT_SECRET` deliberately has no default.
-- **Development database**: work against `Smart360_copy`, never production. Record row counts before testing and confirm afterwards that the test data is deleted.
-- **Authentication**: every route file calls `router.use(requireAuth)`. Identity comes only from `req.user`, never from `req.query` or `req.body`. The author of an action is `req.user.NomAbr`.
-- **Shop scoping**:
-  - Reads filter by `req.user.Boutique` unless the caller is head office. In Smart360, head office means `Level >= 4` or `Departement === 'INFORMATIQUE'`; confirm this rule for the new project.
-  - A request for a single record from another shop returns 403.
+The tenant rule replaces Smart360's `Boutique` filter:
+- Suppliers, contacts, booths, visits and products belong to a company **through `suppliers.company_id`**. Every read filters on `req.user.company_id`.
+- A single record from another company returns 403.
+- Products shared with a company through `product_shares` are readable by that company. Only the owning company can edit or share them.
+- Categories are global and only the super-admin edits them.
+
+Roles: `role = 'SUPER_ADMIN'` manages companies and categories. `level >= 4` is a company admin, who manages the users of their company. Everyone else is a buyer.
+
+`price_tnd` is `DECIMAL(12,3)`. The pool keeps decimals as strings (`decimalNumbers: false`), so never round prices through a JavaScript float.
+
+## Backend rules (from the guide, non-negotiable)
+
+- **Load dotenv first.** `require('dotenv').config()` is the first line of `index.js`, because `config/db.js` reads `process.env` when it is required.
+- **Authentication**: every route file calls `router.use(requireAuth)`, except login. Identity comes only from `req.user` (the signed token), never from `req.query` or `req.body`. Authors such as `created_by` and `booth_visits.user_id` come from `req.user.id`.
+- **Passwords**: hash them with `bcryptjs`. They never go into the token or into a response.
 - **SQL**: queries always use `?` placeholders. Multi-table writes run in a transaction (`getConnection`, `beginTransaction`, `commit` or `rollback`, `release`).
-- **Route order**: declare fixed paths such as `/export` and `/stats` before `/:id`.
+- **Route order**: declare fixed paths such as `/export` before `/:id`.
 - **Responses**: success returns `{ success: true, data }`. A refusal returns `{ success: false, message }`, with the message in French. Status codes:
   - 200 for success, creation included
   - 400 for invalid input
   - 401 for a missing or expired token
-  - 403 when the caller is not allowed
+  - 403 for another company or a level that is too low
+  - 404 for a missing record
   - 409 when a business rule refuses the request
   - 500 for unexpected errors, with no SQL or stack trace in the message
-- **Business rules**: enforce them on the server and validate unconditionally. The web and mobile UIs only display them: they disable the control, explain why, and show the server's message.
-- **Configurable values**: store them in a `PARAMETRES_<MODULE>` table (`PARAM`, `VALEUR`, `DESCRIPTION`). Keep code `DEFAULTS` and a 60 s cache. When a value is invalid, fall back to the default and log a `console.warn`.
-- **Schema changes**: never alter the schema by hand. Each change gets two files in `backend/sql/`:
-  - `create_<table>.sql`, using `CREATE TABLE IF NOT EXISTS` and `INSERT IGNORE` seeds
-  - `run_<name>_setup.js`, which loads `.env` itself
-- **Database conventions**:
-  - Tables use legacy UPPERCASE names (`COMMANDES`, `CUSTOMER`, `LISTE_DES_SALARIES`, `PASS_BOUTIQUE`…). Reuse `LISTE_DES_SALARIES` for users.
-  - Discounts and VAT are stored as fractions (0.2) and travel between UI and API as percentages. Convert them in one function.
+- **Business rules**: enforce them on the server and validate unconditionally. The UIs only display them: they disable the control, explain why, and show the server's message.
+- **Schema changes**: never alter the schema by hand. Add a script in `backend/sql/` with a runner that loads `.env` itself, following `run_schema_setup.js`.
 
 ## Client rules
 
-- **Web**: the only API URL lives in `API_BASE_URL` from `src/config/config.js`. Register the axios interceptor once, in `AuthContext.jsx`; it reads `localStorage.authToken`. Declare routes in `src/Router/router.jsx` and put each module in `src/feature-module/<module>/`.
+- **Web**:
+  - The only API URL is `API_BASE_URL` in `src/config/config.js`.
+  - Register the axios token interceptor once, in `src/context/AuthContext.jsx` (Sprint 1). It reads `localStorage.authToken`.
+  - Declare routes in `src/Router/router.jsx` and put each module in `src/feature-module/<module>/`.
+  - Use Bootstrap, react-bootstrap and Ant Design only; don't add another UI library.
 - **Mobile**: every call goes through `authFetch` followed by `ensureOk`, because `fetch` does not reject on 4xx. Never re-implement business rules in the mobile app.
+
+## Testing
+
+The backend has no automated test suite. For each rule, test two requests, first against the API and then in the UI:
+1. The request that must be refused: 401 without a token, 403 for another company or a level that is too low, 400 or 409 for a broken rule.
+2. The legitimate request, which must still succeed.
+
+Delete the test data afterwards and check the row counts.
 
 ## Git workflow
 
 - Work on branches named `feat/<module>-<sujet>`, never directly on `main`.
 - Make one commit per validated task, with a message that says what changed and why.
-- Merge through a pull request.
+- Merge through a pull request. There is no remote yet.
