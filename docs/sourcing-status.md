@@ -7,8 +7,8 @@ States: **Réalisé** (done and tested), **Partiel** (started), **À faire**, **
 | BF01 | Login, inactive users refused | 1 | Partiel (API testée, écran à valider) |
 | BF02 | Companies (super-admin) | 1 | Partiel (API testée, écran à valider) |
 | BF03 | Users of a company (company admin) | 1 | Partiel (API testée, écran à valider) |
-| BF04 | Suppliers | 2 | À faire |
-| BF05 | Contacts | 2 | À faire |
+| BF04 | Suppliers | 2 | Partiel (API testée, écran à valider) |
+| BF05 | Contacts | 2 | Partiel (API testée, écran à valider) |
 | BF06 | Category tree | 3 | À faire |
 | BF07 | Booths | 3 | À faire |
 | BF08 | "To visit" list | 3 | À faire |

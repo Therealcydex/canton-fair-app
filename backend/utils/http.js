@@ -29,6 +29,9 @@ const clean = (value) => {
   return s === '' ? null : s;
 };
 
+// Escapes the LIKE wildcards of a search text so '%' and '_' are matched literally.
+const likeContains = (text) => `%${String(text).replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-module.exports = { fail, serverError, handle, toId, clean, EMAIL_RE };
+module.exports = { fail, serverError, handle, toId, clean, likeContains, EMAIL_RE };
