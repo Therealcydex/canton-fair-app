@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import App from './App';
 
-test('shows the home page', () => {
+test('shows the login page when logged out', () => {
+  localStorage.clear();
   render(<App />);
-  expect(screen.getByRole('heading', { name: 'Sourcing' })).toBeInTheDocument();
+  expect(screen.getByText('Sourcing — Connexion')).toBeInTheDocument();
+  expect(screen.getByText('Se connecter')).toBeInTheDocument();
 });
