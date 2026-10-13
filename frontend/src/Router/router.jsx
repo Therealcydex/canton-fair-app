@@ -6,6 +6,8 @@ import Login from '../feature-module/auth/Login';
 import Accueil from '../feature-module/accueil/Accueil';
 import Users from '../feature-module/admin/Users';
 import Companies from '../feature-module/admin/Companies';
+import Suppliers from '../feature-module/suppliers/Suppliers';
+import SupplierDetail from '../feature-module/suppliers/SupplierDetail';
 
 // One route per page; module pages live in src/feature-module/<module>/.
 export default function AppRouter() {
@@ -16,6 +18,8 @@ export default function AppRouter() {
         <Route element={<RequireAuth />}>
           <Route element={<AppLayout />}>
             <Route path="/" element={<Accueil />} />
+            <Route path="/fournisseurs" element={<Suppliers />} />
+            <Route path="/fournisseurs/:id" element={<SupplierDetail />} />
             <Route element={<RequireAccess allow={isCompanyAdmin} />}>
               <Route path="/admin/utilisateurs" element={<Users />} />
             </Route>

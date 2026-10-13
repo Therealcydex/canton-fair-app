@@ -6,6 +6,7 @@ import { isCompanyAdmin, isSuperAdmin } from '../utils/access';
 // Menu entries; `show` hides an entry the user cannot use (the server refuses anyway).
 const MENU = [
   { to: '/', label: 'Accueil', end: true },
+  { to: '/fournisseurs', label: 'Fournisseurs' },
 ];
 const ADMIN_MENU = [
   { to: '/admin/utilisateurs', label: 'Utilisateurs', show: isCompanyAdmin },
