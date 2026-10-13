@@ -67,9 +67,13 @@ Smart360 code conventions (`guide-nouveau-projet-smart360.md`) but uses none of 
 | D6 | Target MySQL 8 (as the diagram says); the schema also runs on MariaDB 10.4+ (local XAMPP) | Same `mysql2` driver; no engine-specific features used |
 | D7 | A product owned by a company = a product whose supplier belongs to that company. Only the owner can edit or share it | `products` has no `company_id`; ownership follows `supplier_id` |
 | D8 | Deleting a supplier deletes its contacts; it is refused (409) if it still has booths or products | Avoid losing products by accident |
+| D9 | Each request reloads the user from the token's id: a deactivated account or a changed level takes effect at once, not at token expiry | Deactivation must be immediate (BF01) |
+| D10 | A company admin can only give a level up to their own and cannot give the SUPER_ADMIN role; nobody can deactivate themselves or change their own level, role or company | Avoid privilege escalation and self lock-out |
+| D11 | Users are deactivated, never deleted | Visits and products keep their author |
 
 ## 6. Changelog
 
 | Date | Change |
 |---|---|
 | 2026-10-13 | First draft from the diagram |
+| 2026-10-13 | Sprint 1: D9-D11 (authentication and user management) |

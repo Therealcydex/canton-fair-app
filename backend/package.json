@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "db:setup": "node sql/run_schema_setup.js"
+    "db:setup": "node sql/run_schema_setup.js",
+    "test:api": "node tests/run.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -18,5 +19,11 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
+  },
+  "nodemonConfig": {
+    "ignore": [
+      "tests/*",
+      "uploads/*"
+    ]
   }
 }
