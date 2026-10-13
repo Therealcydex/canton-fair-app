@@ -20,3 +20,9 @@ npm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+
+# Keep the env template
+!.env.example
+
+# Uploaded product photos
+backend/uploads/
