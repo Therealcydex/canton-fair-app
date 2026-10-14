@@ -11,9 +11,9 @@ TND, MOQ, incoterm, photos) and share products between companies. It has its own
 `guide-nouveau-projet-smart360.md`, but none of the Smart360 data: no `LISTE_DES_SALARIES`, no
 `Boutique`, no UPPERCASE table names.
 
-- `docs/sourcing-spec.md` holds the actors, requirements (BF01–BF15, BNF01–BNF06) and decisions (D1–D8). The decisions are not yet validated by the Product Owner. Read it before working on a feature, and add a decision there when you make one.
-- `docs/sourcing-status.md` tracks the state of each requirement. Update it when a requirement is done.
-- The work plan is in sprints: 0 foundations, 1 auth and admin, 2 suppliers and contacts, 3 categories, booths and visits, 4 products, photos and sharing, 5 mobile, 6 hardening. Build the web app first; the mobile app (online only, no offline mode) comes in Sprint 5.
+- `docs/sourcing-spec.md` holds the actors, requirements (BF01–BF15, BNF01–BNF06) and decisions (D1–D21). The decisions are not yet validated by the Product Owner. Read it before working on a feature, and add a decision there when you make one.
+- `docs/sourcing-status.md` tracks the state of each requirement, what was checked, and the migration scripts in order. Update it when a requirement changes.
+- Sprints 0–6 are built (one `feat/sourcing-*` branch per sprint, each based on the previous one). What remains: the PO's validation, the Android build (Node 22), and the hand checks listed in the status file.
 
 ## Commands
 
@@ -21,15 +21,30 @@ Backend (`backend/`, Node 20):
 - `npm run dev` runs the server with nodemon on port 3000. `npm start` runs it without reloading.
 - `npm run db:setup` creates `sourcing_db` if it is missing and runs `sql/create_sourcing_schema.sql`. It then seeds the super-admin from `SEED_ADMIN_USERNAME` and `SEED_ADMIN_PASSWORD`. It is safe to run twice.
 - Copy `.env.example` to `.env` and fill in the values. `JWT_SECRET` deliberately has no default.
+- `npm run test:api` runs the API scenarios in `tests/*.scenario.js` against the running backend; `npm run test:api -- booths` runs only the files whose name contains "booths". Add scenarios there for every new rule.
 - The local database is XAMPP MariaDB 10.4 on port 3306 (`root`, no password). Its client is `/c/xampp/mysql/bin/mysql.exe`. The target is MySQL 8, so keep SQL portable to both.
+- `ecosystem.config.js` runs it under PM2 in production, as a single instance.
 
 Frontend (`frontend/`, Create React App, React 18.3):
-- `npm start` runs the dev server on port 3000. Start the backend first, then accept CRA's offer of another port.
-- `npm run build` builds for production.
+- `PORT=3001 npm start` runs the dev server (the backend uses 3000).
+- `npm run build` builds for production; set `REACT_APP_API_BASE_URL` for a production API.
 - `CI=true npm test -- --watchAll=false` runs the tests once. Add `-t "<test name>"` to run a single test.
 
-Mobile (`mobile/`, Sprint 5, not created yet): Vite 4, React, TypeScript, Tailwind 3 and Capacitor 8.
-- `VITE_API_BASE_URL=http://localhost:3000/api npm run dev` runs it against a local API.
+Mobile (`mobile/`): Vite 4, React 18, TypeScript, Tailwind 3 and Capacitor 8. See `mobile/README.md`.
+- `npm run dev` serves it on port 5173; the API address comes from `VITE_API_BASE_URL` (`.env`).
+- `npm run lint` and `npm run build` (which runs `tsc`) must pass.
+- The Capacitor CLI (`npx cap ...`, `npm run android:sync`) needs Node 22; the rest runs on Node 20.
+
+## Backend structure
+
+Each module has `routes/<module>Routes.js` and `controllers/<Module>Controller.js`. Reuse these
+shared helpers instead of rewriting them:
+- `utils/http.js`: `fail`, `handle` (wraps a controller so any throw becomes a clean 500), `toId`, `clean`, `likeContains` (escapes LIKE wildcards).
+- `utils/validate.js`: `validate(body, FIELDS, existing)`, which checks every field, missing or not. On an update, `existing` fills the fields the client did not send. DECIMAL values stay strings.
+- `utils/scope.js`: `loadSupplier`, `loadBooth` and `loadProduct` find a record and return 403 when it belongs to another company.
+- `utils/access.js`: `isSuperAdmin`, `isCompanyAdmin`.
+- `utils/upload.js`: photo upload. It checks the file content against JPEG/PNG/WebP signatures, saves under random names and deletes files.
+- `middleware/auth.js`: `requireAuth` (reloads the user on every request), `requireLevel`, `requireSuperAdmin`. `middleware/loginLimiter.js` limits failed logins.
 
 ## Data model and tenant rule
 
@@ -80,14 +95,14 @@ Roles: `role = 'SUPER_ADMIN'` manages companies and categories. `level >= 4` is 
 
 ## Testing
 
-The backend has no automated test suite. For each rule, test two requests, first against the API and then in the UI:
+For each rule, test two requests, first against the API (`npm run test:api`) and then in the UI:
 1. The request that must be refused: 401 without a token, 403 for another company or a level that is too low, 400 or 409 for a broken rule.
 2. The legitimate request, which must still succeed.
 
-Delete the test data afterwards and check the row counts.
+The scenarios name their data `TEST…`. `tests/lib.js` `cleanup()` deletes it, including product photo files, and the runner checks that the row counts are back to their starting values. Run them on a development database only.
 
 ## Git workflow
 
 - Work on branches named `feat/<module>-<sujet>`, never directly on `main`.
 - Make one commit per validated task, with a message that says what changed and why.
-- Merge through a pull request. There is no remote yet.
+- Merge through a pull request. The remote is `origin` (github.com/Therealcydex/canton-fair-app).

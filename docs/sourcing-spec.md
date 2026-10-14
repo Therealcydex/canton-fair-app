@@ -79,6 +79,7 @@ Smart360 code conventions (`guide-nouveau-projet-smart360.md`) but uses none of 
 | D18 | A shared product is read only for the receiving company: it cannot edit, delete, add photos or share it further, and does not see which other companies receive it; it sees the owner's name | The owner stays in control of its data |
 | D19 | A product's booth must be a booth of the product's supplier. Prices have at most 3 decimals and keep their exact value (a comma is accepted). Incoterms are the 11 Incoterms 2020 | Consistent data; no rounding of prices |
 | D20 | Mobile app: photos come from the phone's camera through the file field (`capture="environment"`) instead of the `@capacitor/camera` plugin; the Android app id is `tn.sourcing.app` until the PO chooses one; development reaches the API over plain http. The Capacitor CLI needs Node 22 (the rest of the project runs on Node 20) | One less plugin, works the same in the browser and in the app |
+| D21 | Hardening: after 10 failed logins for the same username from the same address in 15 minutes, login is refused (429) until the window ends; JSON bodies are limited to 1 MB (photos go through the upload route); the server warns at startup when `JWT_SECRET` is missing or short | Slow down password guessing; refuse oversized requests |
 
 ## 6. Changelog
 
@@ -89,3 +90,4 @@ Smart360 code conventions (`guide-nouveau-projet-smart360.md`) but uses none of 
 | 2026-10-14 | Sprint 3: D12-D16 (categories, booths, visits) |
 | 2026-10-14 | Sprint 4: D17-D19 (products, photos, sharing) |
 | 2026-10-14 | Sprint 5: D20 (mobile app) |
+| 2026-10-14 | Sprint 6: D21 (hardening) |
