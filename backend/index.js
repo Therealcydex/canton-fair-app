@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 require('./config/db');
 const { fail, serverError } = require('./utils/http');
+const { UPLOAD_ROOT } = require('./utils/upload');
 const app = express();
 
 app.use(cors({ origin: '*', credentials: true, maxAge: 86400 })); // maxAge: avoid a preflight per call
@@ -15,6 +16,13 @@ app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/suppliers', require('./routes/supplierRoutes'));
 app.use('/api/categories', require('./routes/categoryRoutes'));
 app.use('/api/booths', require('./routes/boothRoutes'));
+app.use('/api/products', require('./routes/productRoutes'));
+
+// Product photos (D17): random file names, served as images only.
+app.use('/uploads', express.static(UPLOAD_ROOT, {
+  index: false,
+  setHeaders: (res) => res.set('X-Content-Type-Options', 'nosniff'),
+}));
 
 app.get('/', (req, res) => res.send('Backend is running!'));
 

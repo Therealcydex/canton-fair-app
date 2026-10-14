@@ -75,6 +75,9 @@ Smart360 code conventions (`guide-nouveau-projet-smart360.md`) but uses none of 
 | D14 | Recording a visit with the status "visite" takes the booth off the "to visit" list. A "visite" without a date is dated now. Only the author of a visit or a company admin can change or delete it | The "to visit" list stays current on the fair floor |
 | D15 | Visit times are stored and returned as written ("YYYY-MM-DD HH:MM:SS", the time at the fair), never converted between timezones | The fair is in China, the team in Tunisia |
 | D16 | Deleting a booth deletes its visits; it is refused while products are attached to it | Avoid losing products by accident |
+| D17 | Product photos: JPEG, PNG or WebP checked by their content, 8 MB each, 20 per product, stored in `backend/uploads/products/` under random names. They are served without a token (an `<img>` cannot send one), so anyone with the exact link can see a photo; the names cannot be guessed | Photos must display in the web and mobile apps |
+| D18 | A shared product is read only for the receiving company: it cannot edit, delete, add photos or share it further, and does not see which other companies receive it; it sees the owner's name | The owner stays in control of its data |
+| D19 | A product's booth must be a booth of the product's supplier. Prices have at most 3 decimals and keep their exact value (a comma is accepted). Incoterms are the 11 Incoterms 2020 | Consistent data; no rounding of prices |
 
 ## 6. Changelog
 
@@ -83,3 +86,4 @@ Smart360 code conventions (`guide-nouveau-projet-smart360.md`) but uses none of 
 | 2026-10-13 | First draft from the diagram |
 | 2026-10-13 | Sprint 1: D9-D11 (authentication and user management) |
 | 2026-10-14 | Sprint 3: D12-D16 (categories, booths, visits) |
+| 2026-10-14 | Sprint 4: D17-D19 (products, photos, sharing) |

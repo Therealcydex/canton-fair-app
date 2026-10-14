@@ -4,6 +4,7 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const mysql = require('mysql2/promise');
+const { deleteImages } = require('../utils/upload');
 
 const BASE = `http://localhost:${process.env.PORT || 3000}/api`;
 const PREFIX = 'TEST';
@@ -80,6 +81,11 @@ async function cleanup(conn) {
   const like = `${PREFIX}%`;
   const companyIds = `SELECT id FROM companies WHERE name LIKE '${like}'`;
   const supplierIds = `SELECT id FROM suppliers WHERE company_id IN (${companyIds}) OR name LIKE '${like}'`;
+  const [images] = await conn.query(
+    `SELECT image_url FROM product_images WHERE product_id IN
+       (SELECT id FROM products WHERE supplier_id IN (${supplierIds}))`
+  );
+  await deleteImages(images.map((i) => i.image_url));
   const statements = [
     `DELETE FROM products WHERE supplier_id IN (${supplierIds})`,
     `DELETE FROM booth_visits WHERE booth_id IN (SELECT id FROM booths WHERE supplier_id IN (${supplierIds}))`,
