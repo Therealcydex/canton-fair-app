@@ -29,6 +29,12 @@ async function fixtures(superToken) {
 }
 
 async function main() {
+  // The scenarios create and delete data: never against a shared or remote database.
+  const host = process.env.DB_HOST || 'localhost';
+  if (!['localhost', '127.0.0.1', '::1'].includes(host) && process.env.ALLOW_REMOTE_TESTS !== '1') {
+    throw new Error(`DB_HOST is ${host}: the scenarios only run on a local database (set ALLOW_REMOTE_TESTS=1 to force)`);
+  }
+
   const health = await fetch(BASE.replace(/\/api$/, '/')).catch(() => null);
   if (!health || !health.ok) throw new Error(`backend not reachable at ${BASE} — start it with npm run dev`);
 
