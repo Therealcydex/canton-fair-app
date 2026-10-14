@@ -37,3 +37,6 @@ export const categoryTree = (flat) => {
   };
   return sort(roots);
 };
+
+// "12.500" (DECIMAL as a string, never a float) -> "12,500 TND".
+export const formatPrice = (s) => (s === null || s === undefined || s === '' ? '—' : `${String(s).replace('.', ',')} TND`);

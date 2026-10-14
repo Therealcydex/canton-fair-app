@@ -13,13 +13,13 @@ States: **Réalisé** (done and tested), **Partiel** (started), **À faire**, **
 | BF07 | Booths | 3 | Partiel (API testée, écran à valider) |
 | BF08 | "To visit" list | 3 | Partiel (API testée, écran à valider) |
 | BF09 | Booth visits | 3 | Partiel (API testée, écran à valider) |
-| BF10 | Products | 4 | À faire |
-| BF11 | Product photos | 4 | À faire |
-| BF12 | Product list and filters | 4 | À faire |
-| BF13 | Share a product | 4 | À faire |
-| BF14 | Products shared with us | 4 | À faire |
+| BF10 | Products | 4 | Partiel (API testée, écran à valider) |
+| BF11 | Product photos | 4 | Partiel (API testée, écran à valider) |
+| BF12 | Product list and filters | 4 | Partiel (API testée, écran à valider) |
+| BF13 | Share a product | 4 | Partiel (API testée, écran à valider) |
+| BF14 | Products shared with us | 4 | Partiel (API testée, écran à valider) |
 | BF15 | Mobile app | 5 | À faire |
-| D1–D16 | Decisions in `sourcing-spec.md` §5 | 0 | À valider |
+| D1–D19 | Decisions in `sourcing-spec.md` §5 | 0 | À valider |
 
 ## Foundations (Sprint 0)
 

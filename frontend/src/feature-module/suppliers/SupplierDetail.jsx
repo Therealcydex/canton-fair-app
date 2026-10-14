@@ -7,6 +7,7 @@ import { apiError } from '../../utils/apiError';
 import FormModal from '../../components/FormModal';
 import SupplierFormFields from './SupplierFormFields';
 import BoothList from '../booths/BoothList';
+import ProductList from '../products/ProductList';
 
 // antd's Rate gives 0 when cleared; the API expects no rating (null) or 1 to 5.
 export const supplierPayload = (values) => ({ ...values, rating: values.rating || null });
@@ -90,6 +91,11 @@ export default function SupplierDetail() {
       label: 'Stands',
       children: <BoothList supplierId={supplier.id} hideSupplier />,
     },
+    {
+      key: 'products',
+      label: 'Produits',
+      children: <ProductList supplierId={supplier.id} />,
+    },
   ];
 
   return (
@@ -118,7 +124,7 @@ export default function SupplierDetail() {
             : '—'}
         </Descriptions.Item>
         <Descriptions.Item label="Adresse">{supplier.address || '—'}</Descriptions.Item>
-        <Descriptions.Item label="Notes" span={2}><span style={{ whiteSpace: 'pre-wrap' }}>{supplier.notes || '—'}</span></Descriptions.Item>
+        <Descriptions.Item label="Notes" span="filled"><span style={{ whiteSpace: 'pre-wrap' }}>{supplier.notes || '—'}</span></Descriptions.Item>
       </Descriptions>
 
       <Tabs items={tabs} />

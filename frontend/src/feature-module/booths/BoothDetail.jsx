@@ -9,6 +9,7 @@ import { apiError } from '../../utils/apiError';
 import { VISIT_STATUS, formatDateTime, toInputDateTime } from '../../utils/format';
 import FormModal from '../../components/FormModal';
 import BoothFormFields, { boothPayload } from './BoothFormFields';
+import ProductList from '../products/ProductList';
 
 const STATUS_OPTIONS = Object.entries(VISIT_STATUS).map(([value, s]) => ({ value, label: s.label }));
 
@@ -108,12 +109,15 @@ export default function BoothDetail() {
         <Descriptions.Item label="Catégorie">{booth.category_name || '—'}</Descriptions.Item>
         <Descriptions.Item label="Phase">{booth.phase ?? '—'}</Descriptions.Item>
         <Descriptions.Item label="Hall / étage">{booth.hall}{booth.level !== null ? `.${booth.level}` : ''}</Descriptions.Item>
-        <Descriptions.Item label="Commentaire" span={2}><span style={{ whiteSpace: 'pre-wrap' }}>{booth.comment || '—'}</span></Descriptions.Item>
+        <Descriptions.Item label="Commentaire" span="filled"><span style={{ whiteSpace: 'pre-wrap' }}>{booth.comment || '—'}</span></Descriptions.Item>
       </Descriptions>
 
       <h2 className="h5">Visites ({booth.visits.length})</h2>
       <Table rowKey="id" columns={visitColumns} dataSource={booth.visits} size="small" pagination={false}
         scroll={{ x: true }} locale={{ emptyText: 'Aucune visite' }} />
+
+      <h2 className="h5 mt-4">Produits trouvés sur ce stand</h2>
+      <ProductList supplierId={booth.supplier_id} boothId={booth.id} />
 
       <FormModal open={editing} title="Modifier le stand" width={640} initialValues={{ ...booth, to_visit: !!booth.to_visit }}
         onCancel={() => setEditing(false)}

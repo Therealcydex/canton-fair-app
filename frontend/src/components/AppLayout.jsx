@@ -10,6 +10,7 @@ const MENU = [
   { to: '/a-visiter', label: 'À visiter' },
   { to: '/stands', label: 'Stands' },
   { to: '/visites', label: 'Visites' },
+  { to: '/produits', label: 'Produits' },
 ];
 const ADMIN_MENU = [
   { to: '/admin/utilisateurs', label: 'Utilisateurs', show: isCompanyAdmin },

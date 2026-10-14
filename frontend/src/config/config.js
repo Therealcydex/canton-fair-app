@@ -8,3 +8,7 @@ export const API_BASE_URL =
   (isLocal
     ? 'http://localhost:3000/api'
     : `${window.location.protocol}//${window.location.hostname}:3000/api`);
+
+// Uploaded files (product photos) are served by the backend next to the API: "/uploads/...".
+export const FILES_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, '');
+export const fileUrl = (path) => (path ? `${FILES_BASE_URL}${path}` : null);
