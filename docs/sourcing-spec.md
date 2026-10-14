@@ -78,6 +78,7 @@ Smart360 code conventions (`guide-nouveau-projet-smart360.md`) but uses none of 
 | D17 | Product photos: JPEG, PNG or WebP checked by their content, 8 MB each, 20 per product, stored in `backend/uploads/products/` under random names. They are served without a token (an `<img>` cannot send one), so anyone with the exact link can see a photo; the names cannot be guessed | Photos must display in the web and mobile apps |
 | D18 | A shared product is read only for the receiving company: it cannot edit, delete, add photos or share it further, and does not see which other companies receive it; it sees the owner's name | The owner stays in control of its data |
 | D19 | A product's booth must be a booth of the product's supplier. Prices have at most 3 decimals and keep their exact value (a comma is accepted). Incoterms are the 11 Incoterms 2020 | Consistent data; no rounding of prices |
+| D20 | Mobile app: photos come from the phone's camera through the file field (`capture="environment"`) instead of the `@capacitor/camera` plugin; the Android app id is `tn.sourcing.app` until the PO chooses one; development reaches the API over plain http. The Capacitor CLI needs Node 22 (the rest of the project runs on Node 20) | One less plugin, works the same in the browser and in the app |
 
 ## 6. Changelog
 
@@ -87,3 +88,4 @@ Smart360 code conventions (`guide-nouveau-projet-smart360.md`) but uses none of 
 | 2026-10-13 | Sprint 1: D9-D11 (authentication and user management) |
 | 2026-10-14 | Sprint 3: D12-D16 (categories, booths, visits) |
 | 2026-10-14 | Sprint 4: D17-D19 (products, photos, sharing) |
+| 2026-10-14 | Sprint 5: D20 (mobile app) |

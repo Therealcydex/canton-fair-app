@@ -18,8 +18,8 @@ States: **Réalisé** (done and tested), **Partiel** (started), **À faire**, **
 | BF12 | Product list and filters | 4 | Partiel (API testée, écran à valider) |
 | BF13 | Share a product | 4 | Partiel (API testée, écran à valider) |
 | BF14 | Products shared with us | 4 | Partiel (API testée, écran à valider) |
-| BF15 | Mobile app | 5 | À faire |
-| D1–D19 | Decisions in `sourcing-spec.md` §5 | 0 | À valider |
+| BF15 | Mobile app | 5 | Partiel (testée dans le navigateur, APK à construire avec Node 22) |
+| D1–D20 | Decisions in `sourcing-spec.md` §5 | 0 | À valider |
 
 ## Foundations (Sprint 0)
 
