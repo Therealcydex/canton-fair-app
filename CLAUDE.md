@@ -53,7 +53,7 @@ shared helpers instead of rewriting them:
 Tarek's schema v2 (`backend/sql/create_sourcing_schema.sql`, corrections D22-D30 in the spec):
 - `companies` (name, branch) are Tarek's companies. A user may belong to one (`users.company_id`, SET NULL on delete).
 - `suppliers` have a `province_id` (`china_province`), `contacts`, `booths` (supplier optional) and `products` (supplier optional).
-- `booths`: phase 1-3, hall, floor 1-4, letter, numbers; `booth_code` is a generated, unique column (`2/12.1.A.22-24`); `category_id` points to `canton_fair_category` (read-only list, per phase); `visited` is the "to visit" flag.
+- `booths`: phase 1-3, hall, floor 1-4, letter and numbers (optional, together); `booth_code` is a generated column in the fair's notation (`11.3J26`, `14.3I16-17`, `9.1`, D32), and a stand is unique per phase; `category_id` points to `canton_fair_category` (read-only list, per phase); `visited` is the "to visit" flag.
 - `products`: `price DECIMAL(12,2)`, `shipping_type` (FK to `shipping_types`, FOB by default), `product_images`, `product_shares` (`product_id`, `company_id`).
 - Views `v_booths`, `v_suppliers` (booth count, % visited), `v_products` (shipping name, shared with): keep them free of GROUP BY (D23).
 - Reference lists are served by `GET /api/lists/provinces|shipping-types|canton-categories`.

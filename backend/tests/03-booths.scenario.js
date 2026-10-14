@@ -24,19 +24,34 @@ module.exports = async (ctx) => {
   expect('unknown category', await api('POST', '/booths', { token: A, body: { ...base, category_id: 999999 } }), 400);
   expect('phase 3 category on a phase 2 booth', await api('POST', '/booths', { token: A, body: { ...base, category_id: phase3.id } }), 400);
 
+  // D32: the letter and the number go together
+  expect('letter without number', await api('POST', '/booths', { token: A, body: { ...base, num_start: null, num_end: null } }), 400);
+  expect('number without letter', await api('POST', '/booths', { token: A, body: { ...base, letter: '' } }), 400);
+  expect('end number alone', await api('POST', '/booths', { token: A, body: { ...base, letter: null, num_start: null } }), 400);
+
   const b1 = expect('create booth (letter in lowercase)', await api('POST', '/booths', { token: A, body: { ...base, category_id: phase2.id } }), 200);
-  check('booth code is built in uppercase', b1.body.data.booth_code === '2/126.1.F.10-12');
+  check('booth code is built in uppercase, fair style', b1.body.data.booth_code === '126.1F10-12');
   const got = expect('another user reads it', await api('GET', `/booths/${b1.body.data.id}`, { token: B }), 200);
   check('v_booths gives code, category and supplier',
-    got.body.data.booth_code === '2/126.1.F.10-12' && got.body.data.sub_category === phase2.sub_category
+    got.body.data.booth_code === '126.1F10-12' && got.body.data.sub_category === phase2.sub_category
     && got.body.data.supplier_name === `${PREFIX} Booth supplier` && got.body.data.visited === 0);
 
   expect('same code', await api('POST', '/booths', { token: B, body: { ...base, letter: 'F' } }), 409);
   expect('overlapping number', await api('POST', '/booths', { token: A, body: { ...base, num_start: 12, num_end: null } }), 409);
   expect('overlapping range', await api('POST', '/booths', { token: A, body: { ...base, num_start: 8, num_end: 10 } }), 409);
   const b2 = expect('next booth (end = start is a single booth)', await api('POST', '/booths', { token: A, body: { ...base, num_start: 13, num_end: 13 } }), 200);
-  check('single booth code has no range', b2.body.data.booth_code === '2/126.1.F.13');
+  check('single booth code has no range', b2.body.data.booth_code === '126.1F13');
   const b3 = expect('booth without supplier', await api('POST', '/booths', { token: B, body: { ...base, hall: 127, supplier_id: null } }), 200);
+  // D32: the phase is not in the code, and the same stand holds another supplier at the next phase
+  const other = expect('same stand, phase 3', await api('POST', '/booths', { token: A, body: { ...base, phase: 3, supplier_id: null } }), 200);
+  check('phase 3 booth has the same code', other.body.data.booth_code === '126.1F10-12');
+  // D32: only the hall and floor known ("9.1"); several suppliers can share that
+  const hallOnly = { ...base, hall: 127, floor: 2, letter: null, num_start: null, num_end: null, supplier_id: null };
+  const h1 = expect('booth with hall and floor only', await api('POST', '/booths', { token: A, body: hallOnly }), 200);
+  check('hall-only code', h1.body.data.booth_code === '127.2');
+  expect('a second hall-only booth there', await api('POST', '/booths', { token: B, body: hallOnly }), 200);
+  const h1got = await api('GET', `/booths/${h1.body.data.id}`, { token: A });
+  check('v_booths gives the hall-only code', h1got.body.data.booth_code === '127.2' && h1got.body.data.letter === null);
 
   // The "to visit" list (BF08) and the visited flag (BF09)
   const toVisit = expect('to visit list, filtered by hall', await api('GET', '/booths?visited=0&phase=2&hall=126', { token: A }), 200);
@@ -49,14 +64,17 @@ module.exports = async (ctx) => {
   check('visited booth left the list', !after.body.data.some((x) => x.id === b1.body.data.id));
   const s = await api('GET', `/suppliers/${supplier}`, { token: A });
   check('supplier shows 2 booths, 50 % visited', s.body.data.nbr_booths === 2 && Number(s.body.data.booth_visit_pct) === 50);
-  const q = expect('search by code', await api('GET', `/booths?q=${encodeURIComponent('126.1.F.13')}`, { token: A }), 200);
+  const q = expect('search by code', await api('GET', `/booths?q=${encodeURIComponent('126.1f13')}`, { token: A }), 200);
   check('search finds the booth', q.body.data.length === 1 && q.body.data[0].id === b2.body.data.id);
 
   // Update and delete
   expect('move onto another booth', await api('PUT', `/booths/${b2.body.data.id}`, { token: A, body: { num_start: 11 } }), 409);
   expect('update keeps the rules', await api('PUT', `/booths/${b2.body.data.id}`, { token: A, body: { floor: 9 } }), 400);
   const moved = expect('move to floor 2', await api('PUT', `/booths/${b2.body.data.id}`, { token: A, body: { floor: 2 } }), 200);
-  check('code follows the move', moved.body.data.booth_code === '2/126.2.F.13');
+  check('code follows the move', moved.body.data.booth_code === '126.2F13');
+  expect('clear only the letter', await api('PUT', `/booths/${b2.body.data.id}`, { token: A, body: { letter: null } }), 400);
+  const cleared = expect('clear letter and number', await api('PUT', `/booths/${b2.body.data.id}`, { token: A, body: { letter: null, num_start: null } }), 200);
+  check('code falls back to hall.floor', cleared.body.data.booth_code === '126.2');
   expect('unknown booth', await api('GET', '/booths/999999', { token: A }), 404);
   expect('delete booth', await api('DELETE', `/booths/${b3.body.data.id}`, { token: A }), 200);
   expect('delete it again', await api('DELETE', `/booths/${b3.body.data.id}`, { token: A }), 404);

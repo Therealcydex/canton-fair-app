@@ -5,7 +5,24 @@ import { API_BASE_URL } from '../../config/config';
 import { categoryOptions, useList } from '../../utils/lists';
 
 // Fields of the booth form. The server checks the same rules (phase 1-3, floor 1-4, letter A-Z,
-// a category of the booth's phase) and refuses a booth that overlaps another one (D26).
+// letter and number together (D32), a category of the booth's phase) and refuses a booth that
+// overlaps another one (D26).
+
+const empty = (x) => x === undefined || x === null || x === '';
+
+// D32: the letter and the start number are both given or both left empty.
+const together = (other, message) => ({ getFieldValue }) => ({
+  validator: (_, value) =>
+    (empty(value) && !empty(getFieldValue(other)) ? Promise.reject(new Error(message)) : Promise.resolve()),
+});
+
+// The code the server will build ("11.3J26", "14.3I16-17", "9.1"), shown while typing.
+const previewCode = ({ hall, floor, letter, num_start: start, num_end: end }) => {
+  if (empty(hall) || empty(floor)) return '—';
+  if (empty(letter) || empty(start)) return `${hall}.${floor}`;
+  return `${hall}.${floor}${letter.toUpperCase()}${start}${empty(end) || end === start ? '' : `-${end}`}`;
+};
+
 export default function BoothFormFields({ lockSupplier }) {
   const [suppliers, setSuppliers] = useState([]);
   const categories = useList('canton-categories');
@@ -41,13 +58,14 @@ export default function BoothFormFields({ lockSupplier }) {
           </Form.Item>
         </Col>
         <Col xs={12} sm={8}>
-          <Form.Item name="letter" label="Lettre"
-            rules={[{ required: true, message: 'Lettre obligatoire' }, { pattern: /^[A-Za-z]$/, message: 'Une lettre de A à Z' }]}>
+          <Form.Item name="letter" label="Lettre" dependencies={['num_start']}
+            rules={[{ pattern: /^[A-Za-z]$/, message: 'Une lettre de A à Z' }, together('num_start', 'Donnez aussi la lettre')]}>
             <Input maxLength={1} style={{ textTransform: 'uppercase' }} />
           </Form.Item>
         </Col>
         <Col xs={12} sm={8}>
-          <Form.Item name="num_start" label="N° de début" rules={[{ required: true, message: 'Numéro obligatoire' }]}>
+          <Form.Item name="num_start" label="N° de début" dependencies={['letter']}
+            rules={[together('letter', 'Donnez aussi le numéro')]}>
             <InputNumber min={1} max={32767} className="w-100" />
           </Form.Item>
         </Col>
@@ -57,6 +75,12 @@ export default function BoothFormFields({ lockSupplier }) {
           </Form.Item>
         </Col>
       </Row>
+      <Form.Item noStyle shouldUpdate>
+        {({ getFieldsValue }) => (
+          <div className="text-muted mb-3">Code du stand : <b>{previewCode(getFieldsValue())}</b>
+            {' '}(lettre et numéro vides = seulement le hall et l'étage, ex. 9.1)</div>
+        )}
+      </Form.Item>
       <Form.Item name="category_path" label="Catégorie (salon de Canton)"
         extra={phase ? (options.length ? '' : `Pas de catégories pour la phase ${phase}`) : 'Choisissez d\'abord la phase'}>
         <Cascader options={options} allowClear showSearch disabled={!options.length}
@@ -69,11 +93,13 @@ export default function BoothFormFields({ lockSupplier }) {
 }
 
 // Form values -> API body (antd gives undefined for empty fields; the cascader gives a path).
+// Empty fields are sent as null: undefined would drop them and the server would keep the old value.
 export const boothPayload = ({ category_path, ...v }) => ({
   ...v,
   supplier_id: v.supplier_id ?? null,
   category_id: category_path?.[2] ?? null,
+  num_start: v.num_start ?? null,
   num_end: v.num_end ?? null,
-  letter: (v.letter || '').toUpperCase(),
+  letter: v.letter ? v.letter.toUpperCase() : null,
   visited: !!v.visited,
 });

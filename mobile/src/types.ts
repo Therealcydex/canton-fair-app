@@ -24,8 +24,8 @@ export interface Booth {
   phase: number;
   hall: number;
   floor: number;
-  letter: string;
-  num_start: number;
+  letter: string | null;      // null with num_start: only the hall and floor are known ("9.1")
+  num_start: number | null;
   num_end: number | null;
   category_id: number | null;
   category: string | null;

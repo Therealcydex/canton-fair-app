@@ -9,16 +9,16 @@ const BOOTH_FIELDS = {
   phase: { label: 'Phase', type: 'int', required: true, min: 1, maxValue: 3 },
   hall: { label: 'Hall', type: 'int', required: true, min: 1, maxValue: 127 },
   floor: { label: 'Étage', type: 'int', required: true, min: 1, maxValue: 4 },
-  letter: { label: 'Lettre', type: 'string', required: true, max: 1, upper: true },
-  num_start: { label: 'Numéro de début', type: 'int', required: true, min: 1, maxValue: 32767 },
+  letter: { label: 'Lettre', type: 'string', max: 1, upper: true },
+  num_start: { label: 'Numéro de début', type: 'int', min: 1, maxValue: 32767 },
   num_end: { label: 'Numéro de fin', type: 'int', min: 1, maxValue: 32767 },
   visited: { label: 'Visité', type: 'bool' },
   comment: { label: 'Commentaire', type: 'text', max: 5000 },
 };
 
-// "2/12.1.A.22-24": the same text as the generated column booth_code.
+// D32: "11.3J26", "14.3I16-17" or "9.1": the same text as the generated column booth_code.
 const boothCode = (b) =>
-  `${b.phase}/${b.hall}.${b.floor}.${b.letter}.${b.num_start}${b.num_end === null ? '' : `-${b.num_end}`}`;
+  `${b.hall}.${b.floor}${b.letter === null ? '' : `${b.letter}${b.num_start}${b.num_end === null ? '' : `-${b.num_end}`}`}`;
 
 // Validates a booth body. supplier_id and category_id need the database.
 // Returns { values } or { status, message }.
@@ -27,7 +27,15 @@ async function validateBooth(req, existing) {
   if (!v.values) return { status: 400, message: v.message };
   const b = v.values;
   // D27: always uppercase, so "a" and "A" cannot make two codes for one place.
-  if (!/^[A-Z]$/.test(b.letter)) return { status: 400, message: 'Lettre : une lettre de A à Z' };
+  if (b.letter !== null && !/^[A-Z]$/.test(b.letter)) return { status: 400, message: 'Lettre : une lettre de A à Z' };
+  // D32: the letter and the number go together ("11.3J26"); without both, only the hall and
+  // floor are known ("9.1").
+  if ((b.letter === null) !== (b.num_start === null)) {
+    return { status: 400, message: 'La lettre et le numéro vont ensemble : donnez les deux, ou aucun des deux' };
+  }
+  if (b.num_start === null && b.num_end !== null) {
+    return { status: 400, message: 'Un numéro de fin demande une lettre et un numéro de début' };
+  }
   // A single booth has no end number ("22", not "22-22").
   if (b.num_end !== null && b.num_end === b.num_start) b.num_end = null;
   if (b.num_end !== null && b.num_end < b.num_start) {
@@ -61,8 +69,9 @@ async function validateBooth(req, existing) {
     b.category_id = categoryId;
   }
 
-  // D26: a booth code is unique, and two booths cannot overlap at the same place
-  // ("2/12.1.A.22-24" and "2/12.1.A.23" are the same stand).
+  // D26, D32: two booths of one phase cannot overlap at the same place ("12.1A22-24" and
+  // "12.1A23" are the same stand). A booth known only by "9.1" overlaps nothing.
+  if (b.letter === null) return { values: b };
   const end = b.num_end ?? b.num_start;
   const [[overlap]] = await db.query(
     `SELECT booth_code FROM booths
@@ -71,11 +80,11 @@ async function validateBooth(req, existing) {
      LIMIT 1`,
     [existing?.id ?? 0, b.phase, b.hall, b.floor, b.letter, end, b.num_start]
   );
-  if (overlap) return { status: 409, message: `Cet emplacement chevauche le stand ${overlap.booth_code}` };
+  if (overlap) return { status: 409, message: `Cet emplacement chevauche le stand ${overlap.booth_code} (phase ${b.phase})` };
   return { values: b };
 }
 
-// Runs a write; a duplicate booth_code that slipped between the check and the write (two
+// Runs a write; a duplicate stand (uq_booth_place) that slipped between the check and the write (two
 // users at the same moment) still ends in a 409.
 async function writeBooth(res, b, sql, params) {
   try {

@@ -88,12 +88,13 @@ none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercas
 | D23 | The views `v_suppliers` and `v_products` use correlated subqueries instead of `GROUP BY` and list their columns; `shared_with` shows the branch | A GROUP BY view cannot be merged: `WHERE id = ?` would aggregate the whole table first. It also avoids the ONLY_FULL_GROUP_BY error on `s.*` |
 | D24 | Indexes `suppliers(name)`, `products(name)`, `booths(visited, phase, hall)` | Name search and the "to visit" list; foreign keys are already indexed by InnoDB |
 | D25 | `companies` is unique on (name, branch), not on name; the API also refuses a duplicate name with no branch | Two branches of one company must both exist |
-| D26 | `booth_code` is unique (v2) and the API refuses (409) a booth whose numbers overlap another booth at the same phase, hall, floor and letter; an end number equal to the start is stored as no end | "2/12.1.A.22-24" and "2/12.1.A.23" are the same stand |
+| D26 | The API refuses (409) a booth whose numbers overlap another booth at the same phase, hall, floor and letter; an end number equal to the start is stored as no end. (The unique key on `booth_code` is replaced by D32) | "12.1A22-24" and "12.1A23" are the same stand |
 | D27 | The API stores the booth letter in uppercase | The collation is case-insensitive: the CHECK lets "a" in, and "a" and "A" would make two codes |
 | D28 | Deleting a supplier or a product also deletes the photo files | The FK cascade only deletes the rows |
 | D29 | Roles: `ADMIN` manages companies and users; `ACHETEUR` is every other user; `level` is free text (a job title). A sign-up is an inactive ACHETEUR. The admin cannot deactivate, delete or change the role of their own account. At most 20 sign-ups (accounts created or usernames taken) per address in 15 minutes | v2 defines `level` and `role` as text; sign-up must stay under the admin's control |
 | D30 | A booth's Canton category must belong to the booth's phase (the list covers phases 2 and 3 only) | The categories are per fair phase |
 | D31 | The generated `booth_code` uses `RTRIM(letter)` | MariaDB 11.8 (the remote server) refuses a CHAR column in a generated column, because its value depends on PAD_CHAR_TO_FULL_LENGTH |
+| D32 | `booth_code` follows the fair's notation, `hall.floor` + letter + number(s): `11.3J26`, `14.3I16-17`, and `9.1` when only the hall and floor are known. The letter and the start number are given together or not at all. The phase leaves the code; the unique key becomes (phase, hall, floor, letter, num_start), so a stand is recorded once per phase and several booths can be known only by `9.1`. `npm run db:update-booth-code` moves an existing table | Asked by the user: the code matches what the fair prints. The same stand holds another supplier at each phase |
 
 ## 6. Changelog
 
@@ -106,11 +107,12 @@ none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercas
 | 2026-10-14 | Sprint 5: D20 (mobile app) |
 | 2026-10-14 | Sprint 6: D21 (hardening) |
 | 2026-10-14 | Schema v2 from Tarek, user sign-up (BF16), corrections D22-D30; BF06, BF09, BNF01 and several decisions replaced |
+| 2026-10-14 | D32: booth code in the fair's notation (`11.3J26`), booths known only by hall and floor; D26 adjusted |
 
 ## 7. Open questions on schema v2 (for Tarek)
 
 - `products.price` is `DECIMAL(12,2)` with no currency: is it TND (3 decimals), USD or CNY?
 - `booths.visited` is one flag for the whole group: who visited and when is no longer kept. Keep a visit log?
-- `booth_code` is unique for the whole group: two companies cannot record the same stand separately (expected, since the data is shared).
+- A stand is unique per phase for the whole group (D32): two companies cannot record the same stand separately (expected, since the data is shared). Booths known only by `hall.floor` are not checked for duplicates.
 - The Canton Fair category list covers phases 2 and 3 only: booths of phase 1 have no category.
 - `level` and `role` are free text: is a list of levels wanted?

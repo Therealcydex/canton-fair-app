@@ -56,28 +56,35 @@ CREATE TABLE IF NOT EXISTS contacts (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------- Booths ----------
--- booth_code is built automatically: phase/hall.floor.letter.num
--- e.g. phase 2, hall 12, floor 1, letter A, num 22-24  ->  2/12.1.A.22-24
+-- D32: booth_code is built automatically as the fair prints it: hall.floor + letter + number(s)
+-- e.g. hall 11, floor 3, letter J, num 26  ->  11.3J26;  num 16-17 -> 14.3I16-17;
+-- no letter and no number (only the hall and floor are known)  ->  9.1
+-- The phase is not in the code: the same stand holds another supplier at each phase.
 -- D31: RTRIM(letter): MariaDB 11.8 refuses a CHAR column in a generated column (its value depends on PAD_CHAR_TO_FULL_LENGTH).
 -- D27: the API stores the letter in uppercase (the collation is case-insensitive, so the CHECK lets 'a' in).
+-- update_booth_code.js moves an existing table to this definition.
 CREATE TABLE IF NOT EXISTS booths (
     id            INT AUTO_INCREMENT PRIMARY KEY,
     phase         TINYINT  NOT NULL CHECK (phase BETWEEN 1 AND 3),
     hall          TINYINT  NOT NULL,
     floor         TINYINT  NOT NULL CHECK (floor BETWEEN 1 AND 4),
-    letter        CHAR(1)  NOT NULL CHECK (letter BETWEEN 'A' AND 'Z'),
-    num_start     SMALLINT NOT NULL,
+    letter        CHAR(1)  NULL CHECK (letter BETWEEN 'A' AND 'Z'),  -- NULL with num_start: only hall.floor known
+    num_start     SMALLINT NULL,
     num_end       SMALLINT NULL,                         -- NULL if single booth
     booth_code    VARCHAR(30) GENERATED ALWAYS AS (
-                    CONCAT(phase, '/', hall, '.', floor, '.', RTRIM(letter), '.', num_start,
-                           IF(num_end IS NULL, '', CONCAT('-', num_end)))
+                    CONCAT(hall, '.', floor,
+                           IF(letter IS NULL, '',
+                              CONCAT(RTRIM(letter), num_start, IF(num_end IS NULL, '', CONCAT('-', num_end)))))
                   ) STORED,
     category_id   INT NULL,                              -- category + sub category (canton_fair_category)
     supplier_id   INT NULL,
     visited       TINYINT(1) NOT NULL DEFAULT 0,         -- true / false
     comment       TEXT,
-    UNIQUE KEY uq_booth_code (booth_code),
+    -- D32: one stand per phase; NULL letters do not collide, so several suppliers can be known only by "9.1"
+    UNIQUE KEY uq_booth_place (phase, hall, floor, letter, num_start),
+    KEY ix_booths_code (booth_code),
     KEY ix_booths_to_visit (visited, phase, hall),       -- D24: the "to visit" list and its filters
+    CONSTRAINT chk_booth_place CHECK ((letter IS NULL) = (num_start IS NULL) AND (num_start IS NOT NULL OR num_end IS NULL)),
     CHECK (num_end IS NULL OR num_end >= num_start),
     FOREIGN KEY (category_id) REFERENCES canton_fair_category(id) ON DELETE SET NULL,
     FOREIGN KEY (supplier_id) REFERENCES suppliers(id)            ON DELETE SET NULL

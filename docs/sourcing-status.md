@@ -46,3 +46,4 @@ acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 | `backend/sql/china_provinces.sql` | `npm run db:setup` | The 23 provinces |
 | `backend/sql/canton_fair_categories.sql` | `npm run db:setup` | The 421 Canton Fair categories (only loaded into an empty table) |
 | `backend/sql/create_sourcing_schema.sql` | `npm run db:setup` | Schema v2: tables, shipping types, views; then the admin user |
+| `backend/sql/update_booth_code.sql` | `npm run db:update-booth-code` | D32, once, on a database set up before it: booth code `11.3J26`, optional letter and number, stand unique per phase (skipped when already done) |

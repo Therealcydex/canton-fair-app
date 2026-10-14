@@ -79,8 +79,10 @@ export default function BoothDetail() {
           {booth.sub_category ? `${booth.category} › ${booth.section} › ${booth.sub_category}` : '—'}
         </Descriptions.Item>
         <Descriptions.Item label="Phase">{booth.phase}</Descriptions.Item>
-        <Descriptions.Item label="Hall / étage / lettre">{booth.hall} / {booth.floor} / {booth.letter}</Descriptions.Item>
-        <Descriptions.Item label="Numéros">{booth.num_end ? `${booth.num_start} à ${booth.num_end}` : booth.num_start}</Descriptions.Item>
+        <Descriptions.Item label="Hall / étage / lettre">{booth.hall} / {booth.floor} / {booth.letter || '—'}</Descriptions.Item>
+        <Descriptions.Item label="Numéros">
+          {booth.num_start === null ? '—' : booth.num_end ? `${booth.num_start} à ${booth.num_end}` : booth.num_start}
+        </Descriptions.Item>
         <Descriptions.Item label="Commentaire" span="filled"><span style={{ whiteSpace: 'pre-wrap' }}>{booth.comment || '—'}</span></Descriptions.Item>
       </Descriptions>
 

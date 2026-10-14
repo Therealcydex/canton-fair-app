@@ -9,7 +9,8 @@
     "db:setup": "node sql/run_schema_setup.js",
     "test:api": "node tests/run.js",
     "db:demo": "node scripts/seed-demo.js",
-    "db:drop-v1": "node sql/drop_v1_tables.js"
+    "db:drop-v1": "node sql/drop_v1_tables.js",
+    "db:update-booth-code": "node sql/update_booth_code.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
