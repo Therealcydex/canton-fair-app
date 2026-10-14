@@ -9,6 +9,8 @@ import Users from '../feature-module/admin/Users';
 import Companies from '../feature-module/admin/Companies';
 import Suppliers from '../feature-module/suppliers/Suppliers';
 import SupplierDetail from '../feature-module/suppliers/SupplierDetail';
+import Contacts from '../feature-module/contacts/Contacts';
+import ContactQrSheet from '../feature-module/contacts/ContactQrSheet';
 import Booths from '../feature-module/booths/Booths';
 import BoothDetail from '../feature-module/booths/BoothDetail';
 import Products from '../feature-module/products/Products';
@@ -26,6 +28,8 @@ export default function AppRouter() {
             <Route path="/" element={<Accueil />} />
             <Route path="/fournisseurs" element={<Suppliers />} />
             <Route path="/fournisseurs/:id" element={<SupplierDetail />} />
+            <Route path="/contacts" element={<Contacts />} />
+            <Route path="/contacts/qr" element={<ContactQrSheet />} />
             <Route path="/a-visiter" element={<Booths planning key="planning" />} />
             <Route path="/stands" element={<Booths key="all" />} />
             <Route path="/stands/:id" element={<BoothDetail />} />

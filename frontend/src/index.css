@@ -11,3 +11,53 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Sheet of WeChat QR codes (feature-module/contacts/ContactQrSheet.jsx). */
+.qr-sheet {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.qr-card {
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  background: #fff;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.qr-card img {
+  width: 180px;
+  height: 180px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto 8px;
+}
+
+.qr-card-name {
+  font-weight: 600;
+}
+
+@media print {
+  .navbar,
+  .no-print {
+    display: none !important;
+  }
+
+  .qr-sheet {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8mm;
+  }
+
+  .qr-card {
+    border-color: #999;
+  }
+
+  .qr-card img {
+    width: 50mm;
+    height: 50mm;
+  }
+}

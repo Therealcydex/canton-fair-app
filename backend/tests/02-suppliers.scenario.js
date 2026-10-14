@@ -115,5 +115,42 @@ module.exports = async (ctx) => {
   expect('delete a supplier whose contact has a QR code', await api('DELETE', `/suppliers/${s2}`, { token: A }), 200);
   check('the QR file is deleted', !fs.existsSync(fileOf(qr4)));
 
+  // All contacts in one table, and their CSV export (BF17)
+  expect('contact list without a token', await api('GET', '/contacts'), 401);
+  const sx = (await api('POST', '/suppliers', { token: A, body: { name: `${PREFIX} Contacts table` } })).body.data.id;
+  const cWith = (await api('POST', `/suppliers/${sx}/contacts`, { token: A, body: { name: `${PREFIX} Ms "QR"`, email: 'qr@test.cn' } })).body.data.id;
+  const cWithout = (await api('POST', `/suppliers/${sx}/contacts`, { token: A, body: { name: '=HYPERLINK("x")', phone: '+86 9' } })).body.data.id;
+  await api('POST', `/suppliers/${sx}/contacts/${cWith}/wechat-qr`, { token: A, form: form([['qr.png', PNG, 'image/png']]) });
+
+  const all = expect('contact list', await api('GET', `/contacts?supplier_id=${sx}`, { token: B }), 200);
+  check('both contacts, with their supplier', all.body.data.length === 2
+    && all.body.data.every((x) => x.supplier_id === sx && x.supplier_name === `${PREFIX} Contacts table`));
+  const byText = expect('search by supplier name', await api('GET', `/contacts?q=${encodeURIComponent(`${PREFIX} Contacts tab`)}`, { token: A }), 200);
+  check('search finds both', byText.body.data.filter((x) => x.supplier_id === sx).length === 2);
+  const byMail = await api('GET', '/contacts?q=qr%40test.cn', { token: A });
+  check('search by e-mail', byMail.body.data.length === 1 && byMail.body.data[0].id === cWith);
+  const withQr = expect('only contacts with a QR code', await api('GET', `/contacts?supplier_id=${sx}&has_qr=1`, { token: A }), 200);
+  check('has_qr=1', withQr.body.data.length === 1 && withQr.body.data[0].id === cWith);
+  const noQr = expect('only contacts without a QR code', await api('GET', `/contacts?supplier_id=${sx}&has_qr=0`, { token: A }), 200);
+  check('has_qr=0', noQr.body.data.length === 1 && noQr.body.data[0].id === cWithout);
+  expect('invalid supplier filter', await api('GET', '/contacts?supplier_id=abc', { token: A }), 400);
+  expect('invalid has_qr filter', await api('GET', '/contacts?has_qr=2', { token: A }), 400);
+
+  expect('export without a token', await api('GET', '/contacts/export'), 401);
+  expect('export with an invalid filter', await api('GET', '/contacts/export?has_qr=x', { token: A }), 400);
+  const csv = await fetch(`${BASE}/contacts/export?supplier_id=${sx}`, { headers: { Authorization: `Bearer ${A}` } });
+  const bytes = Buffer.from(await csv.arrayBuffer());
+  const text = bytes.toString('utf8');
+  check('export is a CSV download', csv.status === 200 && /^text\/csv/.test(csv.headers.get('content-type'))
+    && /attachment; filename="contacts-\d{4}-\d{2}-\d{2}\.csv"/.test(csv.headers.get('content-disposition')));
+  check('export starts with a UTF-8 BOM', bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf);
+  const lines = text.replace(/^﻿/, '').split('\r\n').filter(Boolean);
+  check('export header', lines[0] === '"N° contact";"N° fournisseur";"Fournisseur";"Nom";"Téléphone";"E-mail";"QR code WeChat"');
+  check('export has the 2 contacts', lines.length === 3);
+  check('quotes doubled and QR as a full address',
+    lines.some((l) => l.includes(`"${PREFIX} Ms ""QR"""`) && /"http:\/\/[^"]+\/uploads\/wechat\/[0-9a-f]{32}\.png"$/.test(l)));
+  check('formula neutralised', lines.some((l) => l.includes('"\'=HYPERLINK(""x"")"')));
+  check('phone number left as it is', lines.some((l) => l.includes('"+86 9"')));
+
   ctx.supplierId = id;
 };

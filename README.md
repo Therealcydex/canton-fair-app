@@ -46,7 +46,7 @@ Administration › Utilisateurs › En attente de validation.
 ## Tests
 
 ```bash
-cd backend && npm run test:api                   # backend running, local database only; 233 checks
+cd backend && npm run test:api                   # backend running, local database only; 254 checks
 cd backend && npm run test:api -- products       # one scenario file
 cd frontend && CI=true npm test -- --watchAll=false
 cd mobile && npm run lint && npm run build

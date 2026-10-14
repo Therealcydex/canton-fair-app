@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Alert, App, Button, Descriptions, Form, Input, Popconfirm, Rate, Space, Spin, Table, Tabs } from 'antd';
+import { Alert, App, Button, Descriptions, Popconfirm, Rate, Space, Spin, Table, Tabs } from 'antd';
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import FormModal from '../../components/FormModal';
 import SupplierFormFields from './SupplierFormFields';
 import WechatQr from './WechatQr';
+import ContactFormFields, { contactPayload } from '../contacts/ContactFormFields';
 import BoothList from '../booths/BoothList';
 import ProductList from '../products/ProductList';
 
@@ -144,17 +145,10 @@ export default function SupplierDetail() {
       <FormModal open={!!contact} title={contact?.id ? 'Modifier le contact' : 'Nouveau contact'} initialValues={contact}
         onCancel={() => setContact(null)}
         onSubmit={(values) => (contact.id
-          ? axios.put(`${API_BASE_URL}/suppliers/${id}/contacts/${contact.id}`, values)
-          : axios.post(`${API_BASE_URL}/suppliers/${id}/contacts`, values))}
+          ? axios.put(`${API_BASE_URL}/suppliers/${id}/contacts/${contact.id}`, contactPayload(values))
+          : axios.post(`${API_BASE_URL}/suppliers/${id}/contacts`, contactPayload(values)))}
         onSaved={() => { setContact(null); message.success('Contact enregistré'); load(); }}>
-        <Form.Item name="name" label="Nom" extra="Renseignez au moins le nom, le téléphone ou l'e-mail">
-          <Input maxLength={150} />
-        </Form.Item>
-        <Form.Item name="phone" label="Téléphone"><Input maxLength={50} /></Form.Item>
-        <Form.Item name="email" label="E-mail" rules={[{ type: 'email', message: 'Adresse e-mail invalide' }]}>
-          <Input maxLength={150} />
-        </Form.Item>
-        <p className="text-muted small mb-0">Le QR code WeChat s'ajoute ensuite, dans la liste des contacts (photo du QR code).</p>
+        <ContactFormFields />
       </FormModal>
     </>
   );

@@ -47,6 +47,7 @@ none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercas
 | BF14 | A user sees the products shared with their own company | Moyenne |
 | BF15 | A mobile app gives buyers sign-up, the "to visit" list, one-tap "visited", quick product entry with a camera photo, and supplier lookup | Moyenne |
 | BF16 | A visitor signs up (name, company, username, password); the account is inactive until the admin activates it (or refuses it) | Haute |
+| BF17 | A user sees every contact of every supplier in one table (contact n°, supplier n° and name, name, phone, e-mail, WeChat QR code), searches and filters it (supplier, with or without QR code), adds, edits and deletes contacts there, exports the table as CSV for Excel and prints a sheet of the QR codes | Moyenne |
 
 ## 4. Non-functional requirements (BNF)
 
@@ -110,6 +111,7 @@ none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercas
 | 2026-10-14 | Schema v2 from Tarek, user sign-up (BF16), corrections D22-D30; BF06, BF09, BNF01 and several decisions replaced |
 | 2026-10-14 | D33: the WeChat QR code of a contact is a photo (web upload, mobile camera) |
 | 2026-10-14 | D32: booth code in the fair's notation (`11.3J26`), booths known only by hall and floor; D26 adjusted |
+| 2026-10-14 | BF17: Contacts page, CSV export (";", UTF-8 with BOM, formulas neutralised) and printable QR code sheet |
 
 ## 7. Open questions on schema v2 (for Tarek)
 

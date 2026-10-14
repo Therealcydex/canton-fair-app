@@ -8,6 +8,7 @@ import { companyLabel } from '../utils/lists';
 const MENU = [
   { to: '/', label: 'Accueil', end: true },
   { to: '/fournisseurs', label: 'Fournisseurs' },
+  { to: '/contacts', label: 'Contacts' },
   { to: '/a-visiter', label: 'À visiter' },
   { to: '/stands', label: 'Stands' },
   { to: '/produits', label: 'Produits' },

@@ -11,7 +11,7 @@ whole group. It has its own tables and its own login, with sign-up validated by 
 follows the Smart360 code conventions in `guide-nouveau-projet-smart360.md`, but none of the
 Smart360 data: no `LISTE_DES_SALARIES`, no `Boutique`, no UPPERCASE table names.
 
-- `docs/sourcing-spec.md` holds the actors, requirements (BF01–BF16, BNF01–BNF06), decisions (D1–D33, several replaced by schema v2) and open questions. The decisions are not yet validated by the Product Owner. Read it before working on a feature, and add a decision there when you make one.
+- `docs/sourcing-spec.md` holds the actors, requirements (BF01–BF17, BNF01–BNF06), decisions (D1–D33, several replaced by schema v2) and open questions. The decisions are not yet validated by the Product Owner. Read it before working on a feature, and add a decision there when you make one.
 - `docs/sourcing-status.md` tracks the state of each requirement, what was checked, and the migration scripts in order. Update it when a requirement changes.
 - Sprints 0–6 were built on schema v1; branch `feat/sourcing-schema-v2` moves everything to schema v2 and adds sign-up. What remains: the PO's validation, the Android build (Node 22), and the hand checks listed in the status file.
 
@@ -57,6 +57,7 @@ Tarek's schema v2 (`backend/sql/create_sourcing_schema.sql`, corrections D22-D30
 - `products`: `price DECIMAL(12,2)`, `shipping_type` (FK to `shipping_types`, FOB by default), `product_images`, `product_shares` (`product_id`, `company_id`).
 - Views `v_booths`, `v_suppliers` (booth count, % visited), `v_products` (shipping name, shared with): keep them free of GROUP BY (D23).
 - Reference lists are served by `GET /api/lists/provinces|shipping-types|canton-categories`.
+- `GET /api/contacts` (filters `q`, `supplier_id`, `has_qr`) lists every contact with its supplier, and `GET /api/contacts/export` gives the same list as CSV; contacts are still written through `/api/suppliers/:id/contacts`.
 
 Access rule: there is **no per-company isolation** any more. Every active user reads and writes every supplier, contact, booth and product, and shares products with companies. `role = 'ADMIN'` also manages companies and users and validates sign-ups (`requireAdmin`). Everyone else is `ACHETEUR`; `level` is free text. A sign-up creates an inactive `ACHETEUR`.
 
