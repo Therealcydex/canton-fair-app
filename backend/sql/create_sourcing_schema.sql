@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS contacts (
 -- ---------- Booths ----------
 -- booth_code is built automatically: phase/hall.floor.letter.num
 -- e.g. phase 2, hall 12, floor 1, letter A, num 22-24  ->  2/12.1.A.22-24
+-- D31: RTRIM(letter): MariaDB 11.8 refuses a CHAR column in a generated column (its value depends on PAD_CHAR_TO_FULL_LENGTH).
 -- D27: the API stores the letter in uppercase (the collation is case-insensitive, so the CHECK lets 'a' in).
 CREATE TABLE IF NOT EXISTS booths (
     id            INT AUTO_INCREMENT PRIMARY KEY,
@@ -68,7 +69,7 @@ CREATE TABLE IF NOT EXISTS booths (
     num_start     SMALLINT NOT NULL,
     num_end       SMALLINT NULL,                         -- NULL if single booth
     booth_code    VARCHAR(30) GENERATED ALWAYS AS (
-                    CONCAT(phase, '/', hall, '.', floor, '.', letter, '.', num_start,
+                    CONCAT(phase, '/', hall, '.', floor, '.', RTRIM(letter), '.', num_start,
                            IF(num_end IS NULL, '', CONCAT('-', num_end)))
                   ) STORED,
     category_id   INT NULL,                              -- category + sub category (canton_fair_category)

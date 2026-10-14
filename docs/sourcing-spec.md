@@ -93,6 +93,7 @@ none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercas
 | D28 | Deleting a supplier or a product also deletes the photo files | The FK cascade only deletes the rows |
 | D29 | Roles: `ADMIN` manages companies and users; `ACHETEUR` is every other user; `level` is free text (a job title). A sign-up is an inactive ACHETEUR. The admin cannot deactivate, delete or change the role of their own account. At most 20 sign-ups (accounts created or usernames taken) per address in 15 minutes | v2 defines `level` and `role` as text; sign-up must stay under the admin's control |
 | D30 | A booth's Canton category must belong to the booth's phase (the list covers phases 2 and 3 only) | The categories are per fair phase |
+| D31 | The generated `booth_code` uses `RTRIM(letter)` | MariaDB 11.8 (the remote server) refuses a CHAR column in a generated column, because its value depends on PAD_CHAR_TO_FULL_LENGTH |
 
 ## 6. Changelog
 
