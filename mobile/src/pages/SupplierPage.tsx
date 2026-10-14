@@ -1,28 +1,35 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { api, fileUrl, jsonBody } from '../config/api';
+import { api, jsonBody } from '../config/api';
+import { isQrLink, isQrPhoto, useQrImage } from '../qr';
+import QrScanner from '../components/QrScanner';
 import { formatPrice } from '../format';
 import type { Booth, Contact, Product, Supplier } from '../types';
 import { Badge, Button, Card, ErrorBox, Field, Loading, Page, inputClass } from '../components/ui';
 
-const MAX_MB = 8;
-
-// D33: wechat_qr is the link of a photo of the WeChat QR code; an older value typed by hand is text.
-const isQrPhoto = (value: string | null) => !!value && value.startsWith('/uploads/');
-
-// A contact: tap to call or write, and its WeChat QR code, photographed at the booth
-// (tap the QR code to show it full screen and scan it). The server checks the photo.
+// A contact: tap to call or write, and its WeChat QR code, read with the scanner at the booth
+// (D34). The drawn QR code opens full screen on tap, to be scanned from another phone.
 function ContactCard({ supplierId, contact, onChanged }: { supplierId: number; contact: Contact; onChanged: () => Promise<void> }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [zoom, setZoom] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const url = `/suppliers/${supplierId}/contacts/${contact.id}/wechat-qr`;
+  const image = useQrImage(contact.wechat_qr);
 
-  const run = async (request: () => Promise<unknown>) => {
+  // Saves what the scanner read; a refusal is thrown back to the scanner, which shows it.
+  const saveScan = async (content: string) => {
+    await api(url, "Erreur lors de l'enregistrement du QR code", { method: 'PUT', body: jsonBody({ content }) });
+    setScanning(false);
+    await onChanged();
+  };
+
+  const remove = async () => {
+    if (!window.confirm('Retirer le QR code WeChat de ce contact ?')) return;
     setBusy(true);
     setError(null);
     try {
-      await request();
+      await api(url, 'Erreur lors du retrait du QR code', { method: 'DELETE' });
       await onChanged();
     } catch (e) {
       setError((e as Error).message);
@@ -31,51 +38,39 @@ function ContactCard({ supplierId, contact, onChanged }: { supplierId: number; c
     }
   };
 
-  const upload = (file?: File) => {
-    if (!file) return;
-    if (file.size > MAX_MB * 1024 * 1024) return setError(`« ${file.name} » dépasse ${MAX_MB} Mo`);
-    const body = new FormData();
-    body.append('images', file);
-    run(() => api(url, "Erreur lors de l'envoi du QR code", { method: 'POST', body }));
-  };
-
-  const remove = () => {
-    if (window.confirm('Retirer le QR code WeChat de ce contact ?')) {
-      run(() => api(url, 'Erreur lors du retrait du QR code', { method: 'DELETE' }));
-    }
-  };
-
   return (
     <Card className="space-y-2 text-sm">
       {contact.name && <p className="font-medium">{contact.name}</p>}
       {contact.phone && <p><a className="text-blue-700" href={`tel:${contact.phone}`}>{contact.phone}</a></p>}
       {contact.email && <p><a className="text-blue-700" href={`mailto:${contact.email}`}>{contact.email}</a></p>}
-      {contact.wechat_qr && !isQrPhoto(contact.wechat_qr) && <p className="text-slate-600">WeChat : {contact.wechat_qr}</p>}
-      {isQrPhoto(contact.wechat_qr) && (
+      {image && (
         <button type="button" onClick={() => setZoom(true)} aria-label="Agrandir le QR code WeChat">
-          <img src={fileUrl(contact.wechat_qr)} alt="QR code WeChat" className="h-32 w-32 rounded-lg border bg-white object-contain" />
+          <img src={image} alt="QR code WeChat" className="h-32 w-32 rounded-lg border bg-white object-contain" />
         </button>
+      )}
+      {isQrLink(contact.wechat_qr) && <p className="break-all text-xs text-slate-500">{contact.wechat_qr}</p>}
+      {contact.wechat_qr && !image && !isQrPhoto(contact.wechat_qr) && !isQrLink(contact.wechat_qr) && (
+        <p className="text-slate-600">WeChat : {contact.wechat_qr}</p>
       )}
       <ErrorBox message={error} />
       <div className="flex gap-2">
-        <label className={`flex min-h-[44px] flex-1 items-center justify-center rounded-lg border border-slate-300 px-3 font-medium ${busy ? 'text-slate-400' : 'text-slate-800 active:bg-slate-100'}`}>
-          {busy ? 'Envoi…' : isQrPhoto(contact.wechat_qr) ? 'Reprendre le QR WeChat' : 'Photographier le QR WeChat'}
-          <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" disabled={busy}
-            onChange={(e) => { upload(e.target.files?.[0]); e.target.value = ''; }} />
-        </label>
+        <Button variant="secondary" className="flex-1" disabled={busy} onClick={() => setScanning(true)}>
+          {contact.wechat_qr ? 'Scanner à nouveau' : 'Scanner le QR WeChat'}
+        </Button>
         {contact.wechat_qr && <Button variant="danger" disabled={busy} onClick={remove}>Retirer</Button>}
       </div>
-      {zoom && isQrPhoto(contact.wechat_qr) && (
+      {zoom && image && (
         <button type="button" className="fixed inset-0 z-20 flex items-center justify-center bg-black/80 p-6" onClick={() => setZoom(false)}
           aria-label="Fermer">
-          <img src={fileUrl(contact.wechat_qr)} alt="QR code WeChat" className="max-h-full max-w-full rounded-lg bg-white object-contain" />
+          <img src={image} alt="QR code WeChat" className="max-h-full max-w-full rounded-lg bg-white object-contain" />
         </button>
       )}
+      {scanning && <QrScanner onSave={saveScan} onClose={() => setScanning(false)} />}
     </Card>
   );
 }
 
-// A quick contact (name, phone), so a QR code can be photographed for a supplier that has none yet.
+// A quick contact (name, phone), so a QR code can be scanned for a supplier that has none yet.
 function NewContact({ supplierId, onSaved }: { supplierId: number; onSaved: () => Promise<void> }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');

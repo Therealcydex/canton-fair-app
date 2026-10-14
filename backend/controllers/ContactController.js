@@ -4,7 +4,8 @@ const { fail, handle, toId, clean, likeContains } = require('../utils/http');
 // Every contact of every supplier, in one table (BF17). Read only: contacts are created,
 // changed and deleted through /api/suppliers/:id/contacts, where their rules live.
 
-const QR_PHOTO = "c.wechat_qr LIKE '/uploads/wechat/%'"; // D33: a photo, not an older text
+// D33/D34: a QR code is a photo or a scanned link; any other text is an older typed WeChat id.
+const HAS_QR = "(c.wechat_qr LIKE '/uploads/wechat/%' OR c.wechat_qr LIKE 'http://%' OR c.wechat_qr LIKE 'https://%')";
 
 // Builds the WHERE clause of the list and of the export from the same query string, so both
 // always return the same contacts. Returns { where, params } or { message } for a 400.
@@ -23,8 +24,8 @@ function filters(query) {
     params.push(supplierId);
   }
   if (query.has_qr !== undefined && query.has_qr !== '') {
-    if (query.has_qr === '1') where += ` AND ${QR_PHOTO}`;
-    else if (query.has_qr === '0') where += ` AND (c.wechat_qr IS NULL OR NOT ${QR_PHOTO})`;
+    if (query.has_qr === '1') where += ` AND ${HAS_QR}`;
+    else if (query.has_qr === '0') where += ` AND (c.wechat_qr IS NULL OR NOT ${HAS_QR})`;
     else return { message: 'Filtre has_qr invalide (0 ou 1)' };
   }
   return { where, params };

@@ -93,8 +93,25 @@ module.exports = async (ctx) => {
   check('the old QR file is deleted', !fs.existsSync(fileOf(url1)) && fs.existsSync(fileOf(qr2.body.data.wechat_qr)));
   expect('update keeps the QR code', await api('PUT', `/suppliers/${id}/contacts/${c.body.data.id}`, { token: A, body: { name: 'Mr Li Wei' } }), 200);
   check('QR code still there', (await api('GET', `/suppliers/${id}/contacts`, { token: A })).body.data.some((x) => x.wechat_qr === qr2.body.data.wechat_qr));
+  // D34: the content read by a QR scanner replaces the photo.
+  const wechatLink = 'https://u.wechat.com/TEST-scan';
+  expect('scanned content without a token', await api('PUT', qrUrl, { body: { content: wechatLink } }), 401);
+  expect('empty scanned content', await api('PUT', qrUrl, { token: A, body: { content: '  ' } }), 400);
+  expect('scanned content missing', await api('PUT', qrUrl, { token: A, body: {} }), 400);
+  expect('scanned content over 255 characters', await api('PUT', qrUrl, { token: A, body: { content: `https://u.wechat.com/${'x'.repeat(250)}` } }), 400);
+  expect('scanned content with a control character', await api('PUT', qrUrl, { token: A, body: { content: 'https://a\u0007b' } }), 400);
+  expect('scanned content looking like a photo path', await api('PUT', qrUrl, { token: A, body: { content: '/uploads/wechat/x.png' } }), 400);
+  expect('scanned content for an unknown contact', await api('PUT', `/suppliers/${id}/contacts/999999/wechat-qr`, { token: A, body: { content: wechatLink } }), 404);
+  const scanned = expect('save the scanned content', await api('PUT', qrUrl, { token: B, body: { content: ` ${wechatLink} ` } }), 200);
+  check('content stored trimmed', scanned.body.data?.wechat_qr === wechatLink);
+  check('the photo it replaces is deleted', !fs.existsSync(fileOf(qr2.body.data.wechat_qr)));
+  const withLink = await api('GET', `/contacts?supplier_id=${id}&has_qr=1`, { token: A });
+  check('a scanned link counts as a QR code', withLink.body.data.some((x) => x.id === c.body.data.id));
+  const linkCsv = await (await fetch(`${BASE}/contacts/export?supplier_id=${id}`, { headers: { Authorization: `Bearer ${A}` } })).text();
+  check('the CSV has the scanned link', linkCsv.includes(`"${wechatLink}"`));
+
   expect('remove the QR code', await api('DELETE', qrUrl, { token: A }), 200);
-  check('its file is deleted', !fs.existsSync(fileOf(qr2.body.data.wechat_qr)));
+  check('scanned content removed', (await api('GET', `/suppliers/${id}/contacts`, { token: A })).body.data.some((x) => x.id === c.body.data.id && x.wechat_qr === null));
   expect('remove it again', await api('DELETE', qrUrl, { token: A }), 404);
 
   // A contact known only by its QR code keeps it.
@@ -131,6 +148,8 @@ module.exports = async (ctx) => {
   check('search by e-mail', byMail.body.data.length === 1 && byMail.body.data[0].id === cWith);
   const withQr = expect('only contacts with a QR code', await api('GET', `/contacts?supplier_id=${sx}&has_qr=1`, { token: A }), 200);
   check('has_qr=1', withQr.body.data.length === 1 && withQr.body.data[0].id === cWith);
+  // A value that is neither a photo nor a link (an older typed WeChat id) is not a QR code.
+  await api('PUT', `/suppliers/${sx}/contacts/${cWithout}/wechat-qr`, { token: A, body: { content: 'liwei_bright' } });
   const noQr = expect('only contacts without a QR code', await api('GET', `/contacts?supplier_id=${sx}&has_qr=0`, { token: A }), 200);
   check('has_qr=0', noQr.body.data.length === 1 && noQr.body.data[0].id === cWithout);
   expect('invalid supplier filter', await api('GET', '/contacts?supplier_id=abc', { token: A }), 400);

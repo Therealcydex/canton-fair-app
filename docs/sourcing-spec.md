@@ -1,4 +1,4 @@
-# Sourcing — specification
+| BF15 | A mobile app gives buyers sign-up, the "to visit" list, one-tap "visited", quick product entry with a camera photo, supplier lookup and a WeChat QR code scanner | Moyenne || BF05 | A user manages the contacts of a supplier (name, phone, email) and their WeChat QR code: scanned with the mobile app, or read from a picture on the web (D34) | Haute |# Sourcing — specification
 
 First draft written from `sourcing_db_diagram.pdf` (schema v1). Since 2026-10-14 the app follows
 Tarek's **schema v2** (`schema.sql`, `china_provinces.sql`, `canton_fair_categories.sql`), with the
@@ -97,6 +97,7 @@ none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercas
 | D31 | The generated `booth_code` uses `RTRIM(letter)` | MariaDB 11.8 (the remote server) refuses a CHAR column in a generated column, because its value depends on PAD_CHAR_TO_FULL_LENGTH |
 | D32 | `booth_code` follows the fair's notation, `hall.floor` + letter + number(s): `11.3J26`, `14.3I16-17`, and `9.1` when only the hall and floor are known. The letter and the start number are given together or not at all. The phase leaves the code; the unique key becomes (phase, hall, floor, letter, num_start), so a stand is recorded once per phase and several booths can be known only by `9.1`. `npm run db:update-booth-code` moves an existing table | Asked by the user: the code matches what the fair prints. The same stand holds another supplier at each phase |
 | D33 | `contacts.wechat_qr` holds the link of a photo of the WeChat QR code (`/uploads/wechat/<random>`), set only through `POST /api/suppliers/:id/contacts/:contactId/wechat-qr` (one JPEG, PNG or WebP photo, 8 MB, checked by content) and removed with `DELETE` on the same path. A new photo replaces the old one and its file; deleting the contact or the supplier deletes the file. The QR code cannot be removed when it is the only information of the contact (409). A text typed before (a WeChat id) stays and is shown as text. The mobile app takes the photo with the camera and shows the QR code full screen | v2 calls the column `wechat_qr`: buyers need the QR code itself, to scan it or show it, not a typed id |
+| D34 | The WeChat QR code is **scanned**: `contacts.wechat_qr` holds the content the scanner reads (for WeChat a link, `https://u.wechat.com/...`), saved with `PUT /api/suppliers/:id/contacts/:contactId/wechat-qr` (`{ content }`: trimmed, 1 to 255 characters, no control character, not starting with `/uploads/`), and the apps draw the QR code again from it. A link counts as a QR code (`has_qr`); other text is shown as text; a D33 photo still shows and is replaced (its file deleted) by a scan. The mobile app scans with the live camera (`getUserMedia`, decoded with `jsqr`) or, when the camera is unavailable, from a photo; it warns when the content is not a wechat.com / weixin.qq.com link. The web edit form reads the QR code from a picture. QR codes are drawn with `qrcode`. The live camera needs https: `npm run dev:phone` serves the mobile app over https with a local certificate and proxies /api and /uploads to the backend; the Android app needs the CAMERA permission | A QR code is meant to be read, not photographed: the link is exact, small, and can be redrawn sharp anywhere (table, print sheet) |
 
 ## 6. Changelog
 
@@ -112,6 +113,7 @@ none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercas
 | 2026-10-14 | D33: the WeChat QR code of a contact is a photo (web upload, mobile camera) |
 | 2026-10-14 | D32: booth code in the fair's notation (`11.3J26`), booths known only by hall and floor; D26 adjusted |
 | 2026-10-14 | BF17: Contacts page, CSV export (";", UTF-8 with BOM, formulas neutralised) and printable QR code sheet |
+| 2026-10-14 | D34: the WeChat QR code is scanned in the mobile app (and read from a picture on the web); its link is stored and the QR code redrawn |
 
 ## 7. Open questions on schema v2 (for Tarek)
 

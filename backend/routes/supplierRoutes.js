@@ -18,6 +18,7 @@ router.post('/:id/contacts', c.createContact);
 router.put('/:id/contacts/:contactId', c.updateContact);
 router.delete('/:id/contacts/:contactId', c.removeContact);
 router.post('/:id/contacts/:contactId/wechat-qr', parseImages, c.setWechatQr);
+router.put('/:id/contacts/:contactId/wechat-qr', c.setWechatContent);
 router.delete('/:id/contacts/:contactId/wechat-qr', c.removeWechatQr);
 
 module.exports = router;

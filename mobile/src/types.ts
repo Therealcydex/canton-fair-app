@@ -42,7 +42,7 @@ export interface Contact {
   name: string | null;
   phone: string | null;
   email: string | null;
-  wechat_qr: string | null; // link of the QR code photo (D33), or an older text
+  wechat_qr: string | null; // scanned content (D34), a QR photo path (D33) or an older typed id
 }
 
 // A row of v_suppliers.

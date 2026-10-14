@@ -212,6 +212,24 @@ exports.setWechatQr = handle('Contact setWechatQr', async (req, res) => {
   res.json({ success: true, data: { id: r.contact.id, wechat_qr: url } });
 });
 
+// D34: the content read by a QR scanner (for WeChat, a link such as https://u.wechat.com/...),
+// stored as is; the apps draw the QR code again from it. It replaces the previous value, and the
+// file of a previous photo is deleted. "/uploads/" is kept for photos.
+exports.setWechatContent = handle('Contact setWechatContent', async (req, res) => {
+  const r = await loadContact(req);
+  if (!r.contact) return fail(res, r.status, r.message);
+  const raw = req.body?.content;
+  const content = typeof raw === 'string' ? raw.trim() : '';
+  if (!content) return fail(res, 400, 'Contenu du QR code : champ obligatoire');
+  if (content.length > 255) return fail(res, 400, 'Contenu du QR code : 255 caractères au maximum');
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u001f\u007f]/.test(content)) return fail(res, 400, 'Contenu du QR code : caractères non autorisés');
+  if (content.startsWith('/uploads/')) return fail(res, 400, 'Contenu du QR code invalide');
+  await db.query('UPDATE contacts SET wechat_qr = ? WHERE id = ?', [content, r.contact.id]);
+  await deleteImages(qrFiles([r.contact]));
+  res.json({ success: true, data: { id: r.contact.id, wechat_qr: content } });
+});
+
 // Removes the QR code (photo or older text). Refused when it is all that identifies the contact.
 exports.removeWechatQr = handle('Contact removeWechatQr', async (req, res) => {
   const r = await loadContact(req);

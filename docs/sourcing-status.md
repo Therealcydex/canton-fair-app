@@ -1,4 +1,4 @@
-# Sourcing — status
+| BF05 | Contacts and their WeChat QR code (D33, D34: scanned) | À valider | API (scanned content: refusals, save, replaces a photo, has_qr, CSV), navigateur (to redo after D34: mobile scanner, web picture reading) |# Sourcing — status
 
 States: **Réalisé** (done and accepted), **À valider** (done and tested, waiting for the PO's
 acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
@@ -31,7 +31,7 @@ acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 | BNF04 | Online only | À valider | |
 | BNF05 | Hashed passwords | À valider | API |
 | BNF06 | Schema changes as scripts | À valider | |
-| D1–D33 | Decisions in `sourcing-spec.md` §5 (several replaced by v2) | À valider | |
+| D1–D34 | Decisions in `sourcing-spec.md` §5 (several replaced by v2) | À valider | |
 
 ## Not checked by hand yet
 

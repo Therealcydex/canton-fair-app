@@ -67,39 +67,10 @@ function drawPng(width, height, pixel) {
 
 const colourPng = (width, height, colour) => drawPng(width, height, () => colour);
 
-// Something that looks like a WeChat QR code (three corner squares, random modules) for the
-// demo contacts. It is a picture only: scanning it gives nothing.
-function qrLikePng(seed) {
-  const modules = 25;
-  const scale = 8;
-  const margin = 4;
-  const size = (modules + 2 * margin) * scale;
-  let state = seed;
-  const random = () => ((state = (state * 1103515245 + 12345) % 2147483648) / 2147483648);
-  const grid = Array.from({ length: modules }, () => Array.from({ length: modules }, () => random() < 0.5));
-  const finder = (r, c) => {
-    for (let i = 0; i < 7; i++) {
-      for (let j = 0; j < 7; j++) {
-        const ring = Math.max(Math.abs(i - 3), Math.abs(j - 3));
-        grid[r + i][c + j] = ring !== 2;
-      }
-    }
-  };
-  finder(0, 0);
-  finder(0, modules - 7);
-  finder(modules - 7, 0);
-  return drawPng(size, size, (x, y) => {
-    const mx = Math.floor(x / scale) - margin;
-    const my = Math.floor(y / scale) - margin;
-    const dark = mx >= 0 && my >= 0 && mx < modules && my < modules && grid[my][mx];
-    return dark ? [0, 0, 0] : [255, 255, 255];
-  });
-}
-
-async function addWechatQr(token, supplierId, contactId, seed) {
-  const form = new FormData();
-  form.append('images', new Blob([qrLikePng(seed)], { type: 'image/png' }), 'wechat-qr.png');
-  await call('POST', `/suppliers/${supplierId}/contacts/${contactId}/wechat-qr`, token, form);
+// D34: a contact's WeChat QR code is the content a scanner reads, a link. These demo links
+// are made up: the apps draw a QR code from them, but WeChat does not know them.
+async function setWechatLink(token, supplierId, contactId, link) {
+  await call('PUT', `/suppliers/${supplierId}/contacts/${contactId}/wechat-qr`, token, { content: link });
 }
 
 async function addPhoto(token, productId, colour) {
@@ -143,7 +114,7 @@ async function main() {
   const plan = [
     {
       supplier: { name: 'Shenzhen Brightway Home Electric Co.', province_id: province('Guangdong'), rating: 5, phone: '+86 755 2611 0000', email: 'sales@brightway.example', website: 'brightway.example' },
-      contacts: [{ name: 'Mr Li Wei', phone: '+86 138 0000 1111', wechat: true }],
+      contacts: [{ name: 'Mr Li Wei', phone: '+86 138 0000 1111', wechat: 'https://u.wechat.com/demo-liwei' }],
       booths: [{ phase: 2, hall: 12, floor: 2, letter: 'F', num_start: 35, num_end: 36, category: 'Household electronic appliances', visited: true, comment: 'Catalogue reçu. Bon niveau de finition, délai 30 jours.' }],
       products: [
         { name: 'Bouilloire électrique 1,7 L', supplier_ref: 'BW-K17', price: '8.90', unit: 'pièce', moq: 1000, shipping_type: 'FOB', colour: [52, 152, 219], share: [tunis, sfax] },
@@ -160,7 +131,7 @@ async function main() {
     },
     {
       supplier: { name: 'Yiwu Golden Home Deco', province_id: province('Zhejiang'), rating: 3 },
-      contacts: [{ name: 'Mr Zhang', phone: '+86 137 0000 3333', wechat: true }],
+      contacts: [{ name: 'Mr Zhang', phone: '+86 137 0000 3333', wechat: 'https://u.wechat.com/demo-zhang' }],
       booths: [{ phase: 2, hall: 15, floor: 3, letter: 'A', num_start: 8, num_end: 9, category: 'Vases', visited: false }],
       products: [
         { name: 'Vase céramique 30 cm', supplier_ref: 'GH-V30', price: '3.10', unit: 'pièce', moq: 600, shipping_type: 'EXW', colour: [26, 188, 156], share: [tunis] },
@@ -190,7 +161,7 @@ async function main() {
     const supplierId = (await call('POST', '/suppliers', token, s.supplier)).data.id;
     for (const { wechat, ...c } of s.contacts) {
       const contactId = (await call('POST', `/suppliers/${supplierId}/contacts`, token, c)).data.id;
-      if (wechat) await addWechatQr(token, supplierId, contactId, contactId);
+      if (wechat) await setWechatLink(token, supplierId, contactId, wechat);
     }
     for (const b of s.booths) {
       const { category: sub, ...rest } = b;

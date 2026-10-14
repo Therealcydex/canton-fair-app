@@ -11,7 +11,7 @@ whole group. It has its own tables and its own login, with sign-up validated by 
 follows the Smart360 code conventions in `guide-nouveau-projet-smart360.md`, but none of the
 Smart360 data: no `LISTE_DES_SALARIES`, no `Boutique`, no UPPERCASE table names.
 
-- `docs/sourcing-spec.md` holds the actors, requirements (BF01–BF17, BNF01–BNF06), decisions (D1–D33, several replaced by schema v2) and open questions. The decisions are not yet validated by the Product Owner. Read it before working on a feature, and add a decision there when you make one.
+- `docs/sourcing-spec.md` holds the actors, requirements (BF01–BF17, BNF01–BNF06), decisions (D1–D34, several replaced by schema v2) and open questions. The decisions are not yet validated by the Product Owner. Read it before working on a feature, and add a decision there when you make one.
 - `docs/sourcing-status.md` tracks the state of each requirement, what was checked, and the migration scripts in order. Update it when a requirement changes.
 - Sprints 0–6 were built on schema v1; branch `feat/sourcing-schema-v2` moves everything to schema v2 and adds sign-up. What remains: the PO's validation, the Android build (Node 22), and the hand checks listed in the status file.
 
@@ -34,6 +34,8 @@ Frontend (`frontend/`, Create React App, React 18.3):
 
 Mobile (`mobile/`): Vite 4, React 18, TypeScript, Tailwind 3 and Capacitor 8. See `mobile/README.md`.
 - `npm run dev` serves it on port 5173; the API address comes from `VITE_API_BASE_URL` (`.env`).
+- `npm run dev:phone` serves it over https (local certificate) and proxies /api and /uploads to the backend on port 3000: use it to test on a phone, since the QR scanner's camera needs https (D34).
+- `contacts.wechat_qr` (D34): a scanned link (`http(s)://`, the apps draw the QR code from it), an older photo path (`/uploads/wechat/`), or older text. Share the logic of `mobile/src/qr.ts` and `frontend/src/utils/qr.js`.
 - `npm run lint` and `npm run build` (which runs `tsc`) must pass.
 - The Capacitor CLI (`npx cap ...`, `npm run android:sync`) needs Node 22; the rest runs on Node 20.
 
@@ -45,7 +47,7 @@ shared helpers instead of rewriting them:
 - `utils/validate.js`: `validate(body, FIELDS, existing)`, which checks every field, missing or not. On an update, `existing` fills the fields the client did not send. DECIMAL values stay strings.
 - `utils/scope.js`: `loadSupplier`, `loadBooth`, `loadProduct`, `loadCompany` find a record by id (400 for a bad id, 404 when missing).
 - `utils/access.js`: `isAdmin`, `ROLES`.
-- `utils/upload.js`: photo upload (product photos, contacts' WeChat QR codes in `uploads/wechat/`, D33). It checks the file content against JPEG/PNG/WebP signatures, saves under random names and deletes files. Delete the files when you delete their rows (D28).
+- `utils/upload.js`: photo upload (product photos; older WeChat QR photos in `uploads/wechat/`, D33). It checks the file content against JPEG/PNG/WebP signatures, saves under random names and deletes files. Delete the files when you delete their rows (D28).
 - `middleware/auth.js`: `requireAuth` (reloads the user on every request, refuses `is_active = 0`), `requireAdmin`. `middleware/loginLimiter.js` limits failed logins and sign-ups.
 
 ## Data model (schema v2) and access rule
