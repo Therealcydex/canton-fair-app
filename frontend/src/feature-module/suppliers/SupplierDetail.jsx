@@ -6,6 +6,7 @@ import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import FormModal from '../../components/FormModal';
 import SupplierFormFields from './SupplierFormFields';
+import WechatQr from './WechatQr';
 import BoothList from '../booths/BoothList';
 import ProductList from '../products/ProductList';
 
@@ -60,7 +61,10 @@ export default function SupplierDetail() {
     { title: 'Nom', dataIndex: 'name' },
     { title: 'Téléphone', dataIndex: 'phone' },
     { title: 'E-mail', dataIndex: 'email', responsive: ['md'] },
-    { title: 'WeChat', dataIndex: 'wechat_qr', responsive: ['md'] },
+    {
+      title: 'QR code WeChat', dataIndex: 'wechat_qr', width: 230,
+      render: (_, c) => <WechatQr supplierId={supplier.id} contact={c} onChanged={load} />,
+    },
     {
       title: '', key: 'actions', width: 190,
       render: (_, c) => (
@@ -143,14 +147,14 @@ export default function SupplierDetail() {
           ? axios.put(`${API_BASE_URL}/suppliers/${id}/contacts/${contact.id}`, values)
           : axios.post(`${API_BASE_URL}/suppliers/${id}/contacts`, values))}
         onSaved={() => { setContact(null); message.success('Contact enregistré'); load(); }}>
-        <Form.Item name="name" label="Nom" extra="Renseignez au moins un champ">
+        <Form.Item name="name" label="Nom" extra="Renseignez au moins le nom, le téléphone ou l'e-mail">
           <Input maxLength={150} />
         </Form.Item>
         <Form.Item name="phone" label="Téléphone"><Input maxLength={50} /></Form.Item>
         <Form.Item name="email" label="E-mail" rules={[{ type: 'email', message: 'Adresse e-mail invalide' }]}>
           <Input maxLength={150} />
         </Form.Item>
-        <Form.Item name="wechat_qr" label="WeChat (identifiant ou lien du QR code)"><Input maxLength={255} /></Form.Item>
+        <p className="text-muted small mb-0">Le QR code WeChat s'ajoute ensuite, dans la liste des contacts (photo du QR code).</p>
       </FormModal>
     </>
   );

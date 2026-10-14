@@ -12,7 +12,7 @@ admin. Built on the Smart360 stack (`guide-nouveau-projet-smart360.md`), on Tare
 | `mobile/` | App for the fair floor | Vite, React, TypeScript, Tailwind, Capacitor 8 |
 | `docs/` | Requirements, decisions (D1…), status | |
 
-Read `docs/sourcing-spec.md` first: the decisions D1–D30 and the open questions on schema v2
+Read `docs/sourcing-spec.md` first: the decisions D1–D33 and the open questions on schema v2
 are waiting for the Product Owner's validation.
 
 ## Run it locally
@@ -46,7 +46,7 @@ Administration › Utilisateurs › En attente de validation.
 ## Tests
 
 ```bash
-cd backend && npm run test:api                   # backend running, local database only; 198 checks
+cd backend && npm run test:api                   # backend running, local database only; 233 checks
 cd backend && npm run test:api -- products       # one scenario file
 cd frontend && CI=true npm test -- --watchAll=false
 cd mobile && npm run lint && npm run build

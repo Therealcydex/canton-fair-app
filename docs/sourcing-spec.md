@@ -35,7 +35,7 @@ none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercas
 | BF02 | The admin creates, edits (name, branch) and deletes companies | Haute |
 | BF03 | The admin creates, edits, activates, deactivates and deletes users (role, free-text level, company) | Haute |
 | BF04 | A user lists, searches (name, province from the list of Chinese provinces), creates and edits the suppliers, with a rating from 1 to 5; the list shows the number of booths and the % visited | Haute |
-| BF05 | A user manages the contacts of a supplier (name, phone, email, WeChat QR) | Haute |
+| BF05 | A user manages the contacts of a supplier (name, phone, email) and photographs or uploads their WeChat QR code (D33) | Haute |
 | BF06 | ~~Category tree~~ replaced (v2): booths pick from the fixed Canton Fair list (phase → category → section → sub-category), read only | Moyenne |
 | BF07 | A user records a booth: phase 1-3, hall, floor 1-4, letter, number range, Canton category, supplier (optional), comment; its code is built automatically | Haute |
 | BF08 | A user gets the list of booths not visited yet, filterable by phase, hall and category | Haute |
@@ -95,6 +95,7 @@ none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercas
 | D30 | A booth's Canton category must belong to the booth's phase (the list covers phases 2 and 3 only) | The categories are per fair phase |
 | D31 | The generated `booth_code` uses `RTRIM(letter)` | MariaDB 11.8 (the remote server) refuses a CHAR column in a generated column, because its value depends on PAD_CHAR_TO_FULL_LENGTH |
 | D32 | `booth_code` follows the fair's notation, `hall.floor` + letter + number(s): `11.3J26`, `14.3I16-17`, and `9.1` when only the hall and floor are known. The letter and the start number are given together or not at all. The phase leaves the code; the unique key becomes (phase, hall, floor, letter, num_start), so a stand is recorded once per phase and several booths can be known only by `9.1`. `npm run db:update-booth-code` moves an existing table | Asked by the user: the code matches what the fair prints. The same stand holds another supplier at each phase |
+| D33 | `contacts.wechat_qr` holds the link of a photo of the WeChat QR code (`/uploads/wechat/<random>`), set only through `POST /api/suppliers/:id/contacts/:contactId/wechat-qr` (one JPEG, PNG or WebP photo, 8 MB, checked by content) and removed with `DELETE` on the same path. A new photo replaces the old one and its file; deleting the contact or the supplier deletes the file. The QR code cannot be removed when it is the only information of the contact (409). A text typed before (a WeChat id) stays and is shown as text. The mobile app takes the photo with the camera and shows the QR code full screen | v2 calls the column `wechat_qr`: buyers need the QR code itself, to scan it or show it, not a typed id |
 
 ## 6. Changelog
 
@@ -107,6 +108,7 @@ none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercas
 | 2026-10-14 | Sprint 5: D20 (mobile app) |
 | 2026-10-14 | Sprint 6: D21 (hardening) |
 | 2026-10-14 | Schema v2 from Tarek, user sign-up (BF16), corrections D22-D30; BF06, BF09, BNF01 and several decisions replaced |
+| 2026-10-14 | D33: the WeChat QR code of a contact is a photo (web upload, mobile camera) |
 | 2026-10-14 | D32: booth code in the fair's notation (`11.3J26`), booths known only by hall and floor; D26 adjusted |
 
 ## 7. Open questions on schema v2 (for Tarek)

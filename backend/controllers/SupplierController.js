@@ -2,7 +2,7 @@ const db = require('../config/db');
 const { fail, handle, toId, clean, likeContains } = require('../utils/http');
 const { validate } = require('../utils/validate');
 const { loadSupplier } = require('../utils/scope');
-const { deleteImages } = require('../utils/upload');
+const { deleteImages, imageExtension, saveImages } = require('../utils/upload');
 
 const SUPPLIER_FIELDS = {
   name: { label: 'Nom', type: 'string', required: true, max: 200 },
@@ -19,8 +19,14 @@ const CONTACT_FIELDS = {
   name: { label: 'Nom', type: 'string', max: 150 },
   phone: { label: 'Téléphone', type: 'string', max: 50 },
   email: { label: 'E-mail', type: 'email', max: 150 },
-  wechat_qr: { label: 'WeChat', type: 'string', max: 255 },
 };
+
+// D33: contacts.wechat_qr holds the link of a photo of the contact's WeChat QR code
+// ("/uploads/wechat/<random>.png"), set only through POST .../wechat-qr. An older text value
+// (a WeChat id typed by hand) is kept and shown as text.
+const WECHAT_FOLDER = 'wechat';
+const isQrPhoto = (value) => typeof value === 'string' && value.startsWith(`/uploads/${WECHAT_FOLDER}/`);
+const qrFiles = (rows) => rows.map((r) => r.wechat_qr).filter(isQrPhoto);
 
 // v_suppliers adds the province name, the number of booths and the % of them visited.
 const SUPPLIER_SELECT = `
@@ -106,8 +112,9 @@ exports.remove = handle('Supplier remove', async (req, res) => {
      WHERE p.supplier_id = ?`,
     [r.row.id]
   );
+  const [contacts] = await db.query('SELECT wechat_qr FROM contacts WHERE supplier_id = ?', [r.row.id]);
   await db.query('DELETE FROM suppliers WHERE id = ?', [r.row.id]);
-  await deleteImages(images.map((i) => i.image_url));
+  await deleteImages([...images.map((i) => i.image_url), ...qrFiles(contacts)]);
   res.json({ success: true, data: { id: r.row.id } });
 });
 
@@ -127,13 +134,14 @@ async function loadContact(req) {
   return { supplier: s.row, contact };
 }
 
-// A contact needs at least one of name, phone, e-mail or WeChat (every column is optional in v2).
+// A contact needs at least one of name, phone, e-mail or WeChat QR code (every column is
+// optional in v2). The QR code is not part of the body: it is added afterwards (D33).
 function validateContact(body, existing) {
   const v = validate(body, CONTACT_FIELDS, existing);
   if (!v.values) return v;
   const c = v.values;
-  if (!c.name && !c.phone && !c.email && !c.wechat_qr) {
-    return { message: 'Renseignez au moins le nom, le téléphone, l\'e-mail ou le WeChat du contact' };
+  if (!c.name && !c.phone && !c.email && !existing?.wechat_qr) {
+    return { message: 'Renseignez au moins le nom, le téléphone ou l\'e-mail du contact' };
   }
   return v;
 }
@@ -155,8 +163,8 @@ exports.createContact = handle('Contact create', async (req, res) => {
   if (!v.values) return fail(res, 400, v.message);
   const c = v.values;
   const [ins] = await db.query(
-    'INSERT INTO contacts (supplier_id, name, phone, email, wechat_qr) VALUES (?, ?, ?, ?, ?)',
-    [r.supplier.id, c.name, c.phone, c.email, c.wechat_qr]
+    'INSERT INTO contacts (supplier_id, name, phone, email) VALUES (?, ?, ?, ?)',
+    [r.supplier.id, c.name, c.phone, c.email]
   );
   res.json({ success: true, data: { id: ins.insertId } });
 });
@@ -167,8 +175,8 @@ exports.updateContact = handle('Contact update', async (req, res) => {
   const v = validateContact(req.body, r.contact);
   if (!v.values) return fail(res, 400, v.message);
   const c = v.values;
-  await db.query('UPDATE contacts SET name = ?, phone = ?, email = ?, wechat_qr = ? WHERE id = ?', [
-    c.name, c.phone, c.email, c.wechat_qr, r.contact.id,
+  await db.query('UPDATE contacts SET name = ?, phone = ?, email = ? WHERE id = ?', [
+    c.name, c.phone, c.email, r.contact.id,
   ]);
   res.json({ success: true, data: { id: r.contact.id } });
 });
@@ -177,5 +185,43 @@ exports.removeContact = handle('Contact remove', async (req, res) => {
   const r = await loadContact(req);
   if (!r.contact) return fail(res, r.status, r.message);
   await db.query('DELETE FROM contacts WHERE id = ?', [r.contact.id]);
+  await deleteImages(qrFiles([r.contact]));
   res.json({ success: true, data: { id: r.contact.id } });
+});
+
+// --- WeChat QR code of a contact (D33) --------------------------------------
+
+// One photo in the "images" field (JPEG, PNG or WebP, checked by its content). It replaces the
+// previous QR code, whose file is deleted.
+exports.setWechatQr = handle('Contact setWechatQr', async (req, res) => {
+  const r = await loadContact(req);
+  if (!r.contact) return fail(res, r.status, r.message);
+  const files = req.files || [];
+  if (files.length !== 1) return fail(res, 400, 'Envoyez une seule photo du QR code WeChat (champ « images »)');
+  if (!imageExtension(files[0].buffer)) {
+    return fail(res, 400, `« ${files[0].originalname} » n'est pas une photo JPEG, PNG ou WebP`);
+  }
+  const [url] = await saveImages(files, WECHAT_FOLDER);
+  try {
+    await db.query('UPDATE contacts SET wechat_qr = ? WHERE id = ?', [url, r.contact.id]);
+  } catch (e) {
+    await deleteImages([url]); // no orphan file when the row could not be written
+    throw e;
+  }
+  await deleteImages(qrFiles([r.contact]));
+  res.json({ success: true, data: { id: r.contact.id, wechat_qr: url } });
+});
+
+// Removes the QR code (photo or older text). Refused when it is all that identifies the contact.
+exports.removeWechatQr = handle('Contact removeWechatQr', async (req, res) => {
+  const r = await loadContact(req);
+  if (!r.contact) return fail(res, r.status, r.message);
+  const c = r.contact;
+  if (!c.wechat_qr) return fail(res, 404, "Ce contact n'a pas de QR code WeChat");
+  if (!c.name && !c.phone && !c.email) {
+    return fail(res, 409, 'Le QR code est la seule information de ce contact : supprimez plutôt le contact');
+  }
+  await db.query('UPDATE contacts SET wechat_qr = NULL WHERE id = ?', [c.id]);
+  await deleteImages(qrFiles([c]));
+  res.json({ success: true, data: { id: c.id, wechat_qr: null } });
 });

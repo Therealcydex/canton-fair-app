@@ -3,7 +3,7 @@
 States: **Réalisé** (done and accepted), **À valider** (done and tested, waiting for the PO's
 acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 
-"API" = covered by `npm run test:api` (refused and legitimate request for each rule, 198 checks).
+"API" = covered by `npm run test:api` (refused and legitimate request for each rule, 233 checks).
 "Navigateur" = checked by hand in the browser (web and mobile) on a local copy with demo data.
 
 | Id | Requirement | State | Checked |
@@ -12,7 +12,7 @@ acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 | BF02 | Companies with a branch (admin) | À valider | API |
 | BF03 | Users (admin): create, edit, activate, delete | À valider | API, navigateur (web) |
 | BF04 | Suppliers, province from the list, booths and % visited | À valider | API, navigateur (web, mobile) |
-| BF05 | Contacts | À valider | API |
+| BF05 | Contacts and their WeChat QR code (D33) | À valider | API, navigateur (web: replace, remove; mobile: photo, full screen, refused file, new contact) |
 | BF06 | Category tree | Remplacé | Canton Fair list, read only: API, navigateur |
 | BF07 | Booths, booth code, Canton category of the phase | À valider | API, navigateur (web: refused overlap, creation, edit) |
 | BF08 | "To visit" list | À valider | API, navigateur (web, mobile) |
@@ -30,7 +30,7 @@ acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 | BNF04 | Online only | À valider | |
 | BNF05 | Hashed passwords | À valider | API |
 | BNF06 | Schema changes as scripts | À valider | |
-| D1–D30 | Decisions in `sourcing-spec.md` §5 (several replaced by v2) | À valider | |
+| D1–D33 | Decisions in `sourcing-spec.md` §5 (several replaced by v2) | À valider | |
 
 ## Not checked by hand yet
 

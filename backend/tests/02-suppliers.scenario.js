@@ -1,5 +1,22 @@
 // BF04-BF05: suppliers (province from the list, rating) and their contacts. Reference lists.
-const { api, expect, check, PREFIX } = require('./lib');
+const fs = require('fs');
+const path = require('path');
+const { api, expect, check, PREFIX, BASE } = require('./lib');
+const { UPLOAD_ROOT } = require('../utils/upload');
+
+// Smallest valid PNG (1x1 pixel).
+const PNG = Buffer.from(
+  '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082',
+  'hex'
+);
+
+const form = (files) => {
+  const f = new FormData();
+  for (const [name, buffer, type] of files) f.append('images', new Blob([buffer], { type }), name);
+  return f;
+};
+
+const fileOf = (url) => path.join(UPLOAD_ROOT, url.replace(/^\/uploads\//, ''));
 
 module.exports = async (ctx) => {
   const { tokens } = ctx;
@@ -51,14 +68,52 @@ module.exports = async (ctx) => {
   expect('empty contact', await api('POST', `/suppliers/${id}/contacts`, { token: A, body: {} }), 400);
   expect('contact with invalid e-mail', await api('POST', `/suppliers/${id}/contacts`, { token: A, body: { name: 'Li', email: 'x' } }), 400);
   expect('contact of unknown supplier', await api('POST', '/suppliers/999999/contacts', { token: A, body: { name: 'Li' } }), 404);
-  const c = expect('create contact', await api('POST', `/suppliers/${id}/contacts`, { token: A, body: { name: 'Mr Li', wechat_qr: 'li_wechat' } }), 200);
-  expect('contact with only a phone', await api('POST', `/suppliers/${id}/contacts`, { token: A, body: { phone: '+86 1' } }), 200);
+  const c = expect('create contact (a WeChat text in the body is ignored)', await api('POST', `/suppliers/${id}/contacts`, { token: A, body: { name: 'Mr Li', wechat_qr: 'li_wechat' } }), 200);
+  const phoneOnly = expect('contact with only a phone', await api('POST', `/suppliers/${id}/contacts`, { token: A, body: { phone: '+86 1' } }), 200);
   expect('update contact', await api('PUT', `/suppliers/${id}/contacts/${c.body.data.id}`, { token: B, body: { phone: '+86 2' } }), 200);
   expect('contact of another supplier', await api('PUT', `/suppliers/${id + 100000}/contacts/${c.body.data.id}`, { token: A, body: { name: 'X' } }), 404);
   const list = expect('list contacts', await api('GET', `/suppliers/${id}/contacts`, { token: A }), 200);
   check('two contacts', list.body.data.length === 2);
+  check('no WeChat QR code from the body', list.body.data.every((x) => x.wechat_qr === null));
+
+  // WeChat QR code of a contact (D33): a photo, uploaded like the product photos.
+  const qrUrl = `/suppliers/${id}/contacts/${c.body.data.id}/wechat-qr`;
+  expect('QR code without a token', await api('POST', qrUrl, { form: form([['qr.png', PNG, 'image/png']]) }), 401);
+  expect('QR code without a photo', await api('POST', qrUrl, { token: A, form: new FormData() }), 400);
+  expect('QR code: two photos', await api('POST', qrUrl, { token: A, form: form([['a.png', PNG, 'image/png'], ['b.png', PNG, 'image/png']]) }), 400);
+  expect('QR code: a text file named .png', await api('POST', qrUrl, { token: A, form: form([['qr.png', Buffer.from('hello'), 'image/png']]) }), 400);
+  expect('QR code of an unknown contact', await api('POST', `/suppliers/${id}/contacts/999999/wechat-qr`, { token: A, form: form([['qr.png', PNG, 'image/png']]) }), 404);
+  const qr1 = expect('add the QR code', await api('POST', qrUrl, { token: B, form: form([['qr.png', PNG, 'image/png']]) }), 200);
+  const url1 = qr1.body.data?.wechat_qr;
+  check('QR photo stored under /uploads/wechat/', /^\/uploads\/wechat\/[0-9a-f]{32}\.png$/.test(url1 || '') && fs.existsSync(fileOf(url1)));
+  check('QR photo is served', (await fetch(BASE.replace(/\/api$/, '') + url1)).status === 200);
+  const shown = await api('GET', `/suppliers/${id}`, { token: A });
+  check('supplier detail shows the QR code', shown.body.data.contacts.some((x) => x.wechat_qr === url1));
+  const qr2 = expect('replace the QR code', await api('POST', qrUrl, { token: A, form: form([['qr2.png', PNG, 'image/png']]) }), 200);
+  check('the old QR file is deleted', !fs.existsSync(fileOf(url1)) && fs.existsSync(fileOf(qr2.body.data.wechat_qr)));
+  expect('update keeps the QR code', await api('PUT', `/suppliers/${id}/contacts/${c.body.data.id}`, { token: A, body: { name: 'Mr Li Wei' } }), 200);
+  check('QR code still there', (await api('GET', `/suppliers/${id}/contacts`, { token: A })).body.data.some((x) => x.wechat_qr === qr2.body.data.wechat_qr));
+  expect('remove the QR code', await api('DELETE', qrUrl, { token: A }), 200);
+  check('its file is deleted', !fs.existsSync(fileOf(qr2.body.data.wechat_qr)));
+  expect('remove it again', await api('DELETE', qrUrl, { token: A }), 404);
+
+  // A contact known only by its QR code keeps it.
+  const onlyQr = `/suppliers/${id}/contacts/${phoneOnly.body.data.id}`;
+  const qr3 = (await api('POST', `${onlyQr}/wechat-qr`, { token: A, form: form([['qr.png', PNG, 'image/png']]) })).body.data.wechat_qr;
+  expect('clear the phone of a contact that has a QR code', await api('PUT', onlyQr, { token: A, body: { phone: null } }), 200);
+  expect('remove its only information', await api('DELETE', `${onlyQr}/wechat-qr`, { token: A }), 409);
+  expect('delete that contact', await api('DELETE', onlyQr, { token: A }), 200);
+  check('its QR file is deleted with it', !fs.existsSync(fileOf(qr3)));
+
   expect('delete contact', await api('DELETE', `/suppliers/${id}/contacts/${c.body.data.id}`, { token: A }), 200);
   expect('delete it again', await api('DELETE', `/suppliers/${id}/contacts/${c.body.data.id}`, { token: A }), 404);
+
+  // Deleting a supplier deletes its contacts' QR files.
+  const s2 = (await api('POST', '/suppliers', { token: A, body: { name: `${PREFIX} QR supplier` } })).body.data.id;
+  const c2 = (await api('POST', `/suppliers/${s2}/contacts`, { token: A, body: { name: 'Ms Wang' } })).body.data.id;
+  const qr4 = (await api('POST', `/suppliers/${s2}/contacts/${c2}/wechat-qr`, { token: A, form: form([['qr.png', PNG, 'image/png']]) })).body.data.wechat_qr;
+  expect('delete a supplier whose contact has a QR code', await api('DELETE', `/suppliers/${s2}`, { token: A }), 200);
+  check('the QR file is deleted', !fs.existsSync(fileOf(qr4)));
 
   ctx.supplierId = id;
 };
