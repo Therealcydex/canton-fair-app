@@ -3,6 +3,7 @@ import { AuthProvider } from './auth';
 import { useAuth } from './authContext';
 import { Account, TabsLayout } from './components/ui';
 import Login from './pages/Login';
+import SignUp from './pages/SignUp';
 import BoothsPage from './pages/BoothsPage';
 import BoothPage from './pages/BoothPage';
 import ProductNew from './pages/ProductNew';
@@ -21,6 +22,7 @@ export default function App() {
       <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/inscription" element={<SignUp />} />
           <Route element={<RequireAuth />}>
             <Route element={<TabsLayout />}>
               <Route path="/" element={<BoothsPage planning key="planning" />} />

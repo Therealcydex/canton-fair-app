@@ -29,7 +29,8 @@ export default function SupplierPage() {
     <Page title={supplier.name} back
       action={<Link to={`/produits/nouveau?supplier=${supplier.id}`} className="rounded bg-blue-600 px-2 py-1 text-sm">+ Produit</Link>}>
       <Card className="space-y-1 text-sm">
-        {supplier.province && <p>{supplier.province}{supplier.rating ? ` · ${'★'.repeat(supplier.rating)}` : ''}</p>}
+        {(supplier.province || supplier.rating) && <p>{[supplier.province, supplier.rating ? '★'.repeat(supplier.rating) : null].filter(Boolean).join(' · ')}</p>}
+        <p className="text-slate-600">{supplier.nbr_booths ? `${supplier.booth_visit_pct} % des ${supplier.nbr_booths} stand(s) visités` : 'Aucun stand'}</p>
         {supplier.phone && <p><a className="text-blue-700" href={`tel:${supplier.phone}`}>{supplier.phone}</a></p>}
         {supplier.email && <p><a className="text-blue-700" href={`mailto:${supplier.email}`}>{supplier.email}</a></p>}
         {supplier.address && <p className="text-slate-600">{supplier.address}</p>}
@@ -39,7 +40,7 @@ export default function SupplierPage() {
       <h2 className="px-1 pt-2 font-semibold">Contacts ({supplier.contacts?.length || 0})</h2>
       {supplier.contacts?.map((c) => (
         <Card key={c.id} className="text-sm">
-          <p className="font-medium">{c.name}</p>
+          {c.name && <p className="font-medium">{c.name}</p>}
           {c.phone && <p><a className="text-blue-700" href={`tel:${c.phone}`}>{c.phone}</a></p>}
           {c.email && <p><a className="text-blue-700" href={`mailto:${c.email}`}>{c.email}</a></p>}
           {c.wechat_qr && <p className="text-slate-600">WeChat : {c.wechat_qr}</p>}
@@ -50,8 +51,10 @@ export default function SupplierPage() {
       {booths.map((b) => (
         <Link key={b.id} to={`/stands/${b.id}`} className="block">
           <Card className="flex items-center justify-between active:bg-slate-50">
-            <span className="font-bold">{b.location}{b.phase ? <span className="font-normal text-slate-500"> · phase {b.phase}</span> : null}</span>
-            {b.to_visit ? <Badge className="bg-orange-100 text-orange-800">À visiter</Badge> : null}
+            <span className="font-bold">{b.booth_code}</span>
+            {b.visited
+              ? <Badge className="bg-green-100 text-green-800">Visité</Badge>
+              : <Badge className="bg-orange-100 text-orange-800">À visiter</Badge>}
           </Card>
         </Link>
       ))}
@@ -60,7 +63,7 @@ export default function SupplierPage() {
       {products.map((p) => (
         <Card key={p.id} className="text-sm">
           <p className="font-medium">{p.name}</p>
-          <p className="text-slate-600">{formatPrice(p.price_tnd)}{p.unit ? ` / ${p.unit}` : ''}{p.moq ? ` · MOQ ${p.moq}` : ''}</p>
+          <p className="text-slate-600">{formatPrice(p.price)}{p.unit ? ` / ${p.unit}` : ''}{p.moq ? ` · MOQ ${p.moq}` : ''}{p.shipping_type ? ` · ${p.shipping_type}` : ''}</p>
         </Card>
       ))}
     </Page>

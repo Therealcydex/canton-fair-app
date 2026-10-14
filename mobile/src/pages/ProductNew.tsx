@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api, jsonBody } from '../config/api';
-import type { Booth, Supplier } from '../types';
+import type { ShippingType, Supplier } from '../types';
 import { Button, ErrorBox, Field, Notice, Page, inputClass } from '../components/ui';
 
 const MAX_MB = 8;
@@ -12,13 +12,12 @@ export default function ProductNew() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [booths, setBooths] = useState<Booth[]>([]);
+  const backTo = params.get('stand') ? `/stands/${params.get('stand')}` : null; // the booth page it was opened from
   const [form, setForm] = useState({
     supplier_id: params.get('supplier') || '',
-    booth_id: params.get('booth') || '',
-    name: '', supplier_ref: '', price_tnd: '', unit: '', moq: '', incoterm: '', description: '',
+    name: '', supplier_ref: '', price: '', unit: '', moq: '', shipping_type: 'FOB', description: '',
   });
-  const [incoterms, setIncoterms] = useState<string[]>([]);
+  const [shippingTypes, setShippingTypes] = useState<ShippingType[]>([]);
   const [photos, setPhotos] = useState<File[]>([]);
   const [productId, setProductId] = useState<number | null>(null); // set once saved
   const [error, setError] = useState<string | null>(null);
@@ -29,16 +28,11 @@ export default function ProductNew() {
 
   useEffect(() => {
     api<Supplier[]>('/suppliers', 'Erreur lors du chargement des fournisseurs').then(setSuppliers).catch((e: Error) => setError(e.message));
-    api<string[]>('/products/incoterms', 'Erreur').then(setIncoterms).catch(() => {});
+    api<ShippingType[]>('/lists/shipping-types', 'Erreur').then(setShippingTypes).catch(() => {});
   }, []);
 
-  useEffect(() => {
-    if (!form.supplier_id) { setBooths([]); return; }
-    api<Booth[]>(`/booths?supplier_id=${form.supplier_id}`, 'Erreur').then(setBooths).catch(() => setBooths([]));
-  }, [form.supplier_id]);
-
   const set = (key: keyof typeof form) => (e: { target: { value: string } }) =>
-    setForm((f) => ({ ...f, [key]: e.target.value, ...(key === 'supplier_id' ? { booth_id: '' } : {}) }));
+    setForm((f) => ({ ...f, [key]: e.target.value }));
 
   const addPhotos = (list: FileList | null) => {
     const files = Array.from(list || []);
@@ -66,13 +60,12 @@ export default function ProductNew() {
           method: 'POST',
           body: jsonBody({
             supplier_id: form.supplier_id || null,
-            booth_id: form.booth_id || null,
             name: form.name,
             supplier_ref: form.supplier_ref || null,
-            price_tnd: form.price_tnd.replace(',', '.') || null,
+            price: form.price.replace(',', '.') || null,
             unit: form.unit || null,
             moq: form.moq || null,
-            incoterm: form.incoterm || null,
+            shipping_type: form.shipping_type,
             description: form.description || null,
           }),
         });
@@ -80,7 +73,7 @@ export default function ProductNew() {
         setProductId(id);
       }
       await uploadPhotos(id);
-      navigate(form.booth_id ? `/stands/${form.booth_id}` : `/fournisseurs/${form.supplier_id}`, { replace: true });
+      navigate(backTo || (form.supplier_id ? `/fournisseurs/${form.supplier_id}` : '/'), { replace: true });
     } catch (err) {
       // If the product was saved but the photos were refused, only the photos are sent again.
       setError(id ? `Produit enregistré, mais les photos n'ont pas été envoyées : ${(err as Error).message}` : (err as Error).message);
@@ -96,23 +89,17 @@ export default function ProductNew() {
         {productId && <Notice message="Produit enregistré. Corrigez les photos puis réessayez, ou revenez en arrière." />}
         <fieldset disabled={!!productId} className="space-y-3">
           <Field label="Fournisseur">
-            <select className={inputClass} value={form.supplier_id} onChange={set('supplier_id')} required>
-              <option value="">Choisir…</option>
+            <select className={inputClass} value={form.supplier_id} onChange={set('supplier_id')}>
+              <option value="">Aucun</option>
               {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </Field>
-          <Field label="Stand">
-            <select className={inputClass} value={form.booth_id} onChange={set('booth_id')} disabled={!form.supplier_id}>
-              <option value="">Aucun</option>
-              {booths.map((b) => <option key={b.id} value={b.id}>{b.location}{b.phase ? ` · phase ${b.phase}` : ''}</option>)}
-            </select>
-          </Field>
           <Field label="Nom du produit">
-            <input className={inputClass} value={form.name} onChange={set('name')} maxLength={150} required />
+            <input className={inputClass} value={form.name} onChange={set('name')} maxLength={200} required />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Prix (TND)">
-              <input className={inputClass} value={form.price_tnd} onChange={set('price_tnd')} inputMode="decimal" placeholder="12,500" />
+            <Field label="Prix">
+              <input className={inputClass} value={form.price} onChange={set('price')} inputMode="decimal" placeholder="12,50" />
             </Field>
             <Field label="Unité">
               <input className={inputClass} value={form.unit} onChange={set('unit')} maxLength={30} placeholder="pièce" />
@@ -120,10 +107,9 @@ export default function ProductNew() {
             <Field label="MOQ">
               <input className={inputClass} value={form.moq} onChange={set('moq')} inputMode="numeric" />
             </Field>
-            <Field label="Incoterm">
-              <select className={inputClass} value={form.incoterm} onChange={set('incoterm')}>
-                <option value="">—</option>
-                {incoterms.map((i) => <option key={i} value={i}>{i}</option>)}
+            <Field label="Expédition">
+              <select className={inputClass} value={form.shipping_type} onChange={set('shipping_type')}>
+                {shippingTypes.map((s) => <option key={s.code} value={s.code}>{s.code} — {s.name}</option>)}
               </select>
             </Field>
           </div>

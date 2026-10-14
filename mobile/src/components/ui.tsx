@@ -1,6 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../authContext';
+import { companyLabel } from '../format';
 
 // Page with a sticky header; `back` shows a back arrow.
 export function Page({ title, back, action, children }: { title: string; back?: boolean; action?: ReactNode; children: ReactNode }) {
@@ -92,7 +93,7 @@ export function Account() {
     <Page title="Compte">
       <Card>
         <p className="font-semibold">{user?.name}</p>
-        <p className="text-sm text-slate-600">{user?.company_name} · {user?.username}</p>
+        <p className="text-sm text-slate-600">{[user?.company_name && companyLabel({ name: user.company_name, branch: user.company_branch }), user?.username].filter(Boolean).join(' · ')}</p>
       </Card>
       <Button variant="secondary" className="w-full" onClick={logout}>Se déconnecter</Button>
     </Page>
