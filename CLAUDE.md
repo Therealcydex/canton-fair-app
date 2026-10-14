@@ -4,22 +4,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-**Sourcing** is a standalone app for buyers from several companies at a trade fair (Canton-Fair-style
-booths). Buyers keep suppliers and contacts, plan and log booth visits, record products (price in
-TND, MOQ, incoterm, photos) and share products between companies. It has its own database
-(`sourcing_db`) and its own login. It follows the Smart360 code conventions in
-`guide-nouveau-projet-smart360.md`, but none of the Smart360 data: no `LISTE_DES_SALARIES`, no
-`Boutique`, no UPPERCASE table names.
+**Sourcing** is a standalone app for the buyers of Tarek's group at the Canton Fair. Buyers keep
+suppliers and contacts, plan the booths to visit and mark them visited, record products (price,
+MOQ, shipping type, photos) and share products with Tarek's companies. The data is shared by the
+whole group. It has its own tables and its own login, with sign-up validated by the admin. It
+follows the Smart360 code conventions in `guide-nouveau-projet-smart360.md`, but none of the
+Smart360 data: no `LISTE_DES_SALARIES`, no `Boutique`, no UPPERCASE table names.
 
-- `docs/sourcing-spec.md` holds the actors, requirements (BF01–BF15, BNF01–BNF06) and decisions (D1–D21). The decisions are not yet validated by the Product Owner. Read it before working on a feature, and add a decision there when you make one.
+- `docs/sourcing-spec.md` holds the actors, requirements (BF01–BF16, BNF01–BNF06), decisions (D1–D30, several replaced by schema v2) and open questions. The decisions are not yet validated by the Product Owner. Read it before working on a feature, and add a decision there when you make one.
 - `docs/sourcing-status.md` tracks the state of each requirement, what was checked, and the migration scripts in order. Update it when a requirement changes.
-- Sprints 0–6 are built (one `feat/sourcing-*` branch per sprint, each based on the previous one). What remains: the PO's validation, the Android build (Node 22), and the hand checks listed in the status file.
+- Sprints 0–6 were built on schema v1; branch `feat/sourcing-schema-v2` moves everything to schema v2 and adds sign-up. What remains: the PO's validation, the Android build (Node 22), and the hand checks listed in the status file.
 
 ## Commands
 
 Backend (`backend/`, Node 20):
 - `npm run dev` runs the server with nodemon on port 3000. `npm start` runs it without reloading.
-- `npm run db:setup` creates `sourcing_db` if it is missing and runs `sql/create_sourcing_schema.sql`. It then seeds the super-admin from `SEED_ADMIN_USERNAME` and `SEED_ADMIN_PASSWORD`. It is safe to run twice.
+- `npm run db:setup` creates the database if it is missing and runs, in order, `sql/china_provinces.sql`, `sql/canton_fair_categories.sql` (only into an empty table) and `sql/create_sourcing_schema.sql`. It then seeds the admin (`role = 'ADMIN'`) from `SEED_ADMIN_USERNAME` and `SEED_ADMIN_PASSWORD`. It is safe to run twice.
+- `npm run db:drop-v1 -- --yes` drops the schema v1 tables, once, before `db:setup` (it refuses tables that are not v1). `npm run db:demo` loads demo data through the API.
+- `backend/.env` points to the remote `Smart360_copy` (MariaDB 11.8); the local values are in a comment there. The API scenarios refuse to run on a remote database.
 - Copy `.env.example` to `.env` and fill in the values. `JWT_SECRET` deliberately has no default.
 - `npm run test:api` runs the API scenarios in `tests/*.scenario.js` against the running backend; `npm run test:api -- booths` runs only the files whose name contains "booths". Add scenarios there for every new rule.
 - The local database is XAMPP MariaDB 10.4 on port 3306 (`root`, no password). Its client is `/c/xampp/mysql/bin/mysql.exe`. The target is MySQL 8, so keep SQL portable to both.
@@ -41,35 +43,29 @@ Each module has `routes/<module>Routes.js` and `controllers/<Module>Controller.j
 shared helpers instead of rewriting them:
 - `utils/http.js`: `fail`, `handle` (wraps a controller so any throw becomes a clean 500), `toId`, `clean`, `likeContains` (escapes LIKE wildcards).
 - `utils/validate.js`: `validate(body, FIELDS, existing)`, which checks every field, missing or not. On an update, `existing` fills the fields the client did not send. DECIMAL values stay strings.
-- `utils/scope.js`: `loadSupplier`, `loadBooth` and `loadProduct` find a record and return 403 when it belongs to another company.
-- `utils/access.js`: `isSuperAdmin`, `isCompanyAdmin`.
-- `utils/upload.js`: photo upload. It checks the file content against JPEG/PNG/WebP signatures, saves under random names and deletes files.
-- `middleware/auth.js`: `requireAuth` (reloads the user on every request), `requireLevel`, `requireSuperAdmin`. `middleware/loginLimiter.js` limits failed logins.
+- `utils/scope.js`: `loadSupplier`, `loadBooth`, `loadProduct`, `loadCompany` find a record by id (400 for a bad id, 404 when missing).
+- `utils/access.js`: `isAdmin`, `ROLES`.
+- `utils/upload.js`: photo upload. It checks the file content against JPEG/PNG/WebP signatures, saves under random names and deletes files. Delete the files when you delete their rows (D28).
+- `middleware/auth.js`: `requireAuth` (reloads the user on every request, refuses `is_active = 0`), `requireAdmin`. `middleware/loginLimiter.js` limits failed logins and sign-ups.
 
-## Data model and tenant rule
+## Data model (schema v2) and access rule
 
-These are the 10 tables of the diagram, with their links:
-- `companies` has many `users` and many `suppliers`.
-- A supplier has `contacts`, `booths` and `products`.
-- `booths` link to `categories`, a global tree with `parent_id` and `depth`.
-- `booth_visits` link a booth to a user.
-- `products` have a supplier, an optional booth and a `created_by` user. They have `product_images`.
-- `product_shares` (`product_id`, `company_id`) shares a product with another company.
+Tarek's schema v2 (`backend/sql/create_sourcing_schema.sql`, corrections D22-D30 in the spec):
+- `companies` (name, branch) are Tarek's companies. A user may belong to one (`users.company_id`, SET NULL on delete).
+- `suppliers` have a `province_id` (`china_province`), `contacts`, `booths` (supplier optional) and `products` (supplier optional).
+- `booths`: phase 1-3, hall, floor 1-4, letter, numbers; `booth_code` is a generated, unique column (`2/12.1.A.22-24`); `category_id` points to `canton_fair_category` (read-only list, per phase); `visited` is the "to visit" flag.
+- `products`: `price DECIMAL(12,2)`, `shipping_type` (FK to `shipping_types`, FOB by default), `product_images`, `product_shares` (`product_id`, `company_id`).
+- Views `v_booths`, `v_suppliers` (booth count, % visited), `v_products` (shipping name, shared with): keep them free of GROUP BY (D23).
+- Reference lists are served by `GET /api/lists/provinces|shipping-types|canton-categories`.
 
-The tenant rule replaces Smart360's `Boutique` filter:
-- Suppliers, contacts, booths, visits and products belong to a company **through `suppliers.company_id`**. Every read filters on `req.user.company_id`.
-- A single record from another company returns 403.
-- Products shared with a company through `product_shares` are readable by that company. Only the owning company can edit or share them.
-- Categories are global and only the super-admin edits them.
+Access rule: there is **no per-company isolation** any more. Every active user reads and writes every supplier, contact, booth and product, and shares products with companies. `role = 'ADMIN'` also manages companies and users and validates sign-ups (`requireAdmin`). Everyone else is `ACHETEUR`; `level` is free text. A sign-up creates an inactive `ACHETEUR`.
 
-Roles: `role = 'SUPER_ADMIN'` manages companies and categories. `level >= 4` is a company admin, who manages the users of their company. Everyone else is a buyer.
-
-`price_tnd` is `DECIMAL(12,3)`. The pool keeps decimals as strings (`decimalNumbers: false`), so never round prices through a JavaScript float.
+The tables are lowercase and live next to the ERP's UPPERCASE tables in `Smart360_copy`: never touch an UPPERCASE table. The pool keeps decimals as strings (`decimalNumbers: false`), so never round prices through a JavaScript float.
 
 ## Backend rules (from the guide, non-negotiable)
 
 - **Load dotenv first.** `require('dotenv').config()` is the first line of `index.js`, because `config/db.js` reads `process.env` when it is required.
-- **Authentication**: every route file calls `router.use(requireAuth)`, except login. Identity comes only from `req.user` (the signed token), never from `req.query` or `req.body`. Authors such as `created_by` and `booth_visits.user_id` come from `req.user.id`.
+- **Authentication**: every route file calls `router.use(requireAuth)`, except the public `POST /api/login`, `POST /api/signup` and `GET /api/signup/companies`. Identity comes only from `req.user` (the signed token), never from `req.query` or `req.body`. A sign-up never takes its role or activation from the body.
 - **Passwords**: hash them with `bcryptjs`. They never go into the token or into a response.
 - **SQL**: queries always use `?` placeholders. Multi-table writes run in a transaction (`getConnection`, `beginTransaction`, `commit` or `rollback`, `release`).
 - **Route order**: declare fixed paths such as `/export` before `/:id`.
@@ -77,7 +73,7 @@ Roles: `role = 'SUPER_ADMIN'` manages companies and categories. `level >= 4` is 
   - 200 for success, creation included
   - 400 for invalid input
   - 401 for a missing or expired token
-  - 403 for another company or a level that is too low
+  - 403 for a buyer on an admin route, or an inactive account at login
   - 404 for a missing record
   - 409 when a business rule refuses the request
   - 500 for unexpected errors, with no SQL or stack trace in the message
@@ -91,12 +87,13 @@ Roles: `role = 'SUPER_ADMIN'` manages companies and categories. `level >= 4` is 
   - Register the axios token interceptor once, in `src/context/AuthContext.jsx` (Sprint 1). It reads `localStorage.authToken`.
   - Declare routes in `src/Router/router.jsx` and put each module in `src/feature-module/<module>/`.
   - Use Bootstrap, react-bootstrap and Ant Design only; don't add another UI library.
+  - Load the reference lists with `useList()` from `src/utils/lists.js` (cached once); show a company with `companyLabel()` (name and branch).
 - **Mobile**: every call goes through `authFetch` followed by `ensureOk`, because `fetch` does not reject on 4xx. Never re-implement business rules in the mobile app.
 
 ## Testing
 
 For each rule, test two requests, first against the API (`npm run test:api`) and then in the UI:
-1. The request that must be refused: 401 without a token, 403 for another company or a level that is too low, 400 or 409 for a broken rule.
+1. The request that must be refused: 401 without a token, 403 for a buyer on an admin route, 400 or 409 for a broken rule.
 2. The legitimate request, which must still succeed.
 
 The scenarios name their data `TEST…`. `tests/lib.js` `cleanup()` deletes it, including product photo files, and the runner checks that the row counts are back to their starting values. Run them on a development database only.
