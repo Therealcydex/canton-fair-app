@@ -2,121 +2,120 @@ const db = require('../config/db');
 const { fail, handle, toId, clean, likeContains } = require('../utils/http');
 const { validate } = require('../utils/validate');
 const { loadSupplier } = require('../utils/scope');
+const { deleteImages } = require('../utils/upload');
 
 const SUPPLIER_FIELDS = {
-  name: { label: 'Nom', type: 'string', required: true, max: 150 },
+  name: { label: 'Nom', type: 'string', required: true, max: 200 },
   phone: { label: 'Téléphone', type: 'string', max: 50 },
   email: { label: 'E-mail', type: 'email', max: 150 },
-  website: { label: 'Site web', type: 'string', max: 200 },
+  website: { label: 'Site web', type: 'string', max: 255 },
   address: { label: 'Adresse', type: 'text', max: 2000 },
-  province: { label: 'Province', type: 'string', max: 100 },
+  province_id: { label: 'Province', type: 'int', min: 1 },
   rating: { label: 'Note', type: 'int', min: 1, maxValue: 5 },
   notes: { label: 'Notes', type: 'text', max: 5000 },
 };
 
 const CONTACT_FIELDS = {
-  name: { label: 'Nom', type: 'string', required: true, max: 100 },
+  name: { label: 'Nom', type: 'string', max: 150 },
   phone: { label: 'Téléphone', type: 'string', max: 50 },
   email: { label: 'E-mail', type: 'email', max: 150 },
   wechat_qr: { label: 'WeChat', type: 'string', max: 255 },
 };
 
-const SUPPLIER_COLUMNS = 's.id, s.name, s.phone, s.email, s.website, s.address, s.province, s.rating, s.notes';
+// v_suppliers adds the province name, the number of booths and the % of them visited.
+const SUPPLIER_SELECT = `
+  SELECT v.*,
+         (SELECT COUNT(*) FROM contacts c WHERE c.supplier_id = v.id) AS contacts_count,
+         (SELECT COUNT(*) FROM products p WHERE p.supplier_id = v.id) AS products_count
+  FROM v_suppliers v`;
 
-// Suppliers of the caller's company, filtered by name (q) and province.
+// Validates a supplier; province_id must be a row of china_province.
+async function validateSupplier(body, existing) {
+  const v = validate(body, SUPPLIER_FIELDS, existing);
+  if (!v.values) return v;
+  if (v.values.province_id) {
+    const [[p]] = await db.query('SELECT id FROM china_province WHERE id = ?', [v.values.province_id]);
+    if (!p) return { message: 'Province introuvable' };
+  }
+  return v;
+}
+
+// Every supplier of the group, filtered by name (q) and province_id.
 exports.list = handle('Supplier list', async (req, res) => {
-  const params = [req.user.company_id];
-  let where = 's.company_id = ?';
+  const params = [];
+  let where = '1=1';
   const q = clean(req.query.q);
   if (q) {
-    where += ' AND s.name LIKE ?';
+    where += ' AND v.name LIKE ?';
     params.push(likeContains(q));
   }
-  const province = clean(req.query.province);
-  if (province) {
-    where += ' AND s.province = ?';
-    params.push(province);
+  if (req.query.province_id) {
+    const provinceId = toId(req.query.province_id);
+    if (!provinceId) return fail(res, 400, 'Filtre province_id invalide');
+    where += ' AND v.province_id = ?';
+    params.push(provinceId);
   }
-  const [rows] = await db.query(
-    `SELECT ${SUPPLIER_COLUMNS},
-            (SELECT COUNT(*) FROM contacts c WHERE c.supplier_id = s.id) AS contacts_count,
-            (SELECT COUNT(*) FROM booths b WHERE b.supplier_id = s.id) AS booths_count,
-            (SELECT COUNT(*) FROM products p WHERE p.supplier_id = s.id) AS products_count
-     FROM suppliers s WHERE ${where} ORDER BY s.name LIMIT 500`,
-    params
-  );
+  const [rows] = await db.query(`${SUPPLIER_SELECT} WHERE ${where} ORDER BY v.name LIMIT 500`, params);
   res.json({ success: true, data: rows });
 });
 
-// Distinct provinces of the caller's suppliers (filter list).
-exports.provinces = handle('Supplier provinces', async (req, res) => {
-  const [rows] = await db.query(
-    `SELECT DISTINCT province FROM suppliers
-     WHERE company_id = ? AND province IS NOT NULL ORDER BY province`,
-    [req.user.company_id]
-  );
-  res.json({ success: true, data: rows.map((r) => r.province) });
-});
-
 exports.getById = handle('Supplier getById', async (req, res) => {
-  const r = await loadSupplier(req.params.id, req.user);
+  const r = await loadSupplier(req.params.id);
   if (!r.row) return fail(res, r.status, r.message);
+  const [[supplier]] = await db.query(`${SUPPLIER_SELECT} WHERE v.id = ?`, [r.row.id]);
   const [contacts] = await db.query(
     'SELECT id, name, phone, email, wechat_qr FROM contacts WHERE supplier_id = ? ORDER BY name',
     [r.row.id]
   );
-  const { owner_company_id, company_id, ...supplier } = r.row;
   res.json({ success: true, data: { ...supplier, contacts } });
 });
 
 exports.create = handle('Supplier create', async (req, res) => {
-  const v = validate(req.body, SUPPLIER_FIELDS);
+  const v = await validateSupplier(req.body);
   if (!v.values) return fail(res, 400, v.message);
   const s = v.values;
-  // The company comes from the token, never from the body.
   const [r] = await db.query(
-    `INSERT INTO suppliers (company_id, name, phone, email, website, address, province, rating, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [req.user.company_id, s.name, s.phone, s.email, s.website, s.address, s.province, s.rating, s.notes]
+    `INSERT INTO suppliers (name, phone, email, website, address, province_id, rating, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [s.name, s.phone, s.email, s.website, s.address, s.province_id, s.rating, s.notes]
   );
   res.json({ success: true, data: { id: r.insertId } });
 });
 
 exports.update = handle('Supplier update', async (req, res) => {
-  const r = await loadSupplier(req.params.id, req.user);
+  const r = await loadSupplier(req.params.id);
   if (!r.row) return fail(res, r.status, r.message);
-  const v = validate(req.body, SUPPLIER_FIELDS, r.row);
+  const v = await validateSupplier(req.body, r.row);
   if (!v.values) return fail(res, 400, v.message);
   const s = v.values;
   await db.query(
-    `UPDATE suppliers SET name = ?, phone = ?, email = ?, website = ?, address = ?, province = ?,
+    `UPDATE suppliers SET name = ?, phone = ?, email = ?, website = ?, address = ?, province_id = ?,
             rating = ?, notes = ? WHERE id = ?`,
-    [s.name, s.phone, s.email, s.website, s.address, s.province, s.rating, s.notes, r.row.id]
+    [s.name, s.phone, s.email, s.website, s.address, s.province_id, s.rating, s.notes, r.row.id]
   );
   res.json({ success: true, data: { id: r.row.id } });
 });
 
-// D8: contacts go with the supplier; refused while it still has booths or products.
+// Schema v2: deleting a supplier deletes its contacts and products (with their photos and
+// shares) and leaves its booths without a supplier. D28: the photo files are deleted too.
 exports.remove = handle('Supplier remove', async (req, res) => {
-  const r = await loadSupplier(req.params.id, req.user);
+  const r = await loadSupplier(req.params.id);
   if (!r.row) return fail(res, r.status, r.message);
-  const [[usage]] = await db.query(
-    `SELECT (SELECT COUNT(*) FROM booths WHERE supplier_id = ?) AS booths,
-            (SELECT COUNT(*) FROM products WHERE supplier_id = ?) AS products`,
-    [r.row.id, r.row.id]
+  const [images] = await db.query(
+    `SELECT pi.image_url FROM product_images pi JOIN products p ON p.id = pi.product_id
+     WHERE p.supplier_id = ?`,
+    [r.row.id]
   );
-  if (usage.booths > 0 || usage.products > 0) {
-    return fail(res, 409, 'Impossible de supprimer un fournisseur qui a encore des stands ou des produits');
-  }
   await db.query('DELETE FROM suppliers WHERE id = ?', [r.row.id]);
+  await deleteImages(images.map((i) => i.image_url));
   res.json({ success: true, data: { id: r.row.id } });
 });
 
 // --- Contacts of a supplier -------------------------------------------------
 
-// Loads the supplier (tenant check) and, when contactId is given, its contact.
+// Loads the supplier and, when contactId is given, its contact.
 async function loadContact(req) {
-  const s = await loadSupplier(req.params.id, req.user);
+  const s = await loadSupplier(req.params.id);
   if (!s.row) return s;
   if (req.params.contactId === undefined) return { supplier: s.row };
   const contactId = toId(req.params.contactId);
@@ -126,6 +125,17 @@ async function loadContact(req) {
   ]);
   if (!contact) return { status: 404, message: 'Contact introuvable' };
   return { supplier: s.row, contact };
+}
+
+// A contact needs at least one of name, phone, e-mail or WeChat (every column is optional in v2).
+function validateContact(body, existing) {
+  const v = validate(body, CONTACT_FIELDS, existing);
+  if (!v.values) return v;
+  const c = v.values;
+  if (!c.name && !c.phone && !c.email && !c.wechat_qr) {
+    return { message: 'Renseignez au moins le nom, le téléphone, l\'e-mail ou le WeChat du contact' };
+  }
+  return v;
 }
 
 exports.listContacts = handle('Contact list', async (req, res) => {
@@ -141,7 +151,7 @@ exports.listContacts = handle('Contact list', async (req, res) => {
 exports.createContact = handle('Contact create', async (req, res) => {
   const r = await loadContact(req);
   if (!r.supplier) return fail(res, r.status, r.message);
-  const v = validate(req.body, CONTACT_FIELDS);
+  const v = validateContact(req.body);
   if (!v.values) return fail(res, 400, v.message);
   const c = v.values;
   const [ins] = await db.query(
@@ -154,7 +164,7 @@ exports.createContact = handle('Contact create', async (req, res) => {
 exports.updateContact = handle('Contact update', async (req, res) => {
   const r = await loadContact(req);
   if (!r.contact) return fail(res, r.status, r.message);
-  const v = validate(req.body, CONTACT_FIELDS, r.contact);
+  const v = validateContact(req.body, r.contact);
   if (!v.values) return fail(res, 400, v.message);
   const c = v.values;
   await db.query('UPDATE contacts SET name = ?, phone = ?, email = ?, wechat_qr = ? WHERE id = ?', [

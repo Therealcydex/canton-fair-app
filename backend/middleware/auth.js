@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 const { fail } = require('../utils/http');
+const { isAdmin } = require('../utils/access');
 
 // No default secret: without JWT_SECRET every protected route refuses the request.
 const secret = () => process.env.JWT_SECRET;
@@ -14,7 +15,7 @@ const signToken = (user) =>
   );
 
 // Checks "Authorization: Bearer <token>", then reloads the user so that a deactivated
-// account or a changed level takes effect at once (D9), and puts it in req.user.
+// account or a changed role takes effect at once (D9), and puts it in req.user.
 const requireAuth = async (req, res, next) => {
   if (!secret()) return fail(res, 401, 'Authentification indisponible (configuration serveur)');
   const header = req.headers.authorization || '';
@@ -30,10 +31,10 @@ const requireAuth = async (req, res, next) => {
 
   try {
     const [[user]] = await db.query(
-      'SELECT id, company_id, name, username, level, role, active FROM users WHERE id = ?',
+      'SELECT id, company_id, name, username, level, role, is_active FROM users WHERE id = ?',
       [payload.id]
     );
-    if (!user || !user.active) return fail(res, 401, 'Compte inexistant ou désactivé');
+    if (!user || !user.is_active) return fail(res, 401, 'Compte inexistant ou désactivé');
     req.user = user;
     next();
   } catch (error) {
@@ -42,15 +43,10 @@ const requireAuth = async (req, res, next) => {
   }
 };
 
-// 403 when the caller's level is below n (the super-admin always passes).
-const requireLevel = (n) => (req, res, next) => {
-  if (req.user.role === 'SUPER_ADMIN' || (parseInt(req.user.level) || 0) >= n) return next();
-  return fail(res, 403, "Vous n'avez pas les droits nécessaires");
+// 403 unless the caller is the admin (companies, users, sign-up validation).
+const requireAdmin = (req, res, next) => {
+  if (isAdmin(req.user)) return next();
+  return fail(res, 403, "Action réservée à l'administrateur");
 };
 
-const requireSuperAdmin = (req, res, next) => {
-  if (req.user.role === 'SUPER_ADMIN') return next();
-  return fail(res, 403, 'Action réservée au super-administrateur');
-};
-
-module.exports = { signToken, requireAuth, requireLevel, requireSuperAdmin };
+module.exports = { signToken, requireAuth, requireAdmin };

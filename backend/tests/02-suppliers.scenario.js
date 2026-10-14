@@ -1,68 +1,64 @@
-// BF04-BF05: suppliers and contacts, scoped to the caller's company.
+// BF04-BF05: suppliers (province from the list, rating) and their contacts. Reference lists.
 const { api, expect, check, PREFIX } = require('./lib');
 
 module.exports = async (ctx) => {
-  const { tokens, companies } = ctx;
+  const { tokens } = ctx;
   const A = tokens.buyerA;
   const B = tokens.buyerB;
 
-  expect('list without token', await api('GET', '/suppliers'), 401);
-  expect('supplier without name', await api('POST', '/suppliers', { token: A, body: { phone: '123' } }), 400);
-  expect('supplier with bad email', await api('POST', '/suppliers', { token: A, body: { name: 'X', email: 'pas-un-mail' } }), 400);
-  expect('supplier with rating 6', await api('POST', '/suppliers', { token: A, body: { name: 'X', rating: 6 } }), 400);
-  expect('supplier with rating 2.5', await api('POST', '/suppliers', { token: A, body: { name: 'X', rating: 2.5 } }), 400);
-  expect('supplier name too long', await api('POST', '/suppliers', { token: A, body: { name: 'x'.repeat(151) } }), 400);
+  // Reference lists
+  expect('lists need a token', await api('GET', '/lists/provinces'), 401);
+  const provinces = expect('province list', await api('GET', '/lists/provinces', { token: A }), 200);
+  check('23 provinces', provinces.body.data.length === 23);
+  const guangdong = provinces.body.data.find((p) => p.name_en === 'Guangdong');
+  check('Chinese names are intact', guangdong?.name_zh === '广东');
+  const ships = expect('shipping types', await api('GET', '/lists/shipping-types', { token: A }), 200);
+  check('11 Incoterms', ships.body.data.length === 11 && ships.body.data.some((s) => s.code === 'FOB'));
+  const cats = expect('Canton categories of phase 2', await api('GET', '/lists/canton-categories?phase=2', { token: A }), 200);
+  check('only phase 2 rows', cats.body.data.length > 0 && cats.body.data.every((c) => c.phase.startsWith('Phase 2 ')));
 
-  const s = expect('create supplier (company_id in body ignored)', await api('POST', '/suppliers', {
-    token: A,
-    body: { name: `${PREFIX} Shenzhen Lighting`, province: 'Guangdong', rating: 4, email: 'sales@example.cn', company_id: companies.B },
+  // Suppliers (BF04)
+  expect('no token', await api('GET', '/suppliers'), 401);
+  expect('supplier without name', await api('POST', '/suppliers', { token: A, body: { phone: '1' } }), 400);
+  expect('rating 6', await api('POST', '/suppliers', { token: A, body: { name: `${PREFIX} S`, rating: 6 } }), 400);
+  expect('rating 0', await api('POST', '/suppliers', { token: A, body: { name: `${PREFIX} S`, rating: 0 } }), 400);
+  expect('invalid e-mail', await api('POST', '/suppliers', { token: A, body: { name: `${PREFIX} S`, email: 'pas-un-mail' } }), 400);
+  expect('unknown province', await api('POST', '/suppliers', { token: A, body: { name: `${PREFIX} S`, province_id: 99999 } }), 400);
+  expect('name over 200 characters', await api('POST', '/suppliers', { token: A, body: { name: `${PREFIX} ${'x'.repeat(200)}` } }), 400);
+  const s = expect('create supplier', await api('POST', '/suppliers', {
+    token: A, body: { name: `${PREFIX} Shenzhen 100%_Lighting`, province_id: guangdong.id, rating: 4, email: 'a@b.cn' },
   }), 200);
-  const sid = s.body.data.id;
-  await api('POST', '/suppliers', { token: A, body: { name: `${PREFIX} Yiwu 50% Toys`, province: 'Zhejiang' } });
-  await api('POST', '/suppliers', { token: B, body: { name: `${PREFIX} B only`, province: 'Fujian' } });
+  const id = s.body.data.id;
 
-  const listA = expect('list own suppliers', await api('GET', '/suppliers', { token: A }), 200);
-  check('company A sees only its suppliers', listA.body.data.length === 2 && listA.body.data.every((x) => x.name.startsWith(PREFIX) && x.name !== `${PREFIX} B only`));
-  const listB = await api('GET', '/suppliers', { token: B });
-  check('company B does not see A suppliers', listB.body.data.length === 1);
-  const q = await api('GET', `/suppliers?q=${encodeURIComponent('50%')}`, { token: A });
-  check('search treats % literally', q.body.data.length === 1 && q.body.data[0].name.includes('50%'));
-  const p = await api('GET', '/suppliers?province=Guangdong', { token: A });
-  check('filter by province', p.body.data.length === 1 && p.body.data[0].id === sid);
-  const prov = expect('provinces list', await api('GET', '/suppliers/provinces', { token: A }), 200);
-  check('provinces are the company\'s only', JSON.stringify(prov.body.data) === JSON.stringify(['Guangdong', 'Zhejiang']));
+  const got = expect('another user of the group reads it', await api('GET', `/suppliers/${id}`, { token: B }), 200);
+  check('province name and booth stats from v_suppliers',
+    got.body.data.province === 'Guangdong' && got.body.data.nbr_booths === 0 && got.body.data.booth_visit_pct === null);
+  const search = expect('search with LIKE wildcards', await api('GET', `/suppliers?q=${encodeURIComponent('100%_')}`, { token: A }), 200);
+  check('wildcards matched literally', search.body.data.length === 1 && search.body.data[0].id === id);
+  const byProvince = expect('filter by province', await api('GET', `/suppliers?province_id=${guangdong.id}`, { token: A }), 200);
+  check('filter keeps the supplier', byProvince.body.data.some((x) => x.id === id));
+  expect('invalid province filter', await api('GET', '/suppliers?province_id=abc', { token: A }), 400);
 
-  expect('read supplier of other company', await api('GET', `/suppliers/${sid}`, { token: B }), 403);
-  expect('edit supplier of other company', await api('PUT', `/suppliers/${sid}`, { token: B, body: { name: 'pirate' } }), 403);
-  expect('delete supplier of other company', await api('DELETE', `/suppliers/${sid}`, { token: B }), 403);
-  expect('read unknown supplier', await api('GET', '/suppliers/999999', { token: A }), 404);
+  expect('partial update keeps the rules', await api('PUT', `/suppliers/${id}`, { token: B, body: { rating: 9 } }), 400);
+  expect('update supplier', await api('PUT', `/suppliers/${id}`, { token: B, body: { rating: 5, province_id: null } }), 200);
+  const updated = await api('GET', `/suppliers/${id}`, { token: A });
+  check('update kept the name and cleared the province',
+    updated.body.data.name === `${PREFIX} Shenzhen 100%_Lighting` && updated.body.data.province_id === null && updated.body.data.rating === 5);
+  expect('unknown supplier', await api('GET', '/suppliers/999999', { token: A }), 404);
   expect('invalid id', await api('GET', '/suppliers/abc', { token: A }), 400);
 
-  expect('partial update keeps other fields', await api('PUT', `/suppliers/${sid}`, { token: A, body: { rating: 5 } }), 200);
-  const got = await api('GET', `/suppliers/${sid}`, { token: A });
-  check('rating updated, name kept', got.body.data.rating === 5 && got.body.data.name === `${PREFIX} Shenzhen Lighting`);
-  check('no company_id leaked', !('company_id' in got.body.data) && !('owner_company_id' in got.body.data));
-  expect('clearing the name is refused', await api('PUT', `/suppliers/${sid}`, { token: A, body: { name: '' } }), 400);
-
   // Contacts (BF05)
-  expect('contact without name', await api('POST', `/suppliers/${sid}/contacts`, { token: A, body: { phone: '1' } }), 400);
-  expect('contact on other company supplier', await api('POST', `/suppliers/${sid}/contacts`, { token: B, body: { name: 'X' } }), 403);
-  const c = expect('create contact', await api('POST', `/suppliers/${sid}/contacts`, {
-    token: A, body: { name: 'Mr Li', phone: '+86 138 0000 0000', wechat_qr: 'wxid_li' },
-  }), 200);
-  const cid = c.body.data.id;
-  const other = await api('POST', '/suppliers', { token: A, body: { name: `${PREFIX} Other` } });
-  expect('contact through the wrong supplier', await api('PUT', `/suppliers/${other.body.data.id}/contacts/${cid}`, { token: A, body: { name: 'X' } }), 404);
-  expect('edit contact', await api('PUT', `/suppliers/${sid}/contacts/${cid}`, { token: A, body: { email: 'li@example.cn' } }), 200);
-  const contacts = expect('list contacts', await api('GET', `/suppliers/${sid}/contacts`, { token: A }), 200);
-  check('contact edited', contacts.body.data[0]?.email === 'li@example.cn' && contacts.body.data[0]?.name === 'Mr Li');
-  expect('list contacts of other company', await api('GET', `/suppliers/${sid}/contacts`, { token: B }), 403);
-  expect('delete contact of other company', await api('DELETE', `/suppliers/${sid}/contacts/${cid}`, { token: B }), 403);
-  expect('delete contact', await api('DELETE', `/suppliers/${sid}/contacts/${cid}`, { token: A }), 200);
+  expect('empty contact', await api('POST', `/suppliers/${id}/contacts`, { token: A, body: {} }), 400);
+  expect('contact with invalid e-mail', await api('POST', `/suppliers/${id}/contacts`, { token: A, body: { name: 'Li', email: 'x' } }), 400);
+  expect('contact of unknown supplier', await api('POST', '/suppliers/999999/contacts', { token: A, body: { name: 'Li' } }), 404);
+  const c = expect('create contact', await api('POST', `/suppliers/${id}/contacts`, { token: A, body: { name: 'Mr Li', wechat_qr: 'li_wechat' } }), 200);
+  expect('contact with only a phone', await api('POST', `/suppliers/${id}/contacts`, { token: A, body: { phone: '+86 1' } }), 200);
+  expect('update contact', await api('PUT', `/suppliers/${id}/contacts/${c.body.data.id}`, { token: B, body: { phone: '+86 2' } }), 200);
+  expect('contact of another supplier', await api('PUT', `/suppliers/${id + 100000}/contacts/${c.body.data.id}`, { token: A, body: { name: 'X' } }), 404);
+  const list = expect('list contacts', await api('GET', `/suppliers/${id}/contacts`, { token: A }), 200);
+  check('two contacts', list.body.data.length === 2);
+  expect('delete contact', await api('DELETE', `/suppliers/${id}/contacts/${c.body.data.id}`, { token: A }), 200);
+  expect('delete it again', await api('DELETE', `/suppliers/${id}/contacts/${c.body.data.id}`, { token: A }), 404);
 
-  // Delete: contacts go with the supplier (D8)
-  await api('POST', `/suppliers/${other.body.data.id}/contacts`, { token: A, body: { name: 'Temp' } });
-  expect('delete supplier with contacts only', await api('DELETE', `/suppliers/${other.body.data.id}`, { token: A }), 200);
-
-  ctx.suppliers = { A: sid };
+  ctx.supplierId = id;
 };

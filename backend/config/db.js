@@ -10,7 +10,7 @@ const connection = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  // DECIMAL columns (price_tnd) come back as strings: never rounded through a float.
+  // DECIMAL columns (price) come back as strings: never rounded through a float.
   decimalNumbers: false,
   // DATETIME columns come back as "YYYY-MM-DD HH:MM:SS": the time at the fair, never shifted
   // through the server's timezone.

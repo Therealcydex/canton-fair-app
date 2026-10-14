@@ -1,8 +1,10 @@
-// Who may do what (docs/sourcing-spec.md, D4). Always called with req.user, never with client data.
-const ADMIN_LEVEL = 4;
-const MAX_LEVEL = 9;
+// Who may do what (docs/sourcing-spec.md, D29). Always called with req.user, never with client data.
+// Every active user reads and writes the suppliers, booths and products of the group;
+// the admin also manages the companies and the users (sign-up validation).
+const ADMIN_ROLE = 'ADMIN';
+const BUYER_ROLE = 'ACHETEUR';
+const ROLES = [ADMIN_ROLE, BUYER_ROLE];
 
-const isSuperAdmin = (user) => user.role === 'SUPER_ADMIN';
-const isCompanyAdmin = (user) => isSuperAdmin(user) || (parseInt(user.level) || 0) >= ADMIN_LEVEL;
+const isAdmin = (user) => user.role === ADMIN_ROLE;
 
-module.exports = { ADMIN_LEVEL, MAX_LEVEL, isSuperAdmin, isCompanyAdmin };
+module.exports = { ADMIN_ROLE, BUYER_ROLE, ROLES, isAdmin };

@@ -1,56 +1,58 @@
 const db = require('../config/db');
-const { fail, handle, toId, clean } = require('../utils/http');
+const { fail, handle } = require('../utils/http');
+const { validate } = require('../utils/validate');
+const { loadCompany } = require('../utils/scope');
 
-// Returns the error message for an invalid company name, or null.
-const nameError = (name) => {
-  if (!name) return 'Le nom de la société est obligatoire';
-  if (name.length > 100) return 'Le nom de la société dépasse 100 caractères';
-  return null;
+const COMPANY_FIELDS = {
+  name: { label: 'Nom de la société', type: 'string', required: true, max: 150 },
+  branch: { label: 'Branche', type: 'string', max: 150 },
 };
 
 // Every logged-in user can list companies (needed to choose whom to share a product with).
 exports.list = handle('Company list', async (req, res) => {
-  const [rows] = await db.query('SELECT id, name FROM companies ORDER BY name');
+  const [rows] = await db.query(
+    `SELECT c.id, c.name, c.branch,
+            (SELECT COUNT(*) FROM users u WHERE u.company_id = c.id) AS users_count,
+            (SELECT COUNT(*) FROM product_shares ps WHERE ps.company_id = c.id) AS shared_products_count
+     FROM companies c ORDER BY c.name, c.branch`
+  );
   res.json({ success: true, data: rows });
 });
 
+// D25: name + branch is unique (a NULL branch is compared with <=>, which UNIQUE does not do).
+async function duplicate(name, branch, id = 0) {
+  const [[dup]] = await db.query(
+    'SELECT id FROM companies WHERE name = ? AND branch <=> ? AND id <> ?', [name, branch, id]
+  );
+  return !!dup;
+}
+
 exports.create = handle('Company create', async (req, res) => {
-  const name = clean(req.body?.name);
-  const error = nameError(name);
-  if (error) return fail(res, 400, error);
-  const [[dup]] = await db.query('SELECT id FROM companies WHERE name = ?', [name]);
-  if (dup) return fail(res, 409, 'Une société porte déjà ce nom');
-  const [r] = await db.query('INSERT INTO companies (name) VALUES (?)', [name]);
-  res.json({ success: true, data: { id: r.insertId, name } });
+  const v = validate(req.body, COMPANY_FIELDS);
+  if (!v.values) return fail(res, 400, v.message);
+  const { name, branch } = v.values;
+  if (await duplicate(name, branch)) return fail(res, 409, 'Cette société (et branche) existe déjà');
+  const [r] = await db.query('INSERT INTO companies (name, branch) VALUES (?, ?)', [name, branch]);
+  res.json({ success: true, data: { id: r.insertId, name, branch } });
 });
 
 exports.update = handle('Company update', async (req, res) => {
-  const id = toId(req.params.id);
-  if (!id) return fail(res, 400, 'Identifiant invalide');
-  const name = clean(req.body?.name);
-  const error = nameError(name);
-  if (error) return fail(res, 400, error);
-  const [[company]] = await db.query('SELECT id FROM companies WHERE id = ?', [id]);
-  if (!company) return fail(res, 404, 'Société introuvable');
-  const [[dup]] = await db.query('SELECT id FROM companies WHERE name = ? AND id <> ?', [name, id]);
-  if (dup) return fail(res, 409, 'Une société porte déjà ce nom');
-  await db.query('UPDATE companies SET name = ? WHERE id = ?', [name, id]);
-  res.json({ success: true, data: { id, name } });
+  const c = await loadCompany(req.params.id);
+  if (!c.row) return fail(res, c.status, c.message);
+  const v = validate(req.body, COMPANY_FIELDS, c.row);
+  if (!v.values) return fail(res, 400, v.message);
+  const { name, branch } = v.values;
+  if (await duplicate(name, branch, c.row.id)) return fail(res, 409, 'Cette société (et branche) existe déjà');
+  await db.query('UPDATE companies SET name = ?, branch = ? WHERE id = ?', [name, branch, c.row.id]);
+  res.json({ success: true, data: { id: c.row.id, name, branch } });
 });
 
+// Its users stay, without a company (FK SET NULL); its shares go (FK CASCADE on product_shares).
+// The admin cannot delete their own company.
 exports.remove = handle('Company remove', async (req, res) => {
-  const id = toId(req.params.id);
-  if (!id) return fail(res, 400, 'Identifiant invalide');
-  const [[company]] = await db.query('SELECT id FROM companies WHERE id = ?', [id]);
-  if (!company) return fail(res, 404, 'Société introuvable');
-  const [[usage]] = await db.query(
-    `SELECT (SELECT COUNT(*) FROM users WHERE company_id = ?) AS users,
-            (SELECT COUNT(*) FROM suppliers WHERE company_id = ?) AS suppliers`,
-    [id, id]
-  );
-  if (usage.users > 0 || usage.suppliers > 0) {
-    return fail(res, 409, 'Impossible de supprimer une société qui a des utilisateurs ou des fournisseurs');
-  }
-  await db.query('DELETE FROM companies WHERE id = ?', [id]);
-  res.json({ success: true, data: { id } });
+  const c = await loadCompany(req.params.id);
+  if (!c.row) return fail(res, c.status, c.message);
+  if (c.row.id === req.user.company_id) return fail(res, 409, 'Vous ne pouvez pas supprimer votre propre société');
+  await db.query('DELETE FROM companies WHERE id = ?', [c.row.id]);
+  res.json({ success: true, data: { id: c.row.id } });
 });

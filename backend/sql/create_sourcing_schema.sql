@@ -1,130 +1,173 @@
 -- backend/sql/create_sourcing_schema.sql
--- Schema of sourcing_db, from sourcing_db_diagram.pdf (10 tables).
--- Additions to the diagram are marked with their decision id (docs/sourcing-spec.md §5).
--- Runs on MySQL 8 and MariaDB 10.4+. Safe to run twice (IF NOT EXISTS / INSERT IGNORE).
--- Run it with: node sql/run_schema_setup.js
+-- Schema v2 of the sourcing app, from Tarek's schema.sql (draft v2, MySQL 8).
+-- Run order (run_schema_setup.js does it): china_provinces.sql, canton_fair_categories.sql, this file.
+-- Changes to the draft are marked with their decision id (docs/sourcing-spec.md §5, D22-D28).
+-- Runs on MySQL 8 and MariaDB 10.4+. Safe to run twice (IF NOT EXISTS / INSERT IGNORE / OR REPLACE).
 
+SET NAMES utf8mb4;
+
+-- ---------- Companies (Tarek's companies, the targets of product sharing) ----------
 CREATE TABLE IF NOT EXISTS companies (
-  id   INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,
-  UNIQUE KEY uq_companies_name (name)
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(150) NOT NULL,
+    branch      VARCHAR(150),
+    UNIQUE KEY uq_company_name_branch (name, branch)              -- D25: two branches of one company
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ---------- Users ----------
 CREATE TABLE IF NOT EXISTS users (
-  id            INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  company_id    INT          NOT NULL,
-  name          VARCHAR(100) NOT NULL,
-  username      VARCHAR(50)  NOT NULL,              -- D1
-  password_hash VARCHAR(255) NOT NULL,              -- D1 (bcrypt)
-  level         TINYINT      NOT NULL DEFAULT 1,    -- D4: >= 4 = company admin
-  role          VARCHAR(50)  NOT NULL DEFAULT 'ACHETEUR', -- D4: 'SUPER_ADMIN' = super-admin
-  active        TINYINT(1)   NOT NULL DEFAULT 1,
-  UNIQUE KEY uq_users_username (username),
-  CONSTRAINT fk_users_company FOREIGN KEY (company_id) REFERENCES companies (id)
+    id             INT AUTO_INCREMENT PRIMARY KEY,
+    name           VARCHAR(150) NOT NULL,
+    username       VARCHAR(50)  NOT NULL,                          -- D22: login
+    password_hash  VARCHAR(255) NOT NULL,                          -- D22: bcrypt
+    level          VARCHAR(50),
+    role           VARCHAR(50),                                    -- 'ADMIN' or 'ACHETEUR'
+    is_active      TINYINT(1) NOT NULL DEFAULT 1,                  -- 0 = sign-up waiting for the admin
+    company_id     INT,
+    created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,    -- D22: orders pending sign-ups
+    UNIQUE KEY uq_users_username (username),
+    FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- D3: global tree, managed by the super-admin
-CREATE TABLE IF NOT EXISTS categories (
-  id        INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  parent_id INT          NULL,
-  name      VARCHAR(100) NOT NULL,
-  depth     TINYINT      NOT NULL DEFAULT 0,
-  CONSTRAINT fk_categories_parent FOREIGN KEY (parent_id) REFERENCES categories (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
+-- ---------- Suppliers ----------
 CREATE TABLE IF NOT EXISTS suppliers (
-  id         INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  company_id INT          NOT NULL,
-  name       VARCHAR(150) NOT NULL,
-  phone      VARCHAR(50)  NULL,
-  email      VARCHAR(150) NULL,
-  website    VARCHAR(200) NULL,
-  address    TEXT         NULL,
-  province   VARCHAR(100) NULL,
-  rating     TINYINT      NULL,                     -- 1 to 5, checked by the API
-  notes      TEXT         NULL,
-  KEY ix_suppliers_company_name (company_id, name),
-  CONSTRAINT fk_suppliers_company FOREIGN KEY (company_id) REFERENCES companies (id)
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    name         VARCHAR(200) NOT NULL,
+    phone        VARCHAR(50),
+    email        VARCHAR(150),
+    website      VARCHAR(255),
+    address      TEXT,
+    province_id  INT,                                   -- list from china_province
+    rating       TINYINT CHECK (rating BETWEEN 1 AND 5),
+    notes        TEXT,
+    KEY ix_suppliers_name (name),                       -- D24: search by name
+    FOREIGN KEY (province_id) REFERENCES china_province(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- D8: contacts go with their supplier
+-- ---------- Contacts ----------
 CREATE TABLE IF NOT EXISTS contacts (
-  id          INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  supplier_id INT          NOT NULL,
-  name        VARCHAR(100) NOT NULL,
-  phone       VARCHAR(50)  NULL,
-  email       VARCHAR(150) NULL,
-  wechat_qr   VARCHAR(255) NULL,
-  CONSTRAINT fk_contacts_supplier FOREIGN KEY (supplier_id) REFERENCES suppliers (id) ON DELETE CASCADE
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    supplier_id  INT NOT NULL,
+    name         VARCHAR(150),
+    phone        VARCHAR(50),
+    email        VARCHAR(150),
+    wechat_qr    VARCHAR(255),
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Location example: phase 2, hall 12, level 2, letter F, numbers 35-36 -> "12.2 F35-36"
+-- ---------- Booths ----------
+-- booth_code is built automatically: phase/hall.floor.letter.num
+-- e.g. phase 2, hall 12, floor 1, letter A, num 22-24  ->  2/12.1.A.22-24
+-- D27: the API stores the letter in uppercase (the collation is case-insensitive, so the CHECK lets 'a' in).
 CREATE TABLE IF NOT EXISTS booths (
-  id          INT        NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  supplier_id INT        NOT NULL,
-  category_id INT        NULL,
-  phase       TINYINT    NULL,
-  hall        TINYINT    NULL,
-  level       TINYINT    NULL,
-  letter      CHAR(1)    NULL,
-  num_start   SMALLINT   NULL,
-  num_end     SMALLINT   NULL,
-  to_visit    TINYINT(1) NOT NULL DEFAULT 0,
-  comment     TEXT       NULL,
-  KEY ix_booths_location (phase, hall, level),
-  CONSTRAINT fk_booths_supplier FOREIGN KEY (supplier_id) REFERENCES suppliers (id),
-  CONSTRAINT fk_booths_category FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE SET NULL
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    phase         TINYINT  NOT NULL CHECK (phase BETWEEN 1 AND 3),
+    hall          TINYINT  NOT NULL,
+    floor         TINYINT  NOT NULL CHECK (floor BETWEEN 1 AND 4),
+    letter        CHAR(1)  NOT NULL CHECK (letter BETWEEN 'A' AND 'Z'),
+    num_start     SMALLINT NOT NULL,
+    num_end       SMALLINT NULL,                         -- NULL if single booth
+    booth_code    VARCHAR(30) GENERATED ALWAYS AS (
+                    CONCAT(phase, '/', hall, '.', floor, '.', letter, '.', num_start,
+                           IF(num_end IS NULL, '', CONCAT('-', num_end)))
+                  ) STORED,
+    category_id   INT NULL,                              -- category + sub category (canton_fair_category)
+    supplier_id   INT NULL,
+    visited       TINYINT(1) NOT NULL DEFAULT 0,         -- true / false
+    comment       TEXT,
+    UNIQUE KEY uq_booth_code (booth_code),
+    KEY ix_booths_to_visit (visited, phase, hall),       -- D24: the "to visit" list and its filters
+    CHECK (num_end IS NULL OR num_end >= num_start),
+    FOREIGN KEY (category_id) REFERENCES canton_fair_category(id) ON DELETE SET NULL,
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(id)            ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS booth_visits (
-  id         INT      NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  booth_id   INT      NOT NULL,
-  user_id    INT      NOT NULL,
-  visited_at DATETIME NULL,
-  status     ENUM('prevu','visite','annule') NOT NULL DEFAULT 'prevu', -- D2
-  comment    TEXT     NULL,
-  CONSTRAINT fk_visits_booth FOREIGN KEY (booth_id) REFERENCES booths (id) ON DELETE CASCADE,
-  CONSTRAINT fk_visits_user  FOREIGN KEY (user_id)  REFERENCES users (id)
+-- ---------- Shipping types (Incoterms list) ----------
+CREATE TABLE IF NOT EXISTS shipping_types (
+    code   CHAR(3) PRIMARY KEY,
+    name   VARCHAR(60) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- D7: a product belongs to the company of its supplier
+INSERT IGNORE INTO shipping_types (code, name) VALUES
+('EXW', 'Ex Works'),
+('FCA', 'Free Carrier'),
+('FAS', 'Free Alongside Ship'),
+('FOB', 'Free On Board'),
+('CFR', 'Cost and Freight'),
+('CIF', 'Cost, Insurance and Freight'),
+('CPT', 'Carriage Paid To'),
+('CIP', 'Carriage and Insurance Paid To'),
+('DAP', 'Delivered at Place'),
+('DPU', 'Delivered at Place Unloaded'),
+('DDP', 'Delivered Duty Paid');
+
+-- ---------- Products ----------
+-- D28: ON DELETE CASCADE removes the photo rows; the API deletes the photo files first.
 CREATE TABLE IF NOT EXISTS products (
-  id           INT           NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  supplier_id  INT           NOT NULL,
-  booth_id     INT           NULL,
-  created_by   INT           NOT NULL,
-  supplier_ref VARCHAR(100)  NULL,
-  name         VARCHAR(150)  NOT NULL,
-  description  TEXT          NULL,
-  price_tnd    DECIMAL(12,3) NULL,
-  unit         VARCHAR(30)   NULL,
-  moq          INT           NULL,
-  incoterm     VARCHAR(10)   NULL,
-  CONSTRAINT fk_products_supplier FOREIGN KEY (supplier_id) REFERENCES suppliers (id),
-  CONSTRAINT fk_products_booth    FOREIGN KEY (booth_id)    REFERENCES booths (id) ON DELETE SET NULL,
-  CONSTRAINT fk_products_user     FOREIGN KEY (created_by)  REFERENCES users (id)
+    id             INT AUTO_INCREMENT PRIMARY KEY,
+    supplier_id    INT,
+    supplier_ref   VARCHAR(100),                  -- Ref. F
+    name           VARCHAR(200) NOT NULL,
+    description    TEXT,
+    price          DECIMAL(12,2),
+    unit           VARCHAR(30),
+    moq            INT,
+    shipping_type  CHAR(3) DEFAULT 'FOB',         -- picked from shipping_types
+    KEY ix_products_name (name),                  -- D24: search by name
+    FOREIGN KEY (supplier_id)   REFERENCES suppliers(id)        ON DELETE CASCADE,
+    FOREIGN KEY (shipping_type) REFERENCES shipping_types(code) ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ---------- Product images ----------
 CREATE TABLE IF NOT EXISTS product_images (
-  id         INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  product_id INT          NOT NULL,
-  image_url  VARCHAR(255) NOT NULL,
-  CONSTRAINT fk_images_product FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    product_id  INT NOT NULL,
+    image_url   VARCHAR(255) NOT NULL,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ---------- Shared With (list of companies per product) ----------
+-- One row per company that ticks the box: product 5 shared with 2 companies = 2 rows
 CREATE TABLE IF NOT EXISTS product_shares (
-  product_id INT NOT NULL,
-  company_id INT NOT NULL,
-  PRIMARY KEY (product_id, company_id),
-  CONSTRAINT fk_shares_product FOREIGN KEY (product_id) REFERENCES products (id)  ON DELETE CASCADE,
-  CONSTRAINT fk_shares_company FOREIGN KEY (company_id) REFERENCES companies (id) ON DELETE CASCADE
+    product_id  INT NOT NULL,
+    company_id  INT NOT NULL,
+    PRIMARY KEY (product_id, company_id),
+    FOREIGN KEY (product_id) REFERENCES products(id)  ON DELETE CASCADE,
+    FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Seeds. The admin user is created by run_schema_setup.js (its password must be hashed).
-INSERT IGNORE INTO companies (id, name) VALUES (1, 'Société démo');
+-- =========================================================
+-- Views
+-- D23: no GROUP BY. The counts are correlated subqueries, so the server merges the view into
+-- the query and "WHERE id = ?" reads one row instead of aggregating the whole table first.
+-- =========================================================
 
-INSERT IGNORE INTO categories (id, parent_id, name, depth) VALUES
-  (1, NULL, 'Électronique', 0),
-  (2, NULL, 'Maison et décoration', 0),
-  (3, NULL, 'Textile', 0),
-  (4, 1,    'Petit électroménager', 1);
+-- Booths with category names and supplier name
+CREATE OR REPLACE VIEW v_booths AS
+SELECT b.id, b.booth_code, b.phase, b.hall, b.floor, b.letter, b.num_start, b.num_end,
+       b.category_id, c.category, c.section, c.sub_category,
+       b.supplier_id, s.name AS supplier_name,
+       b.visited, b.comment
+FROM booths b
+LEFT JOIN canton_fair_category c ON c.id = b.category_id
+LEFT JOIN suppliers s            ON s.id = b.supplier_id;
+
+-- Suppliers with Nbr Booths and Booth Visit %
+CREATE OR REPLACE VIEW v_suppliers AS
+SELECT s.id, s.name, s.phone, s.email, s.website, s.address, s.province_id, s.rating, s.notes,
+       p.name_en AS province,
+       (SELECT COUNT(*) FROM booths b WHERE b.supplier_id = s.id) AS nbr_booths,
+       (SELECT ROUND(100 * SUM(b.visited) / NULLIF(COUNT(*), 0))
+          FROM booths b WHERE b.supplier_id = s.id) AS booth_visit_pct
+FROM suppliers s
+LEFT JOIN china_province p ON p.id = s.province_id;
+
+-- Products with shipping name and the companies they're shared with
+CREATE OR REPLACE VIEW v_products AS
+SELECT pr.id, pr.supplier_id, pr.supplier_ref, pr.name, pr.description, pr.price, pr.unit,
+       pr.moq, pr.shipping_type, st.name AS shipping_name,
+       (SELECT GROUP_CONCAT(CONCAT_WS(' - ', co.name, co.branch) ORDER BY co.name, co.branch SEPARATOR ', ')
+          FROM product_shares ps JOIN companies co ON co.id = ps.company_id
+         WHERE ps.product_id = pr.id) AS shared_with
+FROM products pr
+LEFT JOIN shipping_types st ON st.code = pr.shipping_type;

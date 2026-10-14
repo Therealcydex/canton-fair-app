@@ -1,11 +1,25 @@
-// Creates sourcing_db (if missing), runs create_sourcing_schema.sql, then seeds the
-// super-admin user from SEED_ADMIN_USERNAME / SEED_ADMIN_PASSWORD in backend/.env.
+// Creates the database (if missing), runs the schema files in order, then seeds the admin
+// user from SEED_ADMIN_USERNAME / SEED_ADMIN_PASSWORD in backend/.env. Safe to run twice.
 // Usage (from backend/): node sql/run_schema_setup.js
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
+
+// In this order: the two lists, then the tables that reference them.
+const FILES = ['china_provinces.sql', 'canton_fair_categories.sql', 'create_sourcing_schema.sql'];
+
+// Splits a file into statements: drops "--" comments, then cuts on ";".
+// The files keep ";" and "--" out of their string values.
+const statementsOf = (file) =>
+  fs.readFileSync(path.join(__dirname, file), 'utf8')
+    .split('\n')
+    .map((line) => line.replace(/--.*$/, ''))
+    .join('\n')
+    .split(';')
+    .map((s) => s.trim())
+    .filter(Boolean);
 
 async function main() {
   const dbName = process.env.DB_NAME;
@@ -19,6 +33,7 @@ async function main() {
     port: process.env.DB_PORT || 3306,
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
+    charset: 'utf8mb4',
   });
 
   try {
@@ -27,19 +42,19 @@ async function main() {
     );
     await conn.query(`USE \`${dbName}\``);
 
-    const sql = fs.readFileSync(path.join(__dirname, 'create_sourcing_schema.sql'), 'utf8');
-    const statements = sql
-      .split('\n')
-      .map((line) => line.replace(/--.*$/, ''))
-      .join('\n')
-      .split(';')
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    for (const statement of statements) {
-      await conn.query(statement);
+    for (const file of FILES) {
+      let run = 0;
+      for (const statement of statementsOf(file)) {
+        // canton_fair_category has no natural key: fill it only while it is empty.
+        if (/^INSERT INTO canton_fair_category/i.test(statement)) {
+          const [[{ n }]] = await conn.query('SELECT COUNT(*) AS n FROM canton_fair_category');
+          if (n > 0) continue;
+        }
+        await conn.query(statement);
+        run++;
+      }
+      console.log(`${file}: ${run} statements run on ${dbName}`);
     }
-    console.log(`Schema OK: ${statements.length} statements run on ${dbName}`);
 
     const username = process.env.SEED_ADMIN_USERNAME;
     const password = process.env.SEED_ADMIN_PASSWORD;
@@ -54,8 +69,8 @@ async function main() {
     }
     const hash = await bcrypt.hash(password, 10);
     await conn.query(
-      `INSERT INTO users (company_id, name, username, password_hash, level, role, active)
-       VALUES (1, 'Administrateur', ?, ?, 9, 'SUPER_ADMIN', 1)`,
+      `INSERT INTO users (name, username, password_hash, level, role, is_active, company_id)
+       VALUES ('Administrateur', ?, ?, 'Administrateur', 'ADMIN', 1, NULL)`,
       [username, hash]
     );
     console.log(`Admin user "${username}" created`);

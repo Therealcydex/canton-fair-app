@@ -3,11 +3,8 @@ const router = express.Router();
 const { requireAuth } = require('../middleware/auth');
 const c = require('../controllers/SupplierController');
 
-// Every route below requires a valid token; data is scoped to req.user.company_id.
+// Every route below requires a valid token; every user of the group sees every supplier.
 router.use(requireAuth);
-
-// Fixed paths FIRST: '/provinces' declared after '/:id' would be captured by it.
-router.get('/provinces', c.provinces);
 
 router.get('/', c.list);
 router.post('/', c.create);

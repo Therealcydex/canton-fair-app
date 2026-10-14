@@ -9,8 +9,7 @@ const { deleteImages } = require('../utils/upload');
 const BASE = `http://localhost:${process.env.PORT || 3000}/api`;
 const PREFIX = 'TEST';
 const TABLES = [
-  'companies', 'users', 'categories', 'suppliers', 'contacts', 'booths',
-  'booth_visits', 'products', 'product_images', 'product_shares',
+  'companies', 'users', 'suppliers', 'contacts', 'booths', 'products', 'product_images', 'product_shares',
 ];
 
 let failures = 0;
@@ -36,7 +35,7 @@ async function api(method, url, { token, body, form } = {}) {
 function expect(label, res, status) {
   const shapeOk = status < 400
     ? res.body.success === true
-    : res.body.success === false && typeof res.body.message === 'string' && !/sql|ER_/i.test(res.body.message);
+    : res.body.success === false && typeof res.body.message === 'string' && !/\bsql\b/i.test(res.body.message) && !/\bER_[A-Z_]+/.test(res.body.message);
   if (res.status === status && shapeOk) {
     passes++;
     console.log(`  ok   ${label} -> ${status}`);
@@ -75,35 +74,23 @@ async function counts(conn) {
   return out;
 }
 
-// Deletes every row created by the scenarios: companies and categories named TEST…,
-// users named test…, and everything that hangs from them.
+// Deletes every row created by the scenarios: companies, suppliers, products named TEST…,
+// booths whose comment starts with TEST, users whose username starts with TEST, and what hangs
+// from them (contacts, photos and shares go with their supplier or product through the FKs).
 async function cleanup(conn) {
   const like = `${PREFIX}%`;
-  const companyIds = `SELECT id FROM companies WHERE name LIKE '${like}'`;
-  const supplierIds = `SELECT id FROM suppliers WHERE company_id IN (${companyIds}) OR name LIKE '${like}'`;
+  const supplierIds = 'SELECT id FROM suppliers WHERE name LIKE ?';
+  const productWhere = `name LIKE ? OR supplier_id IN (${supplierIds})`;
   const [images] = await conn.query(
-    `SELECT image_url FROM product_images WHERE product_id IN
-       (SELECT id FROM products WHERE supplier_id IN (${supplierIds}))`
+    `SELECT image_url FROM product_images WHERE product_id IN (SELECT id FROM products WHERE ${productWhere})`,
+    [like, like]
   );
   await deleteImages(images.map((i) => i.image_url));
-  const statements = [
-    `DELETE FROM products WHERE supplier_id IN (${supplierIds})`,
-    `DELETE FROM booth_visits WHERE booth_id IN (SELECT id FROM booths WHERE supplier_id IN (${supplierIds}))`,
-    `DELETE FROM booth_visits WHERE user_id IN (SELECT id FROM users WHERE username LIKE '${like}')`,
-    `DELETE FROM booths WHERE supplier_id IN (${supplierIds})`,
-    `DELETE FROM suppliers WHERE id IN (SELECT id FROM (${supplierIds}) s)`,
-    `DELETE FROM users WHERE username LIKE '${like}' OR company_id IN (${companyIds})`,
-    `DELETE FROM companies WHERE name LIKE '${like}'`,
-  ];
-  for (const s of statements) await conn.query(s);
-  // Categories: children before parents.
-  for (;;) {
-    const [r] = await conn.query(
-      `DELETE FROM categories WHERE name LIKE '${like}'
-       AND id NOT IN (SELECT parent_id FROM (SELECT parent_id FROM categories WHERE parent_id IS NOT NULL) p)`
-    );
-    if (r.affectedRows === 0) break;
-  }
+  await conn.query(`DELETE FROM products WHERE ${productWhere}`, [like, like]);
+  await conn.query(`DELETE FROM booths WHERE comment LIKE ? OR supplier_id IN (${supplierIds})`, [like, like]);
+  await conn.query('DELETE FROM suppliers WHERE name LIKE ?', [like]);
+  await conn.query('DELETE FROM users WHERE username LIKE ?', [like]);
+  await conn.query('DELETE FROM companies WHERE name LIKE ?', [like]);
 }
 
 const summary = () => ({ passes, failures });

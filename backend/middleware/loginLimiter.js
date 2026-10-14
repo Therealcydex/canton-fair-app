@@ -46,3 +46,40 @@ setInterval(() => {
 }, WINDOW_MS).unref();
 
 module.exports = { loginLimiter, MAX_FAILURES };
+
+// Sign-up (POST /api/signup) is public too. Per address, at most MAX_SIGNUPS sign-ups within
+// WINDOW_MS count: the accounts created (200) and the usernames found taken (409), so nobody can
+// fill the pending list or probe usernames in bulk. Invalid forms (400) do not count.
+const MAX_SIGNUPS = 20;
+const signups = new Map(); // ip -> { count, first }
+
+const currentSignups = (ip, now = Date.now()) => {
+  const e = signups.get(ip);
+  if (e && now - e.first > WINDOW_MS) {
+    signups.delete(ip);
+    return null;
+  }
+  return e || null;
+};
+
+const signupLimiter = (req, res, next) => {
+  const entry = currentSignups(req.ip);
+  if (entry && entry.count >= MAX_SIGNUPS) {
+    const minutes = Math.ceil((entry.first + WINDOW_MS - Date.now()) / 60000);
+    return fail(res, 429, `Trop de demandes d'inscription. Réessayez dans ${minutes} minute(s).`);
+  }
+  res.on('finish', () => {
+    if (res.statusCode !== 200 && res.statusCode !== 409) return;
+    const e = currentSignups(req.ip) || { count: 0, first: Date.now() };
+    e.count += 1;
+    signups.set(req.ip, e);
+  });
+  next();
+};
+
+setInterval(() => {
+  for (const ip of signups.keys()) currentSignups(ip);
+}, WINDOW_MS).unref();
+
+module.exports.signupLimiter = signupLimiter;
+module.exports.MAX_SIGNUPS = MAX_SIGNUPS;
