@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
-import { Link, useNavigate } from 'react-router-dom';
-import { Alert, App, Button, Input, Popconfirm, Select, Space, Table } from 'antd';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Alert, App, Button, Form, Input, Popconfirm, Select, Space, Table } from 'antd';
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import FormModal from '../../components/FormModal';
-import WechatQr from '../suppliers/WechatQr';
+import WechatQr, { QrThumb } from '../suppliers/WechatQr';
 import ContactFormFields, { contactPayload } from './ContactFormFields';
 
 const QR_FILTERS = [
@@ -31,9 +31,14 @@ const fileName = (header) => /filename="([^"]+)"/.exec(header || '')?.[1] || 'co
 export default function Contacts() {
   const { message } = App.useApp();
   const navigate = useNavigate();
+  const [urlParams] = useSearchParams();
   const [rows, setRows] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
-  const [filters, setFilters] = useState({});
+  // Opened from a supplier page: /contacts?supplier_id=3 starts filtered on that supplier.
+  const [filters, setFilters] = useState(() => {
+    const supplierId = Number(urlParams.get('supplier_id'));
+    return Number.isInteger(supplierId) && supplierId > 0 ? { supplier_id: supplierId } : {};
+  });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [editing, setEditing] = useState(null); // null = closed, {} = new, row = edit
@@ -46,8 +51,10 @@ export default function Contacts() {
     try {
       const { data } = await axios.get(`${API_BASE_URL}/contacts`, { params: JSON.parse(query) });
       setRows(data.data);
+      return data.data;
     } catch (err) {
       setLoadError(apiError(err, 'Erreur lors du chargement des contacts'));
+      return null;
     } finally {
       setLoading(false);
     }
@@ -59,6 +66,13 @@ export default function Contacts() {
   }, []);
 
   const set = (key) => (value) => setFilters((f) => ({ ...f, [key]: value || undefined }));
+
+  // After a QR change in the edit form: reload the table and show the new QR code in the form.
+  const qrChanged = async () => {
+    const fresh = await load();
+    const row = fresh?.find((c) => c.id === editing?.id);
+    if (row) setEditing(row);
+  };
 
   const remove = async (c) => {
     try {
@@ -114,8 +128,8 @@ export default function Contacts() {
     { title: 'Téléphone', dataIndex: 'phone', render: (v) => (v ? <a href={`tel:${v}`}>{v}</a> : '—') },
     { title: 'E-mail', dataIndex: 'email', responsive: ['md'], render: (v) => (v ? <a href={`mailto:${v}`}>{v}</a> : '—') },
     {
-      title: 'QR code WeChat', dataIndex: 'wechat_qr', width: 230,
-      render: (_, c) => <WechatQr supplierId={c.supplier_id} contact={c} onChanged={load} />,
+      title: 'QR code WeChat', dataIndex: 'wechat_qr', width: 130,
+      render: (v) => <QrThumb value={v} />,
     },
     {
       title: '', key: 'actions', width: 190,
@@ -145,6 +159,7 @@ export default function Contacts() {
         <Input.Search placeholder="Nom, téléphone, e-mail, fournisseur" allowClear style={{ width: 280 }}
           onSearch={set('q')} />
         <Select placeholder="Fournisseur" allowClear showSearch optionFilterProp="label" style={{ width: 240 }}
+          value={filters.supplier_id}
           options={suppliers.map((s) => ({ value: s.id, label: `${s.name} (n° ${s.id})` }))} onChange={set('supplier_id')} />
         <Select placeholder="QR code WeChat" allowClear style={{ width: 160 }} options={QR_FILTERS} onChange={set('has_qr')} />
       </Space>
@@ -160,6 +175,14 @@ export default function Contacts() {
           : axios.post(`${API_BASE_URL}/suppliers/${values.supplier_id}/contacts`, contactPayload(values)))}
         onSaved={() => { setEditing(null); message.success('Contact enregistré'); load(); }}>
         <ContactFormFields suppliers={editing?.id ? undefined : suppliers} />
+        {editing?.id ? (
+          <Form.Item label="QR code WeChat" className="mt-3 mb-0"
+            extra="Enregistré tout de suite, sans attendre le bouton « Enregistrer ».">
+            <WechatQr supplierId={editing.supplier_id} contact={editing} onChanged={qrChanged} size={120} />
+          </Form.Item>
+        ) : (
+          <p className="text-muted small mt-2 mb-0">Le QR code WeChat s'ajoute après l'enregistrement, avec « Modifier ».</p>
+        )}
       </FormModal>
     </>
   );

@@ -19,7 +19,6 @@ export default function ContactFormFields({ suppliers }) {
       <Form.Item name="email" label="E-mail" rules={[{ type: 'email', message: 'Adresse e-mail invalide' }]}>
         <Input maxLength={150} />
       </Form.Item>
-      <p className="text-muted small mb-0">Le QR code WeChat s'ajoute ensuite, dans la liste des contacts (photo du QR code).</p>
     </>
   );
 }

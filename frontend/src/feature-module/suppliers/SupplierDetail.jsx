@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Alert, App, Button, Descriptions, Popconfirm, Rate, Space, Spin, Table, Tabs } from 'antd';
+import { Alert, App, Button, Descriptions, Popconfirm, Rate, Space, Spin, Tabs } from 'antd';
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import FormModal from '../../components/FormModal';
 import SupplierFormFields from './SupplierFormFields';
-import WechatQr from './WechatQr';
-import ContactFormFields, { contactPayload } from '../contacts/ContactFormFields';
 import BoothList from '../booths/BoothList';
 import ProductList from '../products/ProductList';
 
@@ -21,7 +19,6 @@ export default function SupplierDetail() {
   const [supplier, setSupplier] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [editing, setEditing] = useState(false);
-  const [contact, setContact] = useState(null); // null = closed, {} = new, row = edit
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -45,52 +42,10 @@ export default function SupplierDetail() {
     }
   };
 
-  const removeContact = async (c) => {
-    try {
-      await axios.delete(`${API_BASE_URL}/suppliers/${id}/contacts/${c.id}`);
-      message.success('Contact supprimé');
-      load();
-    } catch (err) {
-      message.error(apiError(err, 'Erreur lors de la suppression'));
-    }
-  };
-
   if (loadError) return <Alert type="error" message={loadError} showIcon action={<Link to="/fournisseurs">Retour</Link>} />;
   if (!supplier) return <div className="text-center py-5"><Spin /></div>;
 
-  const contactColumns = [
-    { title: 'Nom', dataIndex: 'name' },
-    { title: 'Téléphone', dataIndex: 'phone' },
-    { title: 'E-mail', dataIndex: 'email', responsive: ['md'] },
-    {
-      title: 'QR code WeChat', dataIndex: 'wechat_qr', width: 230,
-      render: (_, c) => <WechatQr supplierId={supplier.id} contact={c} onChanged={load} />,
-    },
-    {
-      title: '', key: 'actions', width: 190,
-      render: (_, c) => (
-        <Space>
-          <Button size="small" onClick={() => setContact(c)}>Modifier</Button>
-          <Popconfirm title="Supprimer ce contact ?" okText="Supprimer" cancelText="Annuler" onConfirm={() => removeContact(c)}>
-            <Button size="small" danger>Supprimer</Button>
-          </Popconfirm>
-        </Space>
-      ),
-    },
-  ];
-
   const tabs = [
-    {
-      key: 'contacts',
-      label: `Contacts (${supplier.contacts.length})`,
-      children: (
-        <>
-          <Button className="mb-2" onClick={() => setContact({})}>Ajouter un contact</Button>
-          <Table rowKey="id" columns={contactColumns} dataSource={supplier.contacts} size="small"
-            pagination={false} scroll={{ x: true }} />
-        </>
-      ),
-    },
     {
       key: 'booths',
       label: 'Stands',
@@ -108,7 +63,11 @@ export default function SupplierDetail() {
       <Link to="/fournisseurs">← Fournisseurs</Link>
       <Space className="my-2 w-100 justify-content-between" wrap>
         <h1 className="h4 m-0">{supplier.name}</h1>
-        <Space>
+        <Space wrap>
+          {/* Contacts are managed on the Contacts page, filtered on this supplier. */}
+          <Link to={`/contacts?supplier_id=${supplier.id}`}>
+            <Button>Contacts ({supplier.contacts.length})</Button>
+          </Link>
           <Button onClick={() => setEditing(true)}>Modifier</Button>
           <Popconfirm title="Supprimer ce fournisseur ?"
             description="Ses contacts, ses produits et leurs photos seront supprimés ; ses stands restent, sans fournisseur."
@@ -142,14 +101,6 @@ export default function SupplierDetail() {
         <SupplierFormFields />
       </FormModal>
 
-      <FormModal open={!!contact} title={contact?.id ? 'Modifier le contact' : 'Nouveau contact'} initialValues={contact}
-        onCancel={() => setContact(null)}
-        onSubmit={(values) => (contact.id
-          ? axios.put(`${API_BASE_URL}/suppliers/${id}/contacts/${contact.id}`, contactPayload(values))
-          : axios.post(`${API_BASE_URL}/suppliers/${id}/contacts`, contactPayload(values)))}
-        onSaved={() => { setContact(null); message.success('Contact enregistré'); load(); }}>
-        <ContactFormFields />
-      </FormModal>
     </>
   );
 }

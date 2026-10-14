@@ -11,9 +11,17 @@ const MAX_MB = 8;
 // hand (a WeChat id) is not a link: it is shown as text.
 export const isQrPhoto = (value) => typeof value === 'string' && value.startsWith('/uploads/');
 
-// The WeChat QR code of a contact: the photo (click to enlarge and scan it), and buttons to add,
-// replace or remove it. The server checks the photo (type, size) and explains a refusal.
-export default function WechatQr({ supplierId, contact, onChanged }) {
+// The QR code alone (click to enlarge and scan it), for a table cell.
+export function QrThumb({ value, size = 56 }) {
+  if (isQrPhoto(value)) {
+    return <Image src={fileUrl(value)} width={size} height={size} style={{ objectFit: 'contain', background: '#fff' }} alt="QR code WeChat" />;
+  }
+  return value ? <span>{value}</span> : <span className="text-muted">—</span>;
+}
+
+// The WeChat QR code of a contact with its buttons: add, replace, remove. Used in the contact's
+// edit form. The server checks the photo (type, size) and explains a refusal.
+export default function WechatQr({ supplierId, contact, onChanged, size = 56 }) {
   const { message } = App.useApp();
   const [busy, setBusy] = useState(false);
   const url = `${API_BASE_URL}/suppliers/${supplierId}/contacts/${contact.id}/wechat-qr`;
@@ -24,7 +32,7 @@ export default function WechatQr({ supplierId, contact, onChanged }) {
     try {
       await request();
       message.success(success);
-      onChanged();
+      await onChanged();
     } catch (err) {
       message.error(apiError(err, fallback));
     } finally {
@@ -45,9 +53,7 @@ export default function WechatQr({ supplierId, contact, onChanged }) {
 
   return (
     <Space align="center" wrap>
-      {isQrPhoto(value)
-        ? <Image src={fileUrl(value)} width={56} height={56} style={{ objectFit: 'contain', background: '#fff' }} alt="QR code WeChat" />
-        : value && <span>{value}</span>}
+      {value && <QrThumb value={value} size={size} />}
       <Upload accept={ACCEPTED} showUploadList={false} beforeUpload={upload} disabled={busy}>
         <Button size="small" loading={busy}>{isQrPhoto(value) ? 'Remplacer' : 'Ajouter le QR'}</Button>
       </Upload>

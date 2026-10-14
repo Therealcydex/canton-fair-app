@@ -24,7 +24,7 @@ acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 | BF14 | Products shared with my company | À valider | API, navigateur |
 | BF15 | Mobile app | Partiel | Navigateur; the Android APK is still to build (Node 22) |
 | BF16 | Sign-up validated by the admin | À valider | API, navigateur (web and mobile sign-up, pending login refused, activation) |
-| BF17 | Contacts page, CSV export, QR code sheet | À valider | API (list, filters, export), navigateur (table, filters, add, edit, QR, delete, export content, QR sheet; the print preview itself was not opened) |
+| BF17 | Contacts page (QR code in the edit form), CSV export, QR code sheet | À valider | API (list, filters, export), navigateur (table, filters, supplier link, add, edit, QR replace and remove in the form, delete, export content, QR sheet; the print preview itself was not opened) |
 | BNF01 | Tenant isolation | Remplacé | Data shared by the group (schema v2) |
 | BNF02 | Token on every route except login and sign-up | À valider | API |
 | BNF03 | French refusal messages, no SQL | À valider | API (every refusal checked) |

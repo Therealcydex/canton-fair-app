@@ -47,7 +47,7 @@ none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercas
 | BF14 | A user sees the products shared with their own company | Moyenne |
 | BF15 | A mobile app gives buyers sign-up, the "to visit" list, one-tap "visited", quick product entry with a camera photo, and supplier lookup | Moyenne |
 | BF16 | A visitor signs up (name, company, username, password); the account is inactive until the admin activates it (or refuses it) | Haute |
-| BF17 | A user sees every contact of every supplier in one table (contact n°, supplier n° and name, name, phone, e-mail, WeChat QR code), searches and filters it (supplier, with or without QR code), adds, edits and deletes contacts there, exports the table as CSV for Excel and prints a sheet of the QR codes | Moyenne |
+| BF17 | Contacts are managed on one page: every contact of every supplier in a table (contact n°, supplier n° and name, name, phone, e-mail, WeChat QR code), with search and filters (supplier, with or without QR code); add, edit and delete there, the QR code being added, replaced or removed in the contact's edit form; CSV export for Excel; printable sheet of the QR codes. The supplier page links to its contacts on that page | Moyenne |
 
 ## 4. Non-functional requirements (BNF)
 
