@@ -5,10 +5,16 @@ require('./config/db');
 const { fail, serverError } = require('./utils/http');
 const { UPLOAD_ROOT } = require('./utils/upload');
 const app = express();
+app.disable('x-powered-by');
+
+// JWT_SECRET has no default (protected routes refuse every request without it); warn early.
+if (!process.env.JWT_SECRET) console.error('JWT_SECRET is not set: every login and protected route will be refused');
+else if (process.env.JWT_SECRET.length < 32) console.warn('JWT_SECRET is shorter than 32 characters: use a long random value');
 
 app.use(cors({ origin: '*', credentials: true, maxAge: 86400 })); // maxAge: avoid a preflight per call
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true }));
+// Photos go through multer (utils/upload.js); JSON bodies are small forms (D21).
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 app.use('/api', require('./routes/loginRoute'));
 app.use('/api/companies', require('./routes/companyRoutes'));
