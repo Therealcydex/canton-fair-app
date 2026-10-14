@@ -2,7 +2,7 @@
 // a missing field is checked like a present one. On update, `existing` supplies the values
 // the client did not send, so a partial body cannot skip a rule.
 //
-// Field spec: { label, type: 'string'|'text'|'email'|'int'|'decimal'|'bool'|'enum',
+// Field spec: { label, type: 'string'|'text'|'email'|'int'|'decimal'|'bool'|'enum'|'datetime',
 //               required, max (length), min/maxValue (numbers), values (enum), scale (decimal) }
 // Returns { values } or { message } (a French message for a 400).
 const { EMAIL_RE } = require('./http');
@@ -31,6 +31,15 @@ function readField(key, spec, raw) {
       const re = new RegExp(`^\\d{1,${(spec.precision ?? 12) - scale}}(\\.\\d{1,${scale}})?$`);
       if (!re.test(s)) return { error: `${label} : montant invalide (au plus ${scale} décimales, positif)` };
       return { value: s };
+    }
+    case 'datetime': {
+      // "YYYY-MM-DD HH:MM[:SS]" or with a "T": the local time at the fair, stored as written.
+      const m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/.exec(String(raw).trim());
+      const d = m && new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0)));
+      if (!m || d.getUTCMonth() !== +m[2] - 1 || d.getUTCDate() !== +m[3] || +m[4] > 23 || +m[5] > 59) {
+        return { error: `${label} : date et heure invalides (AAAA-MM-JJ HH:MM)` };
+      }
+      return { value: `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}:${m[6] || '00'}` };
     }
     case 'enum': {
       const s = String(raw).trim();

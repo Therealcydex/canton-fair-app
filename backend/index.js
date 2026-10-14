@@ -13,6 +13,8 @@ app.use('/api', require('./routes/loginRoute'));
 app.use('/api/companies', require('./routes/companyRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/suppliers', require('./routes/supplierRoutes'));
+app.use('/api/categories', require('./routes/categoryRoutes'));
+app.use('/api/booths', require('./routes/boothRoutes'));
 
 app.get('/', (req, res) => res.send('Backend is running!'));
 

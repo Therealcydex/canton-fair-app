@@ -70,6 +70,11 @@ Smart360 code conventions (`guide-nouveau-projet-smart360.md`) but uses none of 
 | D9 | Each request reloads the user from the token's id: a deactivated account or a changed level takes effect at once, not at token expiry | Deactivation must be immediate (BF01) |
 | D10 | A company admin can only give a level up to their own and cannot give the SUPER_ADMIN role; nobody can deactivate themselves or change their own level, role or company | Avoid privilege escalation and self lock-out |
 | D11 | Users are deactivated, never deleted | Visits and products keep their author |
+| D12 | Categories: at most 4 levels; a category cannot move under itself or one of its sub-categories; deleting one is refused while it has sub-categories or booths | Keep the tree usable; no booth silently loses its category |
+| D13 | A booth needs a hall and a start number. Two booths of the same company cannot overlap (same phase, hall, level, letter and overlapping numbers); other companies may record the same place | Avoid duplicate booths in a company's plan |
+| D14 | Recording a visit with the status "visite" takes the booth off the "to visit" list. A "visite" without a date is dated now. Only the author of a visit or a company admin can change or delete it | The "to visit" list stays current on the fair floor |
+| D15 | Visit times are stored and returned as written ("YYYY-MM-DD HH:MM:SS", the time at the fair), never converted between timezones | The fair is in China, the team in Tunisia |
+| D16 | Deleting a booth deletes its visits; it is refused while products are attached to it | Avoid losing products by accident |
 
 ## 6. Changelog
 
@@ -77,3 +82,4 @@ Smart360 code conventions (`guide-nouveau-projet-smart360.md`) but uses none of 
 |---|---|
 | 2026-10-13 | First draft from the diagram |
 | 2026-10-13 | Sprint 1: D9-D11 (authentication and user management) |
+| 2026-10-14 | Sprint 3: D12-D16 (categories, booths, visits) |

@@ -12,6 +12,9 @@ const connection = mysql.createPool({
   queueLimit: 0,
   // DECIMAL columns (price_tnd) come back as strings: never rounded through a float.
   decimalNumbers: false,
+  // DATETIME columns come back as "YYYY-MM-DD HH:MM:SS": the time at the fair, never shifted
+  // through the server's timezone.
+  dateStrings: true,
 });
 
 // Test the connection at startup
