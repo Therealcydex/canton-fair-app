@@ -1,4 +1,4 @@
-Partiel (API testée, écran à valider) |Partiel (API testée, écran à valider) |Partiel (API testée, écran à valider) |# Sourcing — status
+# Sourcing — status
 
 States: **Réalisé** (done and tested), **Partiel** (started), **À faire**, **À valider** (waiting for the PO).
 
