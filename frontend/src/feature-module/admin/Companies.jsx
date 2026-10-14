@@ -32,7 +32,7 @@ export default function Companies() {
   const open = (c) => {
     setFormError(null);
     setEditing(c || {});
-    form.setFieldsValue({ name: c?.name || '' });
+    form.setFieldsValue({ name: c?.name || '', branch: c?.branch || '' });
   };
 
   const save = async () => {
@@ -40,9 +40,10 @@ export default function Companies() {
     setSaving(true);
     setFormError(null);
     try {
-      if (editing.id) await axios.put(`${API_BASE_URL}/companies/${editing.id}`, values);
-      else await axios.post(`${API_BASE_URL}/companies`, values);
-      message.success(editing.id ? 'Société renommée' : 'Société créée');
+      const body = { ...values, branch: values.branch || null };
+      if (editing.id) await axios.put(`${API_BASE_URL}/companies/${editing.id}`, body);
+      else await axios.post(`${API_BASE_URL}/companies`, body);
+      message.success(editing.id ? 'Société modifiée' : 'Société créée');
       setEditing(null);
       load();
     } catch (err) {
@@ -64,13 +65,16 @@ export default function Companies() {
 
   const columns = [
     { title: 'Nom', dataIndex: 'name' },
+    { title: 'Branche', dataIndex: 'branch', render: (v) => v || '—' },
+    { title: 'Utilisateurs', dataIndex: 'users_count', width: 120 },
+    { title: 'Produits partagés', dataIndex: 'shared_products_count', width: 150 },
     {
       title: '', key: 'actions', width: 200,
       render: (_, c) => (
         <Space>
-          <Button size="small" onClick={() => open(c)}>Renommer</Button>
+          <Button size="small" onClick={() => open(c)}>Modifier</Button>
           <Popconfirm title="Supprimer cette société ?"
-            description="Refusé si elle a encore des utilisateurs ou des fournisseurs."
+            description="Ses utilisateurs restent, sans société ; les produits ne lui sont plus partagés."
             okText="Supprimer" cancelText="Annuler" onConfirm={() => remove(c)}>
             <Button size="small" danger>Supprimer</Button>
           </Popconfirm>
@@ -86,15 +90,18 @@ export default function Companies() {
         <Button type="primary" onClick={() => open(null)}>Nouvelle société</Button>
       </Space>
       {loadError && <Alert type="error" message={loadError} showIcon className="mb-3" />}
-      <Table rowKey="id" columns={columns} dataSource={companies} loading={loading} size="middle" pagination={false} />
+      <Table rowKey="id" columns={columns} dataSource={companies} loading={loading} size="middle" pagination={false} scroll={{ x: true }} />
 
-      <Modal open={!!editing} title={editing?.id ? 'Renommer la société' : 'Nouvelle société'}
+      <Modal open={!!editing} title={editing?.id ? 'Modifier la société' : 'Nouvelle société'}
         onCancel={() => setEditing(null)} onOk={save} okText="Enregistrer" cancelText="Annuler"
         confirmLoading={saving} destroyOnClose>
         {formError && <Alert type="error" message={formError} showIcon className="mb-3" />}
         <Form form={form} layout="vertical" requiredMark={false} onFinish={save}>
           <Form.Item name="name" label="Nom" rules={[{ required: true, whitespace: true, message: 'Le nom est obligatoire' }]}>
-            <Input maxLength={100} autoFocus />
+            <Input maxLength={150} autoFocus />
+          </Form.Item>
+          <Form.Item name="branch" label="Branche" extra="Facultatif, par exemple la ville">
+            <Input maxLength={150} />
           </Form.Item>
         </Form>
       </Modal>

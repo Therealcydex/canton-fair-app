@@ -7,13 +7,14 @@ import { apiError } from '../../utils/apiError';
 import FormModal from '../../components/FormModal';
 import SupplierFormFields from './SupplierFormFields';
 import { supplierPayload } from './SupplierDetail';
+import { useList } from '../../utils/lists';
 
 export default function Suppliers() {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
-  const [provinces, setProvinces] = useState([]);
-  const [filters, setFilters] = useState({ q: '', province: undefined });
+  const provinces = useList('provinces');
+  const [filters, setFilters] = useState({ q: '', province_id: undefined });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [creating, setCreating] = useState(false);
@@ -22,12 +23,8 @@ export default function Suppliers() {
     setLoading(true);
     setLoadError(null);
     try {
-      const [list, prov] = await Promise.all([
-        axios.get(`${API_BASE_URL}/suppliers`, { params: { q: filters.q || undefined, province: filters.province } }),
-        axios.get(`${API_BASE_URL}/suppliers/provinces`),
-      ]);
-      setRows(list.data.data);
-      setProvinces(prov.data.data);
+      const { data } = await axios.get(`${API_BASE_URL}/suppliers`, { params: { q: filters.q || undefined, province_id: filters.province_id } });
+      setRows(data.data);
     } catch (err) {
       setLoadError(apiError(err, 'Erreur lors du chargement des fournisseurs'));
     } finally {
@@ -43,7 +40,8 @@ export default function Suppliers() {
     { title: 'Téléphone', dataIndex: 'phone', responsive: ['md'] },
     { title: 'Note', dataIndex: 'rating', width: 150, render: (v) => (v ? <Rate disabled value={v} /> : '—') },
     { title: 'Contacts', dataIndex: 'contacts_count', width: 90, responsive: ['lg'] },
-    { title: 'Stands', dataIndex: 'booths_count', width: 80, responsive: ['lg'] },
+    { title: 'Stands', dataIndex: 'nbr_booths', width: 80, responsive: ['lg'] },
+    { title: 'Visités', dataIndex: 'booth_visit_pct', width: 90, render: (v) => (v === null ? '—' : `${v} %`) },
     { title: 'Produits', dataIndex: 'products_count', width: 90, responsive: ['lg'] },
   ];
 
@@ -56,9 +54,9 @@ export default function Suppliers() {
       <Space className="mb-3" wrap>
         <Input.Search placeholder="Rechercher par nom" allowClear style={{ width: 260 }}
           onSearch={(q) => setFilters((f) => ({ ...f, q }))} />
-        <Select placeholder="Province" allowClear style={{ width: 200 }} value={filters.province}
-          options={provinces.map((p) => ({ value: p, label: p }))}
-          onChange={(province) => setFilters((f) => ({ ...f, province }))} />
+        <Select placeholder="Province" allowClear showSearch optionFilterProp="label" style={{ width: 200 }} value={filters.province_id}
+          options={provinces.map((p) => ({ value: p.id, label: p.name_en }))}
+          onChange={(province_id) => setFilters((f) => ({ ...f, province_id }))} />
       </Space>
       {loadError && <Alert type="error" message={loadError} showIcon className="mb-3" />}
       <Table rowKey="id" columns={columns} dataSource={rows} loading={loading} size="middle"

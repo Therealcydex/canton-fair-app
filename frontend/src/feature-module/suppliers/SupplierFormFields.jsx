@@ -1,11 +1,13 @@
-import { Col, Form, Input, Rate, Row } from 'antd';
+import { Col, Form, Input, Rate, Row, Select } from 'antd';
+import { useList } from '../../utils/lists';
 
 // Fields of the supplier form; the server checks the same rules (name required, 1-5 rating…).
 export default function SupplierFormFields() {
+  const provinces = useList('provinces');
   return (
     <>
       <Form.Item name="name" label="Nom" rules={[{ required: true, whitespace: true, message: 'Le nom est obligatoire' }]}>
-        <Input maxLength={150} />
+        <Input maxLength={200} />
       </Form.Item>
       <Row gutter={12}>
         <Col xs={24} sm={12}>
@@ -17,10 +19,13 @@ export default function SupplierFormFields() {
           </Form.Item>
         </Col>
         <Col xs={24} sm={12}>
-          <Form.Item name="website" label="Site web"><Input maxLength={200} /></Form.Item>
+          <Form.Item name="website" label="Site web"><Input maxLength={255} /></Form.Item>
         </Col>
         <Col xs={24} sm={12}>
-          <Form.Item name="province" label="Province"><Input maxLength={100} /></Form.Item>
+          <Form.Item name="province_id" label="Province">
+            <Select allowClear showSearch optionFilterProp="label" placeholder="Province chinoise"
+              options={provinces.map((p) => ({ value: p.id, label: `${p.name_en} ${p.name_zh}` }))} />
+          </Form.Item>
         </Col>
       </Row>
       <Form.Item name="address" label="Adresse"><Input.TextArea rows={2} /></Form.Item>

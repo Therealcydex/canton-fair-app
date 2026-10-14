@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Alert, Button, Card, Form, Input } from 'antd';
 import { useAuth } from '../../context/AuthContext';
 import { apiError } from '../../utils/apiError';
@@ -40,6 +40,9 @@ export default function Login() {
             <Input.Password autoComplete="current-password" />
           </Form.Item>
           <Button type="primary" htmlType="submit" block loading={loading}>Se connecter</Button>
+          <div className="text-center mt-3">
+            Pas encore de compte ? <Link to="/inscription">Créer un compte</Link>
+          </div>
         </Form>
       </Card>
     </div>

@@ -2,65 +2,49 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Col, Form, Input, InputNumber, Row, Select } from 'antd';
 import { API_BASE_URL } from '../../config/config';
+import { useList } from '../../utils/lists';
 
-// Fields of the product form. The booth list follows the chosen supplier: the server
-// refuses a booth of another supplier (D19).
+// Fields of the product form. The server checks the same rules (price with 2 decimals at most,
+// a shipping type of the list) and explains a refusal.
 export default function ProductFormFields({ lockSupplier }) {
-  const form = Form.useFormInstance();
   const [suppliers, setSuppliers] = useState([]);
-  const [booths, setBooths] = useState([]);
-  const [incoterms, setIncoterms] = useState([]);
-  const supplierId = Form.useWatch('supplier_id', form);
+  const shippingTypes = useList('shipping-types');
 
   useEffect(() => {
     axios.get(`${API_BASE_URL}/suppliers`).then((r) => setSuppliers(r.data.data)).catch(() => {});
-    axios.get(`${API_BASE_URL}/products/incoterms`).then((r) => setIncoterms(r.data.data)).catch(() => {});
   }, []);
-
-  useEffect(() => {
-    if (!supplierId) { setBooths([]); return; }
-    axios.get(`${API_BASE_URL}/booths`, { params: { supplier_id: supplierId } })
-      .then((r) => setBooths(r.data.data)).catch(() => setBooths([]));
-  }, [supplierId]);
 
   return (
     <>
       <Form.Item name="name" label="Nom" rules={[{ required: true, whitespace: true, message: 'Le nom est obligatoire' }]}>
-        <Input maxLength={150} />
+        <Input maxLength={200} />
       </Form.Item>
       <Row gutter={12}>
         <Col xs={24} sm={12}>
-          <Form.Item name="supplier_id" label="Fournisseur" rules={[{ required: true, message: 'Choisissez un fournisseur' }]}>
-            <Select showSearch optionFilterProp="label" disabled={lockSupplier} placeholder="Fournisseur"
-              options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
-              onChange={() => form.setFieldValue('booth_id', null)} />
-          </Form.Item>
-        </Col>
-        <Col xs={24} sm={12}>
-          <Form.Item name="booth_id" label="Stand" extra={supplierId && booths.length === 0 ? 'Aucun stand pour ce fournisseur' : ''}>
-            <Select allowClear placeholder="Stand (facultatif)" disabled={!supplierId}
-              options={booths.map((b) => ({ value: b.id, label: `${b.location}${b.phase ? ` · phase ${b.phase}` : ''}` }))} />
+          <Form.Item name="supplier_id" label="Fournisseur">
+            <Select showSearch allowClear optionFilterProp="label" disabled={lockSupplier} placeholder="Aucun"
+              options={suppliers.map((s) => ({ value: s.id, label: s.name }))} />
           </Form.Item>
         </Col>
         <Col xs={24} sm={12}>
           <Form.Item name="supplier_ref" label="Référence fournisseur"><Input maxLength={100} /></Form.Item>
         </Col>
         <Col xs={24} sm={12}>
-          <Form.Item name="price_tnd" label="Prix (TND)"
-            rules={[{ pattern: /^\d{1,9}([.,]\d{1,3})?$/, message: 'Montant positif, 3 décimales au plus' }]}>
-            <Input inputMode="decimal" placeholder="12,500" />
+          <Form.Item name="price" label="Prix"
+            rules={[{ pattern: /^\d{1,10}([.,]\d{1,2})?$/, message: 'Montant positif, 2 décimales au plus' }]}>
+            <Input inputMode="decimal" placeholder="12,50" />
           </Form.Item>
         </Col>
-        <Col xs={12} sm={8}>
+        <Col xs={24} sm={12}>
+          <Form.Item name="shipping_type" label="Type d'expédition (Incoterm)">
+            <Select options={shippingTypes.map((s) => ({ value: s.code, label: `${s.code} — ${s.name}` }))} />
+          </Form.Item>
+        </Col>
+        <Col xs={12}>
           <Form.Item name="unit" label="Unité"><Input maxLength={30} placeholder="pièce, carton…" /></Form.Item>
         </Col>
-        <Col xs={12} sm={8}>
+        <Col xs={12}>
           <Form.Item name="moq" label="MOQ"><InputNumber min={1} className="w-100" /></Form.Item>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Form.Item name="incoterm" label="Incoterm">
-            <Select allowClear options={incoterms.map((i) => ({ value: i, label: i }))} />
-          </Form.Item>
         </Col>
       </Row>
       <Form.Item name="description" label="Description"><Input.TextArea rows={4} /></Form.Item>
@@ -71,8 +55,7 @@ export default function ProductFormFields({ lockSupplier }) {
 // Form values -> API body: empty optional fields are sent as null so they can be cleared.
 export const productPayload = (v) => ({
   ...v,
-  booth_id: v.booth_id ?? null,
-  price_tnd: v.price_tnd ? String(v.price_tnd).replace(',', '.') : null,
+  supplier_id: v.supplier_id ?? null,
+  price: v.price ? String(v.price).replace(',', '.') : null,
   moq: v.moq ?? null,
-  incoterm: v.incoterm ?? null,
 });

@@ -1,19 +1,28 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
-import { Alert, App, Button, Form, Input, InputNumber, Modal, Select, Space, Switch, Table, Tag, Tooltip } from 'antd';
+import { Alert, App, Badge, Button, Form, Input, Modal, Popconfirm, Select, Space, Switch, Table, Tabs, Tag } from 'antd';
 import { API_BASE_URL } from '../../config/config';
 import { useAuth } from '../../context/AuthContext';
-import { isSuperAdmin } from '../../utils/access';
 import { apiError } from '../../utils/apiError';
+import { companyLabel } from '../../utils/lists';
 
-const MAX_LEVEL = 9;
+const ROLES = [
+  { value: 'ACHETEUR', label: 'Acheteur' },
+  { value: 'ADMIN', label: 'Administrateur' },
+];
+
+// "2026-10-14 09:05:00" -> "14/10/2026 09:05"
+const formatDate = (s) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(s || '');
+  return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}` : '—';
+};
 
 export default function Users() {
   const { user: me } = useAuth();
   const { message } = App.useApp();
-  const superAdmin = isSuperAdmin(me);
   const [users, setUsers] = useState([]);
   const [companies, setCompanies] = useState([]);
+  const [tab, setTab] = useState('all');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [editing, setEditing] = useState(null); // null = closed, {} = new, user = edit
@@ -25,27 +34,33 @@ export default function Users() {
     setLoading(true);
     setLoadError(null);
     try {
-      const { data } = await axios.get(`${API_BASE_URL}/users`);
-      setUsers(data.data);
-      if (superAdmin) {
-        const res = await axios.get(`${API_BASE_URL}/companies`);
-        setCompanies(res.data.data);
-      }
+      const [u, c] = await Promise.all([
+        axios.get(`${API_BASE_URL}/users`),
+        axios.get(`${API_BASE_URL}/companies`),
+      ]);
+      setUsers(u.data.data);
+      setCompanies(c.data.data);
     } catch (err) {
       setLoadError(apiError(err, 'Erreur lors du chargement des utilisateurs'));
     } finally {
       setLoading(false);
     }
-  }, [superAdmin]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const pending = users.filter((u) => !u.is_active);
+  // Pending tab: sign-ups waiting for the admin, newest first.
+  const shown = tab === 'pending'
+    ? [...pending].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+    : users;
 
   const open = (u) => {
     setFormError(null);
     setEditing(u || {});
     form.setFieldsValue(u
-      ? { ...u, active: !!u.active, password: '' }
-      : { name: '', username: '', password: '', level: 1, role: 'ACHETEUR', active: true, company_id: me.company_id });
+      ? { ...u, is_active: !!u.is_active, password: '' }
+      : { name: '', username: '', password: '', level: '', role: 'ACHETEUR', is_active: true, company_id: undefined });
   };
 
   const save = async () => {
@@ -53,8 +68,9 @@ export default function Users() {
     setSaving(true);
     setFormError(null);
     try {
-      if (editing.id) await axios.put(`${API_BASE_URL}/users/${editing.id}`, values);
-      else await axios.post(`${API_BASE_URL}/users`, values);
+      const body = { ...values, company_id: values.company_id ?? null };
+      if (editing.id) await axios.put(`${API_BASE_URL}/users/${editing.id}`, body);
+      else await axios.post(`${API_BASE_URL}/users`, body);
       message.success(editing.id ? 'Utilisateur modifié' : 'Utilisateur créé');
       setEditing(null);
       load();
@@ -65,32 +81,53 @@ export default function Users() {
     }
   };
 
+  const activate = async (u) => {
+    try {
+      await axios.put(`${API_BASE_URL}/users/${u.id}`, { is_active: 1 });
+      message.success(`${u.name} peut maintenant se connecter`);
+      load();
+    } catch (err) {
+      message.error(apiError(err, "Erreur lors de l'activation"));
+    }
+  };
+
+  const remove = async (u) => {
+    try {
+      await axios.delete(`${API_BASE_URL}/users/${u.id}`);
+      message.success(u.is_active ? 'Utilisateur supprimé' : 'Inscription refusée');
+      load();
+    } catch (err) {
+      message.error(apiError(err, 'Erreur lors de la suppression'));
+    }
+  };
+
   const isSelf = editing?.id === me.id;
-  // A company admin cannot give a level above their own (the server refuses it too).
-  const maxLevel = superAdmin ? MAX_LEVEL : me.level;
 
   const columns = [
     { title: 'Nom', dataIndex: 'name', sorter: (a, b) => a.name.localeCompare(b.name) },
     { title: 'Utilisateur', dataIndex: 'username' },
-    superAdmin && { title: 'Société', dataIndex: 'company_name' },
-    { title: 'Niveau', dataIndex: 'level', width: 90 },
-    { title: 'Rôle', dataIndex: 'role' },
+    { title: 'Société', key: 'company', render: (_, u) => (u.company_id ? companyLabel({ name: u.company_name, branch: u.company_branch }) : '—') },
+    { title: 'Niveau', dataIndex: 'level', render: (v) => v || '—' },
+    { title: 'Rôle', dataIndex: 'role', render: (v) => ROLES.find((r) => r.value === v)?.label || v },
+    tab === 'pending'
+      ? { title: 'Demandé le', dataIndex: 'created_at', render: formatDate }
+      : { title: 'Statut', dataIndex: 'is_active', render: (v) => (v ? <Tag color="green">Actif</Tag> : <Tag color="orange">Inactif</Tag>) },
     {
-      title: 'Statut', dataIndex: 'active', width: 100,
-      render: (v) => (v ? <Tag color="green">Actif</Tag> : <Tag>Inactif</Tag>),
+      title: '', key: 'actions', width: 260,
+      render: (_, u) => (
+        <Space wrap>
+          {!u.is_active && <Button size="small" type="primary" onClick={() => activate(u)}>Activer</Button>}
+          <Button size="small" onClick={() => open(u)}>Modifier</Button>
+          {u.id !== me.id && (
+            <Popconfirm title={u.is_active ? 'Supprimer cet utilisateur ?' : 'Refuser cette inscription ?'}
+              description="Le compte est supprimé." okText="Supprimer" cancelText="Annuler" onConfirm={() => remove(u)}>
+              <Button size="small" danger>{u.is_active ? 'Supprimer' : 'Refuser'}</Button>
+            </Popconfirm>
+          )}
+        </Space>
+      ),
     },
-    {
-      title: '', key: 'actions', width: 110,
-      render: (_, u) => {
-        const locked = !superAdmin && u.level > me.level;
-        return (
-          <Tooltip title={locked ? 'Utilisateur de niveau supérieur au vôtre' : ''}>
-            <Button size="small" disabled={locked} onClick={() => open(u)}>Modifier</Button>
-          </Tooltip>
-        );
-      },
-    },
-  ].filter(Boolean);
+  ];
 
   return (
     <>
@@ -99,16 +136,21 @@ export default function Users() {
         <Button type="primary" onClick={() => open(null)}>Nouvel utilisateur</Button>
       </Space>
       {loadError && <Alert type="error" message={loadError} showIcon className="mb-3" />}
-      <Table rowKey="id" columns={columns} dataSource={users} loading={loading}
-        size="middle" scroll={{ x: true }} pagination={{ pageSize: 20 }} />
+      <Tabs activeKey={tab} onChange={setTab} items={[
+        { key: 'all', label: 'Tous' },
+        { key: 'pending', label: <Badge count={pending.length} size="small" offset={[10, 0]}>En attente de validation</Badge> },
+      ]} />
+      <Table rowKey="id" columns={columns} dataSource={shown} loading={loading}
+        size="middle" scroll={{ x: true }} pagination={{ pageSize: 20 }}
+        locale={{ emptyText: tab === 'pending' ? 'Aucune inscription en attente' : 'Aucun utilisateur' }} />
 
       <Modal open={!!editing} title={editing?.id ? "Modifier l'utilisateur" : 'Nouvel utilisateur'}
         onCancel={() => setEditing(null)} onOk={save} okText="Enregistrer" cancelText="Annuler"
         confirmLoading={saving} destroyOnClose>
         {formError && <Alert type="error" message={formError} showIcon className="mb-3" />}
         <Form form={form} layout="vertical" requiredMark={false}>
-          <Form.Item name="name" label="Nom" rules={[{ required: true, message: 'Le nom est obligatoire' }]}>
-            <Input maxLength={100} />
+          <Form.Item name="name" label="Nom" rules={[{ required: true, whitespace: true, message: 'Le nom est obligatoire' }]}>
+            <Input maxLength={150} />
           </Form.Item>
           <Form.Item name="username" label="Nom d'utilisateur"
             rules={[{ required: true, message: "Le nom d'utilisateur est obligatoire" }]}>
@@ -119,22 +161,18 @@ export default function Users() {
             rules={editing?.id ? [] : [{ required: true, message: 'Le mot de passe est obligatoire' }]}>
             <Input.Password autoComplete="new-password" />
           </Form.Item>
-          {superAdmin && (
-            <Form.Item name="company_id" label="Société" extra={isSelf ? 'Vous ne pouvez pas changer votre propre société' : ''}>
-              <Select disabled={isSelf} options={companies.map((c) => ({ value: c.id, label: c.name }))} />
-            </Form.Item>
-          )}
+          <Form.Item name="company_id" label="Société">
+            <Select allowClear placeholder="Aucune" showSearch optionFilterProp="label"
+              options={companies.map((c) => ({ value: c.id, label: companyLabel(c) }))} />
+          </Form.Item>
+          <Form.Item name="level" label="Niveau" extra="Texte libre, par exemple « Chef des achats »">
+            <Input maxLength={50} />
+          </Form.Item>
           <Space size="large" wrap>
-            <Form.Item name="level" label="Niveau" extra={`1 à ${maxLevel}${isSelf ? ' — pas le vôtre' : ''}`}>
-              <InputNumber min={1} max={maxLevel} disabled={isSelf} />
+            <Form.Item name="role" label="Rôle" extra={isSelf ? 'Pas le vôtre' : ''}>
+              <Select disabled={isSelf} style={{ minWidth: 180 }} options={ROLES} />
             </Form.Item>
-            <Form.Item name="role" label="Rôle">
-              <Select disabled={isSelf} style={{ minWidth: 160 }} options={[
-                { value: 'ACHETEUR', label: 'Acheteur' },
-                ...(superAdmin ? [{ value: 'SUPER_ADMIN', label: 'Super-admin' }] : []),
-              ]} />
-            </Form.Item>
-            <Form.Item name="active" label="Actif" valuePropName="checked"
+            <Form.Item name="is_active" label="Actif" valuePropName="checked"
               extra={isSelf ? 'Vous ne pouvez pas vous désactiver' : ''}>
               <Switch disabled={isSelf} />
             </Form.Item>

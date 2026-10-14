@@ -9,8 +9,8 @@ import SupplierFormFields from './SupplierFormFields';
 import BoothList from '../booths/BoothList';
 import ProductList from '../products/ProductList';
 
-// antd's Rate gives 0 when cleared; the API expects no rating (null) or 1 to 5.
-export const supplierPayload = (values) => ({ ...values, rating: values.rating || null });
+// antd's Rate gives 0 when cleared and a cleared Select gives undefined; the API expects null.
+export const supplierPayload = (values) => ({ ...values, rating: values.rating || null, province_id: values.province_id ?? null });
 
 export default function SupplierDetail() {
   const { id } = useParams();
@@ -106,7 +106,7 @@ export default function SupplierDetail() {
         <Space>
           <Button onClick={() => setEditing(true)}>Modifier</Button>
           <Popconfirm title="Supprimer ce fournisseur ?"
-            description="Ses contacts seront supprimés. Refusé s'il a encore des stands ou des produits."
+            description="Ses contacts, ses produits et leurs photos seront supprimés ; ses stands restent, sans fournisseur."
             okText="Supprimer" cancelText="Annuler" onConfirm={remove}>
             <Button danger>Supprimer</Button>
           </Popconfirm>
@@ -115,6 +115,7 @@ export default function SupplierDetail() {
 
       <Descriptions bordered size="small" column={{ xs: 1, sm: 1, md: 2 }} className="mb-3">
         <Descriptions.Item label="Province">{supplier.province || '—'}</Descriptions.Item>
+        <Descriptions.Item label="Stands visités">{supplier.nbr_booths ? `${supplier.booth_visit_pct} % de ${supplier.nbr_booths} stand(s)` : 'Aucun stand'}</Descriptions.Item>
         <Descriptions.Item label="Note">{supplier.rating ? <Rate disabled value={supplier.rating} /> : '—'}</Descriptions.Item>
         <Descriptions.Item label="Téléphone">{supplier.phone || '—'}</Descriptions.Item>
         <Descriptions.Item label="E-mail">{supplier.email || '—'}</Descriptions.Item>
@@ -142,8 +143,8 @@ export default function SupplierDetail() {
           ? axios.put(`${API_BASE_URL}/suppliers/${id}/contacts/${contact.id}`, values)
           : axios.post(`${API_BASE_URL}/suppliers/${id}/contacts`, values))}
         onSaved={() => { setContact(null); message.success('Contact enregistré'); load(); }}>
-        <Form.Item name="name" label="Nom" rules={[{ required: true, whitespace: true, message: 'Le nom est obligatoire' }]}>
-          <Input maxLength={100} />
+        <Form.Item name="name" label="Nom" extra="Renseignez au moins un champ">
+          <Input maxLength={150} />
         </Form.Item>
         <Form.Item name="phone" label="Téléphone"><Input maxLength={50} /></Form.Item>
         <Form.Item name="email" label="E-mail" rules={[{ type: 'email', message: 'Adresse e-mail invalide' }]}>

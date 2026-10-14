@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
-import { Alert, App, Button, Image, Table, Tag } from 'antd';
+import { Alert, App, Button, Image, Table, Tooltip } from 'antd';
 import { API_BASE_URL, fileUrl } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import { formatPrice } from '../../utils/format';
 import FormModal from '../../components/FormModal';
 import ProductFormFields, { productPayload } from './ProductFormFields';
 
-// Table of products for the given API filters. `shared` lists the products other
-// companies share with ours (read only, no "new product").
-export default function ProductList({ filters, supplierId, boothId, shared }) {
+// Table of products for the given API filters, with "new product".
+export default function ProductList({ filters, supplierId }) {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
@@ -18,7 +17,7 @@ export default function ProductList({ filters, supplierId, boothId, shared }) {
   const [loadError, setLoadError] = useState(null);
   const [creating, setCreating] = useState(false);
 
-  const query = JSON.stringify({ ...filters, supplier_id: supplierId, booth_id: boothId, scope: shared ? 'shared' : undefined });
+  const query = JSON.stringify({ ...filters, supplier_id: supplierId });
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
@@ -50,26 +49,26 @@ export default function ProductList({ filters, supplierId, boothId, shared }) {
         </>
       ),
     },
-    { title: 'Prix', dataIndex: 'price_tnd', render: (v, p) => <>{formatPrice(v)}{p.unit ? <span className="text-muted"> / {p.unit}</span> : null}</> },
+    { title: 'Prix', dataIndex: 'price', render: (v, p) => <>{formatPrice(v)}{p.unit ? <span className="text-muted"> / {p.unit}</span> : null}</> },
     { title: 'MOQ', dataIndex: 'moq', width: 80, render: (v) => v ?? '—' },
-    { title: 'Incoterm', dataIndex: 'incoterm', width: 90, responsive: ['md'], render: (v) => v || '—' },
-    !supplierId && { title: 'Fournisseur', dataIndex: 'supplier_name', responsive: ['md'] },
-    !boothId && { title: 'Stand', dataIndex: 'booth_location', responsive: ['lg'], render: (v) => v || '—' },
-    shared
-      ? { title: 'Partagé par', dataIndex: 'owner_company_name' }
-      : { title: 'Partage', dataIndex: 'shares_count', width: 100, responsive: ['lg'], render: (n) => (n ? <Tag color="purple">{n} société(s)</Tag> : '—') },
+    {
+      title: 'Expédition', dataIndex: 'shipping_type', width: 100, responsive: ['md'],
+      render: (v, p) => (v ? <Tooltip title={p.shipping_name}>{v}</Tooltip> : '—'),
+    },
+    !supplierId && { title: 'Fournisseur', dataIndex: 'supplier_name', responsive: ['md'], render: (v) => v || '—' },
+    { title: 'Partagé avec', dataIndex: 'shared_with', responsive: ['lg'], render: (v) => v || '—' },
   ].filter(Boolean);
 
   return (
     <>
-      {!shared && <Button className="mb-2" onClick={() => setCreating(true)}>Nouveau produit</Button>}
+      <Button className="mb-2" onClick={() => setCreating(true)}>Nouveau produit</Button>
       {loadError && <Alert type="error" message={loadError} showIcon className="mb-3" />}
       <Table rowKey="id" columns={columns} dataSource={rows} loading={loading} size="middle"
         scroll={{ x: true }} pagination={{ pageSize: 30 }}
-        locale={{ emptyText: shared ? 'Aucun produit partagé avec votre société' : 'Aucun produit' }} />
+        locale={{ emptyText: filters?.mine ? 'Aucun produit partagé avec votre société' : 'Aucun produit' }} />
 
       <FormModal open={creating} title="Nouveau produit" width={720}
-        initialValues={{ supplier_id: supplierId, booth_id: boothId }}
+        initialValues={{ supplier_id: supplierId, shipping_type: 'FOB' }}
         onCancel={() => setCreating(false)}
         onSubmit={(values) => axios.post(`${API_BASE_URL}/products`, productPayload(values))}
         onSaved={(res) => {

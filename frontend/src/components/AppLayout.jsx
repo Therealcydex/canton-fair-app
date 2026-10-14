@@ -1,7 +1,8 @@
 import { Container, Nav, Navbar, NavDropdown } from 'react-bootstrap';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { isCompanyAdmin, isSuperAdmin } from '../utils/access';
+import { isAdmin } from '../utils/access';
+import { companyLabel } from '../utils/lists';
 
 // Menu entries; `show` hides an entry the user cannot use (the server refuses anyway).
 const MENU = [
@@ -9,13 +10,11 @@ const MENU = [
   { to: '/fournisseurs', label: 'Fournisseurs' },
   { to: '/a-visiter', label: 'À visiter' },
   { to: '/stands', label: 'Stands' },
-  { to: '/visites', label: 'Visites' },
   { to: '/produits', label: 'Produits' },
 ];
 const ADMIN_MENU = [
-  { to: '/admin/utilisateurs', label: 'Utilisateurs', show: isCompanyAdmin },
-  { to: '/admin/societes', label: 'Sociétés', show: isSuperAdmin },
-  { to: '/admin/categories', label: 'Catégories', show: isSuperAdmin },
+  { to: '/admin/utilisateurs', label: 'Utilisateurs', show: isAdmin },
+  { to: '/admin/societes', label: 'Sociétés', show: isAdmin },
 ];
 
 export default function AppLayout() {
@@ -43,7 +42,7 @@ export default function AppLayout() {
               )}
             </Nav>
             <Nav>
-              <NavDropdown align="end" title={`${user.name} · ${user.company_name}`} id="user-menu">
+              <NavDropdown align="end" title={user.company_name ? `${user.name} · ${companyLabel({ name: user.company_name, branch: user.company_branch })}` : user.name} id="user-menu">
                 <NavDropdown.Item onClick={() => { logout(); navigate('/login'); }}>Se déconnecter</NavDropdown.Item>
               </NavDropdown>
             </Nav>

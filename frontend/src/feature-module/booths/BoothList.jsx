@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
-import { Alert, App, Button, Popconfirm, Space, Table, Tag } from 'antd';
+import { Alert, App, Button, Switch, Table, Tag, Tooltip } from 'antd';
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
-import { VISIT_STATUS, formatDateTime } from '../../utils/format';
 import FormModal from '../../components/FormModal';
 import BoothFormFields, { boothPayload } from './BoothFormFields';
 
-// Table of booths for the given API filters, with "new booth" and, for the planning view,
-// a quick "Visité" action. Used by the booth pages and by the supplier page.
+// Table of booths for the given API filters, with "new booth" and a "visited" switch on each row.
+// Used by the booth pages and by the supplier page.
 export default function BoothList({ filters, supplierId, planning, hideSupplier, onChanged }) {
   const { message } = App.useApp();
   const navigate = useNavigate();
@@ -34,51 +33,42 @@ export default function BoothList({ filters, supplierId, planning, hideSupplier,
 
   useEffect(() => { load(); }, [load]);
 
-  const markVisited = async (booth) => {
+  const setVisited = async (booth, visited) => {
     try {
-      await axios.post(`${API_BASE_URL}/booths/${booth.id}/visits`, { status: 'visite' });
-      message.success(`${booth.supplier_name} : visite enregistrée`);
+      await axios.patch(`${API_BASE_URL}/booths/${booth.id}/visited`, { visited });
+      message.success(`${booth.booth_code} : ${visited ? 'visité' : 'à visiter'}`);
       load();
       onChanged?.();
     } catch (err) {
-      message.error(apiError(err, "Erreur lors de l'enregistrement de la visite"));
+      message.error(apiError(err, "Erreur lors de l'enregistrement"));
     }
   };
 
   const columns = [
     {
-      title: 'Emplacement', dataIndex: 'location',
+      title: 'Stand', dataIndex: 'booth_code',
       render: (v, b) => <Link to={`/stands/${b.id}`}><strong>{v}</strong></Link>,
     },
-    { title: 'Phase', dataIndex: 'phase', width: 70, render: (v) => v ?? '—' },
     !hideSupplier && {
       title: 'Fournisseur', dataIndex: 'supplier_name',
-      render: (v, b) => <Link to={`/fournisseurs/${b.supplier_id}`}>{v}</Link>,
-    },
-    { title: 'Catégorie', dataIndex: 'category_name', responsive: ['md'], render: (v) => v || '—' },
-    {
-      title: 'Statut', key: 'status', width: 170,
-      render: (_, b) => (
-        <Space size={4} wrap>
-          {b.to_visit ? <Tag color="orange">À visiter</Tag> : null}
-          {b.last_status && <Tag color={VISIT_STATUS[b.last_status]?.color}>{VISIT_STATUS[b.last_status]?.label}</Tag>}
-        </Space>
-      ),
+      render: (v, b) => (b.supplier_id ? <Link to={`/fournisseurs/${b.supplier_id}`}>{v}</Link> : '—'),
     },
     {
-      title: 'Dernière visite', dataIndex: 'last_visited_at', responsive: ['lg'],
-      render: (v) => (v ? formatDateTime(v) : '—'),
+      title: 'Catégorie', key: 'category', responsive: ['md'],
+      render: (_, b) => (b.sub_category
+        ? <Tooltip title={`${b.category} › ${b.section}`}>{b.sub_category}</Tooltip>
+        : '—'),
     },
-    { title: 'Produits', dataIndex: 'products_count', width: 90, responsive: ['lg'] },
-    planning && {
-      title: '', key: 'visit', width: 110,
-      render: (_, b) => (
-        <Popconfirm title={`Visite du stand ${b.location} faite ?`} okText="Oui, visité" cancelText="Annuler"
-          onConfirm={() => markVisited(b)}>
-          <Button size="small" type="primary">Visité</Button>
-        </Popconfirm>
+    {
+      title: 'Visité', dataIndex: 'visited', width: 130,
+      render: (v, b) => (
+        <span className="d-inline-flex align-items-center gap-2">
+          <Switch size="small" checked={!!v} onChange={(checked) => setVisited(b, checked)} />
+          {v ? <Tag color="green">Visité</Tag> : <Tag color="orange">À visiter</Tag>}
+        </span>
       ),
     },
+    { title: 'Commentaire', dataIndex: 'comment', responsive: ['lg'], ellipsis: true, render: (v) => v || '—' },
   ].filter(Boolean);
 
   return (
@@ -90,12 +80,12 @@ export default function BoothList({ filters, supplierId, planning, hideSupplier,
         locale={{ emptyText: planning ? 'Aucun stand à visiter' : 'Aucun stand' }} />
 
       <FormModal open={creating} title="Nouveau stand" width={640}
-        initialValues={{ supplier_id: supplierId, to_visit: !!planning }}
+        initialValues={{ supplier_id: supplierId, visited: false, floor: 1 }}
         onCancel={() => setCreating(false)}
         onSubmit={(values) => axios.post(`${API_BASE_URL}/booths`, boothPayload(values))}
         onSaved={(res) => {
           setCreating(false);
-          message.success('Stand créé');
+          message.success(`Stand ${res.data.data.booth_code} créé`);
           if (supplierId) { load(); onChanged?.(); } else navigate(`/stands/${res.data.data.id}`);
         }}>
         <BoothFormFields lockSupplier={!!supplierId} />
