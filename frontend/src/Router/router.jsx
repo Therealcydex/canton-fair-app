@@ -8,6 +8,10 @@ import Users from '../feature-module/admin/Users';
 import Companies from '../feature-module/admin/Companies';
 import Suppliers from '../feature-module/suppliers/Suppliers';
 import SupplierDetail from '../feature-module/suppliers/SupplierDetail';
+import Booths from '../feature-module/booths/Booths';
+import BoothDetail from '../feature-module/booths/BoothDetail';
+import Visits from '../feature-module/booths/Visits';
+import Categories from '../feature-module/admin/Categories';
 
 // One route per page; module pages live in src/feature-module/<module>/.
 export default function AppRouter() {
@@ -20,11 +24,16 @@ export default function AppRouter() {
             <Route path="/" element={<Accueil />} />
             <Route path="/fournisseurs" element={<Suppliers />} />
             <Route path="/fournisseurs/:id" element={<SupplierDetail />} />
+            <Route path="/a-visiter" element={<Booths planning key="planning" />} />
+            <Route path="/stands" element={<Booths key="all" />} />
+            <Route path="/stands/:id" element={<BoothDetail />} />
+            <Route path="/visites" element={<Visits />} />
             <Route element={<RequireAccess allow={isCompanyAdmin} />}>
               <Route path="/admin/utilisateurs" element={<Users />} />
             </Route>
             <Route element={<RequireAccess allow={isSuperAdmin} />}>
               <Route path="/admin/societes" element={<Companies />} />
+              <Route path="/admin/categories" element={<Categories />} />
             </Route>
           </Route>
         </Route>

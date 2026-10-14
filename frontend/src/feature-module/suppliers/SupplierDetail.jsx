@@ -6,6 +6,7 @@ import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import FormModal from '../../components/FormModal';
 import SupplierFormFields from './SupplierFormFields';
+import BoothList from '../booths/BoothList';
 
 // antd's Rate gives 0 when cleared; the API expects no rating (null) or 1 to 5.
 export const supplierPayload = (values) => ({ ...values, rating: values.rating || null });
@@ -83,6 +84,11 @@ export default function SupplierDetail() {
             pagination={false} scroll={{ x: true }} />
         </>
       ),
+    },
+    {
+      key: 'booths',
+      label: 'Stands',
+      children: <BoothList supplierId={supplier.id} hideSupplier />,
     },
   ];
 

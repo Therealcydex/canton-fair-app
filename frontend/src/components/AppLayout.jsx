@@ -7,10 +7,14 @@ import { isCompanyAdmin, isSuperAdmin } from '../utils/access';
 const MENU = [
   { to: '/', label: 'Accueil', end: true },
   { to: '/fournisseurs', label: 'Fournisseurs' },
+  { to: '/a-visiter', label: 'À visiter' },
+  { to: '/stands', label: 'Stands' },
+  { to: '/visites', label: 'Visites' },
 ];
 const ADMIN_MENU = [
   { to: '/admin/utilisateurs', label: 'Utilisateurs', show: isCompanyAdmin },
   { to: '/admin/societes', label: 'Sociétés', show: isSuperAdmin },
+  { to: '/admin/categories', label: 'Catégories', show: isSuperAdmin },
 ];
 
 export default function AppLayout() {
