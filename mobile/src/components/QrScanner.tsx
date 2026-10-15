@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { decodePixels, decodeQrFromFile, isQrLink, isWechatLink, useQrImage } from '../qr';
 import { Button, ErrorBox } from './ui';
 
@@ -16,7 +17,10 @@ function cameraError(e: unknown): string {
 // Full-screen QR code scanner (D34). It reads the QR with the back camera and shows what it
 // found; the caller saves it. When the live camera is unavailable (http page, permission refused),
 // a photo of the QR code is read instead.
-export default function QrScanner({ onSave, onClose }: { onSave: (content: string) => Promise<void>; onClose: () => void }) {
+// `saveLabel`: "Utiliser ce QR code" in a form that saves later (new contact).
+export default function QrScanner({ onSave, onClose, saveLabel = 'Enregistrer' }: {
+  onSave: (content: string) => Promise<void>; onClose: () => void; saveLabel?: string;
+}) {
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
   const [result, setResult] = useState<string | null>(null);
@@ -107,7 +111,8 @@ export default function QrScanner({ onSave, onClose }: { onSave: (content: strin
     setAttempt((n) => n + 1);
   };
 
-  return (
+  // In a portal: opened from a form (new contact), it must stay outside that form.
+  return createPortal(
     <div className="fixed inset-0 z-30 flex flex-col bg-black text-white">
       <header className="flex items-center justify-between px-3 py-3" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
         <h2 className="text-lg font-semibold">Scanner le QR WeChat</h2>
@@ -148,12 +153,13 @@ export default function QrScanner({ onSave, onClose }: { onSave: (content: strin
           )}
           <div className="w-full max-w-sm"><ErrorBox message={error} /></div>
           <div className="grid w-full max-w-sm gap-2">
-            <Button disabled={saving} onClick={save}>{saving ? 'Enregistrement…' : 'Enregistrer'}</Button>
-            <Button variant="secondary" disabled={saving} onClick={again}>Scanner à nouveau</Button>
-            <Button variant="secondary" disabled={saving} onClick={onClose}>Annuler</Button>
+            <Button type="button" disabled={saving} onClick={save}>{saving ? 'Enregistrement…' : saveLabel}</Button>
+            <Button type="button" variant="secondary" disabled={saving} onClick={again}>Scanner à nouveau</Button>
+            <Button type="button" variant="secondary" disabled={saving} onClick={onClose}>Annuler</Button>
           </div>
         </div>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }

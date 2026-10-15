@@ -21,6 +21,39 @@ export function QrThumb({ value, size = 56 }) {
   return <span className="text-muted">—</span>;
 }
 
+// The WeChat QR code read from a picture BEFORE the contact exists (new contact form): a form
+// field (value/onChange) holding the QR content, saved by the form right after the contact.
+export function QrPicker({ value, onChange }) {
+  const { message } = App.useApp();
+  const [busy, setBusy] = useState(false);
+
+  const read = async (file) => {
+    if (file.size > MAX_MB * 1024 * 1024) {
+      message.error(`« ${file.name} » dépasse ${MAX_MB} Mo`);
+      return;
+    }
+    setBusy(true);
+    const content = await decodeQrFromFile(file);
+    setBusy(false);
+    if (!content) message.error(`Aucun QR code lisible dans « ${file.name} »`);
+    else onChange?.(content);
+  };
+
+  return (
+    <Space direction="vertical" size={4}>
+      <Space align="center" wrap>
+        {value && <QrThumb value={value} size={120} />}
+        <Upload accept={ACCEPTED} showUploadList={false} disabled={busy}
+          beforeUpload={(file) => { read(file); return false; }}>
+          <Button size="small" loading={busy}>{value ? 'Lire un autre QR (image)' : 'Lire un QR (image)'}</Button>
+        </Upload>
+        {value && <Button size="small" type="link" danger onClick={() => onChange?.(null)}>Retirer</Button>}
+      </Space>
+      {isQrLink(value) && <a href={value} target="_blank" rel="noreferrer" className="small text-break">{value}</a>}
+    </Space>
+  );
+}
+
 // The WeChat QR code of a contact with its buttons, in the contact's edit form. "Lire un QR"
 // reads the QR code from a picture (photo, screenshot) in the browser and saves its content;
 // the server checks it and explains a refusal.

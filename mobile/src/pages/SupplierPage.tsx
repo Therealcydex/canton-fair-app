@@ -74,8 +74,8 @@ function ContactCard({ supplierId, contact, onChanged }: { supplierId: number; c
   );
 }
 
-// A new contact for this supplier, typed or read from a business card (D37), so a QR code can
-// then be scanned for it.
+// A new contact for this supplier, typed or read from a business card (D37), with its WeChat QR
+// code scanned in the form.
 function NewContact({ supplierId, onSaved }: { supplierId: number; onSaved: () => Promise<void> }) {
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState<ContactValues>(emptyContact);

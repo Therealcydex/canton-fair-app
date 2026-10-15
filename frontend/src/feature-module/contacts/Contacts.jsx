@@ -5,7 +5,7 @@ import { Alert, App, Button, Form, Input, Popconfirm, Select, Space, Table } fro
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import FormModal from '../../components/FormModal';
-import WechatQr, { QrThumb } from '../suppliers/WechatQr';
+import WechatQr, { QrPicker, QrThumb } from '../suppliers/WechatQr';
 import ContactFormFields, { contactPayload } from './ContactFormFields';
 
 const QR_FILTERS = [
@@ -107,6 +107,20 @@ export default function Contacts() {
     }
   };
 
+  // A new contact, then its WeChat QR code when one was read in the form. If the QR code is
+  // refused, the contact stays saved (no duplicate on a retry) and the message says so.
+  const createContact = async (values) => {
+    const res = await axios.post(`${API_BASE_URL}/suppliers/${values.supplier_id}/contacts`, contactPayload(values));
+    if (values.wechat_qr) {
+      try {
+        await axios.put(`${API_BASE_URL}/suppliers/${values.supplier_id}/contacts/${res.data.data.id}/wechat-qr`, { content: values.wechat_qr });
+      } catch (err) {
+        message.warning(`Contact enregistré, mais pas son QR code : ${apiError(err, 'erreur')}`);
+      }
+    }
+    return res;
+  };
+
   const printQr = () => navigate(`/contacts/qr?${new URLSearchParams(JSON.parse(query))}`);
 
   const columns = [
@@ -172,7 +186,7 @@ export default function Contacts() {
         onCancel={() => setEditing(null)}
         onSubmit={(values) => (editing.id
           ? axios.put(`${API_BASE_URL}/suppliers/${editing.supplier_id}/contacts/${editing.id}`, contactPayload(values))
-          : axios.post(`${API_BASE_URL}/suppliers/${values.supplier_id}/contacts`, contactPayload(values)))}
+          : createContact(values))}
         onSaved={() => { setEditing(null); message.success('Contact enregistré'); load(); }}>
         <ContactFormFields suppliers={editing?.id ? undefined : suppliers} />
         {editing?.id ? (
@@ -181,7 +195,10 @@ export default function Contacts() {
             <WechatQr supplierId={editing.supplier_id} contact={editing} onChanged={qrChanged} size={120} />
           </Form.Item>
         ) : (
-          <p className="text-muted small mt-2 mb-0">Le QR code WeChat s'ajoute après l'enregistrement, avec « Modifier ».</p>
+          <Form.Item name="wechat_qr" label="QR code WeChat" className="mt-3 mb-0"
+            extra="Photo ou capture d'écran du QR code ; enregistré avec le contact.">
+            <QrPicker />
+          </Form.Item>
         )}
       </FormModal>
     </>
