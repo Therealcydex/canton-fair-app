@@ -164,8 +164,9 @@ module.exports = async (ctx) => {
     && /attachment; filename="contacts-\d{4}-\d{2}-\d{2}\.csv"/.test(csv.headers.get('content-disposition')));
   check('export starts with a UTF-8 BOM', bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf);
   const lines = text.replace(/^﻿/, '').split('\r\n').filter(Boolean);
-  check('export header', lines[0] === '"N° contact";"N° fournisseur";"Fournisseur";"Nom";"Téléphone";"E-mail";"QR code WeChat"');
+  check('export header', lines[0] === '"N°";"N° fournisseur";"Fournisseur";"Nom";"Téléphone";"E-mail";"QR code WeChat"');
   check('export has the 2 contacts', lines.length === 3);
+  check('contacts numbered 1, 2 without gaps', lines[1].startsWith('"1";') && lines[2].startsWith('"2";'));
   check('quotes doubled and QR as a full address',
     lines.some((l) => l.includes(`"${PREFIX} Ms ""QR"""`) && /"http:\/\/[^"]+\/uploads\/wechat\/[0-9a-f]{32}\.png"$/.test(l)));
   check('formula neutralised', lines.some((l) => l.includes('"\'=HYPERLINK(""x"")"')));

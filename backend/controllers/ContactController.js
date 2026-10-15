@@ -60,16 +60,17 @@ const cell = (value) => {
 
 // The same contacts as the list, as a CSV file Excel opens in French: ";" separator,
 // UTF-8 with a BOM, CRLF line ends. The QR column holds the full address of the photo.
+// "N°" is the line number (1, 2, 3…): the contact's id keeps the gaps left by deleted contacts.
 exports.exportCsv = handle('Contact export', async (req, res) => {
   const f = filters(req.query);
   if (!f.where) return fail(res, 400, f.message);
   const [rows] = await loadContacts(f);
   const origin = `${req.protocol}://${req.get('host')}`;
-  const header = ['N° contact', 'N° fournisseur', 'Fournisseur', 'Nom', 'Téléphone', 'E-mail', 'QR code WeChat'];
+  const header = ['N°', 'N° fournisseur', 'Fournisseur', 'Nom', 'Téléphone', 'E-mail', 'QR code WeChat'];
   const lines = [header.map(cell).join(';')];
-  for (const c of rows) {
+  for (const [i, c] of rows.entries()) {
     const qr = c.wechat_qr && c.wechat_qr.startsWith('/uploads/') ? origin + c.wechat_qr : c.wechat_qr;
-    lines.push([c.id, c.supplier_id, c.supplier_name, c.name, c.phone, c.email, qr].map(cell).join(';'));
+    lines.push([i + 1, c.supplier_id, c.supplier_name, c.name, c.phone, c.email, qr].map(cell).join(';'));
   }
   const date = new Date().toISOString().slice(0, 10);
   res.set('Content-Type', 'text/csv; charset=utf-8');

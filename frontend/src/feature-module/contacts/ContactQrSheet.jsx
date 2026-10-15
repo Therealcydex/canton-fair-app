@@ -61,7 +61,6 @@ export default function ContactQrSheet() {
                 <div className="qr-card-name">{c.name || '—'}</div>
                 {c.phone && <div>{c.phone}</div>}
                 <div className="text-muted">{c.supplier_name}</div>
-                <div className="text-muted small">Fournisseur n° {c.supplier_id} · Contact n° {c.id}</div>
               </div>
             ))}
           </div>

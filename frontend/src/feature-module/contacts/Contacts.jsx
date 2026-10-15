@@ -50,8 +50,11 @@ export default function Contacts() {
     setLoadError(null);
     try {
       const { data } = await axios.get(`${API_BASE_URL}/contacts`, { params: JSON.parse(query) });
-      setRows(data.data);
-      return data.data;
+      // N° is the line number (1, 2, 3…), in the server's order: the contact's id keeps the gaps
+      // left by deleted contacts and stays internal.
+      const numbered = data.data.map((c, i) => ({ ...c, n: i + 1 }));
+      setRows(numbered);
+      return numbered;
     } catch (err) {
       setLoadError(apiError(err, 'Erreur lors du chargement des contacts'));
       return null;
@@ -124,7 +127,7 @@ export default function Contacts() {
   const printQr = () => navigate(`/contacts/qr?${new URLSearchParams(JSON.parse(query))}`);
 
   const columns = [
-    { title: 'N°', dataIndex: 'id', width: 70, sorter: (a, b) => a.id - b.id },
+    { title: 'N°', dataIndex: 'n', width: 70, sorter: (a, b) => a.n - b.n },
     {
       title: 'Fournisseur', dataIndex: 'supplier_name',
       sorter: (a, b) => a.supplier_name.localeCompare(b.supplier_name, 'fr'),
