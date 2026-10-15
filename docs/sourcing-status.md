@@ -1,4 +1,4 @@
-| BF05 | Contacts and their WeChat QR code (D33, D34: scanned) | À valider | API (scanned content: refusals, save, replaces a photo, has_qr, CSV), navigateur (to redo after D34: mobile scanner, web picture reading) |# Sourcing — status
+# Sourcing — status
 
 States: **Réalisé** (done and accepted), **À valider** (done and tested, waiting for the PO's
 acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
@@ -12,7 +12,7 @@ acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 | BF02 | Companies with a branch (admin) | À valider | API |
 | BF03 | Users (admin): create, edit, activate, delete | À valider | API, navigateur (web) |
 | BF04 | Suppliers, province from the list, booths and % visited | À valider | API, navigateur (web, mobile) |
-| BF05 | Contacts and their WeChat QR code (D33) | À valider | API, navigateur (web: replace, remove; mobile: photo, full screen, refused file, new contact) |
+| BF05 | Contacts and their WeChat QR code (D33, D34: scanned) | À valider | API (scanned content: refusals, save, replaces a photo, has_qr, CSV), téléphone (scanner tested on a phone over https by the user, 2026-10-15); web picture reading not checked by hand yet |
 | BF06 | Category tree | Remplacé | Canton Fair list, read only: API, navigateur |
 | BF07 | Booths, booth code, Canton category of the phase | À valider | API, navigateur (web: refused overlap, creation, edit) |
 | BF08 | "To visit" list | À valider | API, navigateur (web, mobile) |

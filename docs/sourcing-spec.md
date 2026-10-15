@@ -1,4 +1,4 @@
-| BF15 | A mobile app gives buyers sign-up, the "to visit" list, one-tap "visited", quick product entry with a camera photo, supplier lookup and a WeChat QR code scanner | Moyenne || BF05 | A user manages the contacts of a supplier (name, phone, email) and their WeChat QR code: scanned with the mobile app, or read from a picture on the web (D34) | Haute |# Sourcing — specification
+# Sourcing — specification
 
 First draft written from `sourcing_db_diagram.pdf` (schema v1). Since 2026-10-14 the app follows
 Tarek's **schema v2** (`schema.sql`, `china_provinces.sql`, `canton_fair_categories.sql`), with the
@@ -35,7 +35,7 @@ none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercas
 | BF02 | The admin creates, edits (name, branch) and deletes companies | Haute |
 | BF03 | The admin creates, edits, activates, deactivates and deletes users (role, free-text level, company) | Haute |
 | BF04 | A user lists, searches (name, province from the list of Chinese provinces), creates and edits the suppliers, with a rating from 1 to 5; the list shows the number of booths and the % visited | Haute |
-| BF05 | A user manages the contacts of a supplier (name, phone, email) and photographs or uploads their WeChat QR code (D33) | Haute |
+| BF05 | A user manages the contacts of a supplier (name, phone, email) and their WeChat QR code: scanned with the mobile app, or read from a picture on the web (D34) | Haute |
 | BF06 | ~~Category tree~~ replaced (v2): booths pick from the fixed Canton Fair list (phase → category → section → sub-category), read only | Moyenne |
 | BF07 | A user records a booth: phase 1-3, hall, floor 1-4, letter, number range, Canton category, supplier (optional), comment; its code is built automatically | Haute |
 | BF08 | A user gets the list of booths not visited yet, filterable by phase, hall and category | Haute |
@@ -45,7 +45,7 @@ none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercas
 | BF12 | A user lists the products, filterable by supplier, shipping type and company shared with | Haute |
 | BF13 | A user chooses the companies a product is shared with | Moyenne |
 | BF14 | A user sees the products shared with their own company | Moyenne |
-| BF15 | A mobile app gives buyers sign-up, the "to visit" list, one-tap "visited", quick product entry with a camera photo, and supplier lookup | Moyenne |
+| BF15 | A mobile app gives buyers sign-up, the "to visit" list, one-tap "visited", quick product entry with a camera photo, supplier lookup and a WeChat QR code scanner | Moyenne |
 | BF16 | A visitor signs up (name, company, username, password); the account is inactive until the admin activates it (or refuses it) | Haute |
 | BF17 | Contacts are managed on one page: every contact of every supplier in a table (contact n°, supplier n° and name, name, phone, e-mail, WeChat QR code), with search and filters (supplier, with or without QR code); add, edit and delete there, the QR code being added, replaced or removed in the contact's edit form; CSV export for Excel; printable sheet of the QR codes. The supplier page links to its contacts on that page | Moyenne |
 
