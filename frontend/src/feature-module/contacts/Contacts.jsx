@@ -134,7 +134,7 @@ export default function Contacts() {
       render: (v, c) => (
         <>
           <Link to={`/fournisseurs/${c.supplier_id}`}>{v}</Link>
-          <div className="text-muted small">n° {c.supplier_id}</div>
+          <div className="text-muted small">n° {c.supplier_no}</div>
         </>
       ),
     },
@@ -177,7 +177,7 @@ export default function Contacts() {
           onSearch={set('q')} />
         <Select placeholder="Fournisseur" allowClear showSearch optionFilterProp="label" style={{ width: 240 }}
           value={filters.supplier_id}
-          options={suppliers.map((s) => ({ value: s.id, label: `${s.name} (n° ${s.id})` }))} onChange={set('supplier_id')} />
+          options={suppliers.map((s) => ({ value: s.id, label: `${s.name} (n° ${s.supplier_no})` }))} onChange={set('supplier_id')} />
         <Select placeholder="QR code WeChat" allowClear style={{ width: 160 }} options={QR_FILTERS} onChange={set('has_qr')} />
       </Space>
       {loadError && <Alert type="error" message={loadError} showIcon className="mb-3" />}

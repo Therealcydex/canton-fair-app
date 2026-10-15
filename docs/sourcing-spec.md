@@ -47,7 +47,7 @@ none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercas
 | BF14 | A user sees the products shared with their own company | Moyenne |
 | BF15 | A mobile app gives buyers sign-up, the "to visit" list, one-tap "visited", quick product entry with a camera photo, supplier lookup and a WeChat QR code scanner | Moyenne |
 | BF16 | A visitor signs up (name, company, username, password); the account is inactive until the admin activates it (or refuses it) | Haute |
-| BF17 | Contacts are managed on one page: every contact of every supplier in a table (n°: the line number 1, 2, 3… without gaps, the contact's id staying internal; supplier n° and name, name, phone, e-mail, WeChat QR code), with search and filters (supplier, with or without QR code); add, edit and delete there, the QR code being added, replaced or removed in the contact's edit form; CSV export for Excel; printable sheet of the QR codes. The supplier page links to its contacts on that page | Moyenne |
+| BF17 | Contacts are managed on one page: every contact of every supplier in a table (n°: the line number 1, 2, 3… without gaps, the contact's id staying internal; supplier n° (1, 2, 3… in creation order, without gaps, the same on every page and in the CSV) and name, name, phone, e-mail, WeChat QR code), with search and filters (supplier, with or without QR code); add, edit and delete there, the QR code being added, replaced or removed in the contact's edit form; CSV export for Excel; printable sheet of the QR codes. The supplier page links to its contacts on that page | Moyenne |
 | BF18 | A buyer scans a supplier's business card with the phone: the company, name, phone, e-mail, WeChat id and website fill the new supplier or new contact form, to check before saving (D37) | Haute |
 | BF19 | The admin (the boss) reviews the products recorded by the buyers, one at a time on the phone ("Revue du soir"), and decides for each: kept, sample, to order or rejected, with an optional note for the buyers; he can undo a decision. Every user sees the decision, the note, who recorded the product and when; the product list filters by decision (D38) | Haute |
 
@@ -126,7 +126,7 @@ none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercas
 | 2026-10-15 | BF18, D37: business card scan on the phone; new supplier from the mobile app |
 | 2026-10-15 | BF19, D38: product decision and evening review for the boss |
 | 2026-10-15 | D34: the WeChat QR code is scanned in the new supplier and new contact forms, saved with the contact |
-| 2026-10-15 | BF17: the contacts' N° is the line number (no gaps after a deletion), in the table and the CSV; the QR sheet no longer shows ids |
+| 2026-10-15 | BF17: the contacts' N° is the line number (no gaps after a deletion), in the table and the CSV; the QR sheet no longer shows ids. Suppliers too: `supplier_no` (rank by creation, computed by the API) in a new N° column of the suppliers list, on the Contacts page and in the CSV |
 | 2026-10-15 | D39: one-tap "visited" and progress per hall on the mobile "À visiter" screen |
 
 ## 7. Open questions on schema v2 (for Tarek)

@@ -31,9 +31,13 @@ function filters(query) {
   return { where, params };
 }
 
+// supplier_no: the supplier's number, 1, 2, 3… in creation order without the gaps left by
+// deleted suppliers (the id keeps them and stays internal). Same as in SupplierController.
 const loadContacts = (f) =>
   db.query(
-    `SELECT c.id, c.supplier_id, s.name AS supplier_name, c.name, c.phone, c.email, c.wechat_qr
+    `SELECT c.id, c.supplier_id, s.name AS supplier_name,
+            (SELECT COUNT(*) FROM suppliers s2 WHERE s2.id <= s.id) AS supplier_no,
+            c.name, c.phone, c.email, c.wechat_qr
      FROM contacts c JOIN suppliers s ON s.id = c.supplier_id
      WHERE ${f.where}
      ORDER BY s.name, c.name IS NULL, c.name, c.id LIMIT 2000`,
@@ -70,7 +74,7 @@ exports.exportCsv = handle('Contact export', async (req, res) => {
   const lines = [header.map(cell).join(';')];
   for (const [i, c] of rows.entries()) {
     const qr = c.wechat_qr && c.wechat_qr.startsWith('/uploads/') ? origin + c.wechat_qr : c.wechat_qr;
-    lines.push([i + 1, c.supplier_id, c.supplier_name, c.name, c.phone, c.email, qr].map(cell).join(';'));
+    lines.push([i + 1, c.supplier_no, c.supplier_name, c.name, c.phone, c.email, qr].map(cell).join(';'));
   }
   const date = new Date().toISOString().slice(0, 10);
   res.set('Content-Type', 'text/csv; charset=utf-8');

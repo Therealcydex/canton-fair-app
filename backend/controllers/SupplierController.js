@@ -29,8 +29,11 @@ const isQrPhoto = (value) => typeof value === 'string' && value.startsWith(`/upl
 const qrFiles = (rows) => rows.map((r) => r.wechat_qr).filter(isQrPhoto);
 
 // v_suppliers adds the province name, the number of booths and the % of them visited.
+// supplier_no: the supplier's number shown in the apps, 1, 2, 3… in creation order without the
+// gaps left by deleted suppliers (the id keeps them and stays internal). Same as in ContactController.
 const SUPPLIER_SELECT = `
   SELECT v.*,
+         (SELECT COUNT(*) FROM suppliers s2 WHERE s2.id <= v.id) AS supplier_no,
          (SELECT COUNT(*) FROM contacts c WHERE c.supplier_id = v.id) AS contacts_count,
          (SELECT COUNT(*) FROM products p WHERE p.supplier_id = v.id) AS products_count
   FROM v_suppliers v`;

@@ -9,7 +9,7 @@ export default function ContactFormFields({ suppliers }) {
       {suppliers && (
         <Form.Item name="supplier_id" label="Fournisseur" rules={[{ required: true, message: 'Choisissez le fournisseur' }]}>
           <Select showSearch optionFilterProp="label" placeholder="Fournisseur"
-            options={suppliers.map((s) => ({ value: s.id, label: `${s.name} (n° ${s.id})` }))} />
+            options={suppliers.map((s) => ({ value: s.id, label: `${s.name} (n° ${s.supplier_no})` }))} />
         </Form.Item>
       )}
       <Form.Item name="name" label="Nom" extra="Renseignez au moins le nom, le téléphone ou l'e-mail">

@@ -35,6 +35,7 @@ export default function Suppliers() {
   useEffect(() => { load(); }, [load]);
 
   const columns = [
+    { title: 'N°', dataIndex: 'supplier_no', width: 70, sorter: (a, b) => a.supplier_no - b.supplier_no },
     { title: 'Nom', dataIndex: 'name', render: (v, r) => <Link to={`/fournisseurs/${r.id}`}>{v}</Link> },
     { title: 'Province', dataIndex: 'province' },
     { title: 'Téléphone', dataIndex: 'phone', responsive: ['md'] },

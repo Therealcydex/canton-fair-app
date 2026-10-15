@@ -167,6 +167,11 @@ module.exports = async (ctx) => {
   check('export header', lines[0] === '"N°";"N° fournisseur";"Fournisseur";"Nom";"Téléphone";"E-mail";"QR code WeChat"');
   check('export has the 2 contacts', lines.length === 3);
   check('contacts numbered 1, 2 without gaps', lines[1].startsWith('"1";') && lines[2].startsWith('"2";'));
+  const listed = (await api('GET', `/contacts?supplier_id=${sx}`, { token: A })).body.data;
+  const supplierNo = (await api('GET', `/suppliers/${sx}`, { token: A })).body.data.supplier_no;
+  const rank = (await api('GET', '/suppliers', { token: A })).body.data.filter((s) => s.id <= sx).length;
+  check('supplier n° = its rank by creation, same in the contacts, the supplier and the CSV',
+    supplierNo === rank && listed.every((c) => c.supplier_no === rank) && lines[1].startsWith(`"1";"${rank}";`));
   check('quotes doubled and QR as a full address',
     lines.some((l) => l.includes(`"${PREFIX} Ms ""QR"""`) && /"http:\/\/[^"]+\/uploads\/wechat\/[0-9a-f]{32}\.png"$/.test(l)));
   check('formula neutralised', lines.some((l) => l.includes('"\'=HYPERLINK(""x"")"')));
