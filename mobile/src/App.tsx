@@ -10,6 +10,7 @@ import ProductNew from './pages/ProductNew';
 import SuppliersPage from './pages/SuppliersPage';
 import SupplierPage from './pages/SupplierPage';
 import SupplierNew from './pages/SupplierNew';
+import ReviewPage from './pages/ReviewPage';
 
 function RequireAuth() {
   const { user } = useAuth();
@@ -29,6 +30,7 @@ export default function App() {
               <Route path="/" element={<BoothsPage planning key="planning" />} />
               <Route path="/stands" element={<BoothsPage planning={false} key="all" />} />
               <Route path="/fournisseurs" element={<SuppliersPage />} />
+              <Route path="/revue" element={<ReviewPage />} />
               <Route path="/compte" element={<Account />} />
             </Route>
             <Route path="/stands/:id" element={<BoothPage />} />

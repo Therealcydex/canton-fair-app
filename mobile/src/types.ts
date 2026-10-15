@@ -83,4 +83,26 @@ export interface Product {
   shipping_name: string | null;
   shared_with: string | null;
   cover_url: string | null;
+  images_count?: number;
+  description?: string | null;
+  // D38: the boss's decision (evening review)
+  status: ProductStatus;
+  decision_note: string | null;
+  decided_at: string | null;      // "YYYY-MM-DD HH:MM:SS", the time at the fair
+  decided_by_name: string | null;
+  created_at: string;
+  created_by_name: string | null;
+}
+
+export type ProductStatus = 'A_ETUDIER' | 'RETENU' | 'ECHANTILLON' | 'A_COMMANDER' | 'REJETE';
+
+export interface ProductImage {
+  id: number;
+  image_url: string;
+}
+
+// GET /products/review (D38)
+export interface Review {
+  pending: Product[];
+  counts: Record<ProductStatus, number>;
 }

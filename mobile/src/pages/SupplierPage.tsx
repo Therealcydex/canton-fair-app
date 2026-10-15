@@ -7,6 +7,7 @@ import CardScanButton from '../components/CardScanButton';
 import { ContactFields } from '../components/ContactFields';
 import { emptyContact, saveContact, type ContactValues } from '../contact';
 import { formatPrice } from '../format';
+import { STATUS } from '../decision';
 import type { Booth, Contact, Product, Supplier } from '../types';
 import { Badge, Button, Card, ErrorBox, Loading, Page } from '../components/ui';
 
@@ -171,8 +172,12 @@ export default function SupplierPage() {
       <h2 className="px-1 pt-2 font-semibold">Produits ({products.length})</h2>
       {products.map((p) => (
         <Card key={p.id} className="text-sm">
-          <p className="font-medium">{p.name}</p>
+          <div className="flex items-start justify-between gap-2">
+            <p className="font-medium">{p.name}</p>
+            <Badge className={`shrink-0 ${STATUS[p.status].badge}`}>{STATUS[p.status].label}</Badge>
+          </div>
           <p className="text-slate-600">{formatPrice(p.price)}{p.unit ? ` / ${p.unit}` : ''}{p.moq ? ` · MOQ ${p.moq}` : ''}{p.shipping_type ? ` · ${p.shipping_type}` : ''}</p>
+          {p.decision_note && <p className="text-slate-800">« {p.decision_note} »</p>}
         </Card>
       ))}
     </Page>

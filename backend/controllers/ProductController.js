@@ -5,6 +5,15 @@ const { loadProduct } = require('../utils/scope');
 const { saveImages, deleteImages, imageExtension } = require('../utils/upload');
 
 const MAX_IMAGES_PER_PRODUCT = 20;
+
+// D38: the decision on a product. A new product is "A_ETUDIER" until the admin (the boss) decides
+// at the evening review; "A_ETUDIER" again undoes a decision.
+const PENDING = 'A_ETUDIER';
+const STATUSES = [PENDING, 'RETENU', 'ECHANTILLON', 'A_COMMANDER', 'REJETE'];
+const DECISION_FIELDS = {
+  status: { label: 'Décision', type: 'enum', required: true, values: STATUSES },
+  note: { label: 'Note', type: 'text', max: 500 },
+};
 const DEFAULT_SHIPPING_TYPE = 'FOB';
 
 const PRODUCT_FIELDS = {
@@ -49,7 +58,7 @@ async function validateProduct(req, existing) {
 }
 
 // Every product of the group. Filters: supplier_id, shipping_type, shared_with (a company id),
-// mine=1 (shared with the caller's company), q (name, reference, description).
+// mine=1 (shared with the caller's company), status (D38), q (name, reference, description).
 exports.list = handle('Product list', async (req, res) => {
   const params = [];
   let where = '1=1';
@@ -62,6 +71,12 @@ exports.list = handle('Product list', async (req, res) => {
   if (req.query.shipping_type) {
     where += ' AND v.shipping_type = ?';
     params.push(String(req.query.shipping_type).toUpperCase());
+  }
+  if (req.query.status) {
+    const status = String(req.query.status).toUpperCase();
+    if (!STATUSES.includes(status)) return fail(res, 400, 'Filtre status invalide');
+    where += ' AND v.status = ?';
+    params.push(status);
   }
   let sharedWith = null;
   if (req.query.mine === '1') {
@@ -82,6 +97,17 @@ exports.list = handle('Product list', async (req, res) => {
   }
   const [rows] = await db.query(`${PRODUCT_SELECT} WHERE ${where} ORDER BY v.id DESC LIMIT 500`, params);
   res.json({ success: true, data: rows });
+});
+
+// D38: the evening review. The products still waiting for a decision, oldest first (the queue
+// empties as the boss decides), and the number of products in each status.
+exports.review = handle('Product review', async (req, res) => {
+  const [pending] = await db.query(
+    `${PRODUCT_SELECT} WHERE v.status = ? ORDER BY v.created_at, v.id LIMIT 500`, [PENDING]);
+  const [rows] = await db.query('SELECT status, COUNT(*) AS n FROM products GROUP BY status');
+  const counts = Object.fromEntries(STATUSES.map((s) => [s, 0]));
+  for (const r of rows) counts[r.status] = Number(r.n);
+  res.json({ success: true, data: { pending, counts } });
 });
 
 // With its photos and the companies it is shared with.
@@ -108,9 +134,9 @@ exports.create = handle('Product create', async (req, res) => {
   if (!v.values) return fail(res, v.status, v.message);
   const p = v.values;
   const [r] = await db.query(
-    `INSERT INTO products (supplier_id, supplier_ref, name, description, price, unit, moq, shipping_type)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [p.supplier_id, p.supplier_ref, p.name, p.description, p.price, p.unit, p.moq, p.shipping_type]
+    `INSERT INTO products (supplier_id, supplier_ref, name, description, price, unit, moq, shipping_type, created_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [p.supplier_id, p.supplier_ref, p.name, p.description, p.price, p.unit, p.moq, p.shipping_type, req.user.id]
   );
   res.json({ success: true, data: { id: r.insertId } });
 });
@@ -127,6 +153,26 @@ exports.update = handle('Product update', async (req, res) => {
     [p.supplier_id, p.supplier_ref, p.name, p.description, p.price, p.unit, p.moq, p.shipping_type, r.row.id]
   );
   res.json({ success: true, data: { id: r.row.id } });
+});
+
+// D38: the admin's decision (route behind requireAdmin). Editing a product never changes it.
+// "A_ETUDIER" puts the product back in the review queue and clears the decision.
+exports.decide = handle('Product decide', async (req, res) => {
+  const r = await loadProduct(req.params.id);
+  if (!r.row) return fail(res, r.status, r.message);
+  const v = validate(req.body, DECISION_FIELDS);
+  if (!v.values) return fail(res, 400, v.message);
+  const { status, note } = v.values;
+  if (status === PENDING) {
+    await db.query(
+      'UPDATE products SET status = ?, decision_note = NULL, decided_by = NULL, decided_at = NULL WHERE id = ?',
+      [PENDING, r.row.id]);
+  } else {
+    await db.query(
+      'UPDATE products SET status = ?, decision_note = ?, decided_by = ?, decided_at = NOW() WHERE id = ?',
+      [status, note, req.user.id, r.row.id]);
+  }
+  res.json({ success: true, data: await productDetail(r.row.id) });
 });
 
 // Images and shares go with the product (FK cascade); D28: the photo files are deleted after.

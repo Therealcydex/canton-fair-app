@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, fileUrl, jsonBody } from '../config/api';
 import { formatPrice } from '../format';
+import { STATUS } from '../decision';
 import type { Booth, Product } from '../types';
 import { Badge, Button, Card, ErrorBox, Loading, Notice, Page } from '../components/ui';
 
@@ -80,12 +81,16 @@ export default function BoothPage() {
               {p.cover_url
                 ? <img src={fileUrl(p.cover_url)} alt="" className="h-16 w-16 shrink-0 rounded-lg object-cover" />
                 : <div className="h-16 w-16 shrink-0 rounded-lg bg-slate-100" />}
-              <div className="min-w-0">
-                <div className="truncate font-medium">{p.name}</div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="truncate font-medium">{p.name}</span>
+                  <Badge className={`shrink-0 ${STATUS[p.status].badge}`}>{STATUS[p.status].label}</Badge>
+                </div>
                 <div className="text-sm text-slate-600">
                   {formatPrice(p.price)}{p.unit ? ` / ${p.unit}` : ''}{p.moq ? ` · MOQ ${p.moq}` : ''}{p.shipping_type ? ` · ${p.shipping_type}` : ''}
                 </div>
                 {p.supplier_ref && <div className="text-xs text-slate-500">Réf. {p.supplier_ref}</div>}
+                {p.decision_note && <div className="text-sm text-slate-800">« {p.decision_note} »</div>}
               </div>
             </Card>
           ))}

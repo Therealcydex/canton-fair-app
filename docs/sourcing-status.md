@@ -26,13 +26,14 @@ acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 | BF16 | Sign-up validated by the admin | À valider | API, navigateur (web and mobile sign-up, pending login refused, activation) |
 | BF17 | Contacts page (QR code in the edit form), CSV export, QR code sheet | À valider | API (list, filters, export), navigateur (table, filters, supplier link, add, edit, QR replace and remove in the form, delete, export content, QR sheet; the print preview itself was not opened) |
 | BF18 | Business card scan (mobile), new supplier from a card | À valider | Navigateur (real OCR on a rendered card: 6/6 fields in 4 s; new supplier + contact + WeChat id saved; a blank photo gives the message). Not yet on an iPhone with a real card |
+| BF19 | Product decision, evening review (D38) | À valider | API (decision admin-only, refused values, undo, queue and counts, status filter, edit keeps the decision); navigateur (mobile review as admin: decide with a note, next product, undo back to the same product, Décidés list; buyer read-only; badges and note on the supplier page; layout at 375 px; web decision block as admin and buyer, column and filter). Not yet on an iPhone |
 | BNF01 | Tenant isolation | Remplacé | Data shared by the group (schema v2) |
 | BNF02 | Token on every route except login and sign-up | À valider | API |
 | BNF03 | French refusal messages, no SQL | À valider | API (every refusal checked) |
 | BNF04 | Online only | À valider | |
 | BNF05 | Hashed passwords | À valider | API |
 | BNF06 | Schema changes as scripts | À valider | |
-| D1–D37 | Decisions in `sourcing-spec.md` §5 (several replaced by v2) | À valider | |
+| D1–D39 | Decisions in `sourcing-spec.md` §5 (several replaced by v2) | À valider | |
 
 ## Not checked by hand yet
 
@@ -49,3 +50,4 @@ acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 | `backend/sql/canton_fair_categories.sql` | `npm run db:setup` | The 421 Canton Fair categories (only loaded into an empty table) |
 | `backend/sql/create_sourcing_schema.sql` | `npm run db:setup` | Schema v2: tables, shipping types, views; then the admin user |
 | `backend/sql/update_booth_code.sql` | `npm run db:update-booth-code` | D32, once, on a database set up before it: booth code `11.3J26`, optional letter and number, stand unique per phase. Each step runs only if still needed (D35), so it also finishes a run that stopped half-way. Done on the remote `Smart360_copy` on 2026-10-15 |
+| `backend/sql/update_product_decision.sql` | `npm run db:update-product-decision` | D38, once, on a database set up before it: decision status, note, who decided and when, who recorded the product and when; `v_products` refreshed. Each step runs only if still needed. Done on the remote `Smart360_copy` on 2026-10-15 |

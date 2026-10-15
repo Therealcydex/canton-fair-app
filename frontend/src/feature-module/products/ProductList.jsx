@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
-import { Alert, App, Button, Image, Table, Tooltip } from 'antd';
+import { Alert, App, Button, Image, Table, Tag, Tooltip } from 'antd';
 import { API_BASE_URL, fileUrl } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import { formatPrice } from '../../utils/format';
+import { STATUS } from '../../utils/decision';
 import FormModal from '../../components/FormModal';
 import ProductFormFields, { productPayload } from './ProductFormFields';
 
@@ -48,6 +49,13 @@ export default function ProductList({ filters, supplierId }) {
           {p.supplier_ref && <div className="text-muted small">Réf. {p.supplier_ref}</div>}
         </>
       ),
+    },
+    {
+      title: 'Décision', dataIndex: 'status', width: 130,
+      render: (v, p) => {
+        const tag = <Tag color={STATUS[v]?.color}>{STATUS[v]?.label || v}</Tag>;
+        return p.decision_note ? <Tooltip title={p.decision_note}>{tag}</Tooltip> : tag;
+      },
     },
     { title: 'Prix', dataIndex: 'price', render: (v, p) => <>{formatPrice(v)}{p.unit ? <span className="text-muted"> / {p.unit}</span> : null}</> },
     { title: 'MOQ', dataIndex: 'moq', width: 80, render: (v) => v ?? '—' },

@@ -5,6 +5,7 @@ import { Input, Select, Space, Tabs } from 'antd';
 import { API_BASE_URL } from '../../config/config';
 import { useAuth } from '../../context/AuthContext';
 import { companyLabel, useList } from '../../utils/lists';
+import { STATUS } from '../../utils/decision';
 import ProductList from './ProductList';
 
 // Every product of the group (BF10, BF12), and those shared with the user's company (BF14).
@@ -28,6 +29,8 @@ export default function Products() {
       <Input.Search placeholder="Nom, référence, description" allowClear style={{ width: 260 }} onSearch={set('q')} />
       <Select placeholder="Fournisseur" allowClear showSearch optionFilterProp="label" style={{ width: 220 }}
         options={suppliers.map((s) => ({ value: s.id, label: s.name }))} onChange={set('supplier_id')} />
+      <Select placeholder="Décision" allowClear style={{ width: 150 }}
+        options={Object.entries(STATUS).map(([value, s]) => ({ value, label: s.label }))} onChange={set('status')} />
       <Select placeholder="Expédition" allowClear style={{ width: 130 }}
         options={shippingTypes.map((s) => ({ value: s.code, label: s.code }))} onChange={set('shipping_type')} />
       {!mine && (

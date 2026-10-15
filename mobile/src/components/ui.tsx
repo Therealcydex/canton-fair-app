@@ -68,6 +68,7 @@ const TABS = [
   { to: '/', label: 'À visiter', end: true },
   { to: '/stands', label: 'Stands' },
   { to: '/fournisseurs', label: 'Fournisseurs' },
+  { to: '/revue', label: 'Revue' }, // D38: the evening review
   { to: '/compte', label: 'Compte' },
 ];
 
@@ -75,10 +76,10 @@ export function TabsLayout() {
   return (
     <>
       <Outlet />
-      <nav className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-4 border-t border-slate-200 bg-white" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <nav className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-5 border-t border-slate-200 bg-white" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {TABS.map((t) => (
           <NavLink key={t.to} to={t.to} end={t.end}
-            className={({ isActive }) => `py-3 text-center text-sm ${isActive ? 'font-semibold text-blue-600' : 'text-slate-600'}`}>
+            className={({ isActive }) => `py-3 text-center text-xs tracking-tight ${isActive ? 'font-semibold text-blue-600' : 'text-slate-600'}`}>
             {t.label}
           </NavLink>
         ))}

@@ -1,16 +1,62 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Alert, App, Button, Descriptions, Empty, Image, Popconfirm, Select, Space, Spin, Upload } from 'antd';
+import { Alert, App, Button, Descriptions, Empty, Image, Input, Popconfirm, Select, Space, Spin, Tag, Upload } from 'antd';
 import { API_BASE_URL, fileUrl } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import { formatPrice } from '../../utils/format';
 import { companyLabel } from '../../utils/lists';
+import { useAuth } from '../../context/AuthContext';
+import { isAdmin } from '../../utils/access';
+import { DECISIONS, STATUS, formatDateTime } from '../../utils/decision';
 import FormModal from '../../components/FormModal';
 import ProductFormFields, { productPayload } from './ProductFormFields';
 
 const ACCEPTED = 'image/jpeg,image/png,image/webp';
 const MAX_MB = 8;
+
+// D38: the admin's decision on the product, with a note for the buyers. Everyone else reads it.
+function DecisionPanel({ product, onDecide }) {
+  const { user } = useAuth();
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(null);
+  const s = STATUS[product.status] || { label: product.status };
+  const decide = async (status) => {
+    setSaving(status);
+    if (await onDecide(status, note.trim() || null)) setNote('');
+    setSaving(null);
+  };
+  return (
+    <div className="border rounded p-3 mb-3">
+      <Space wrap align="center">
+        <h2 className="h5 m-0">Décision</h2>
+        <Tag color={s.color}>{s.label}</Tag>
+        {product.decided_at && <span className="text-muted small">{product.decided_by_name || '—'}, le {formatDateTime(product.decided_at)}</span>}
+      </Space>
+      {product.decision_note && <p className="mt-2 mb-0">« {product.decision_note} »</p>}
+      <p className="text-muted small mt-2 mb-0">
+        Saisi par {product.created_by_name || '—'}, le {formatDateTime(product.created_at)}
+      </p>
+      {isAdmin(user) ? (
+        <div className="mt-3">
+          <Input.TextArea rows={2} maxLength={500} showCount placeholder="Note pour l'acheteur (facultatif)"
+            value={note} onChange={(e) => setNote(e.target.value)} style={{ maxWidth: 520 }} />
+          <Space wrap className="mt-2">
+            {DECISIONS.map((d) => (
+              <Button key={d} type={d === product.status ? 'primary' : 'default'} danger={d === 'REJETE'}
+                loading={saving === d} disabled={!!saving} onClick={() => decide(d)}>{STATUS[d].label}</Button>
+            ))}
+            {product.status !== 'A_ETUDIER' && (
+              <Button type="link" disabled={!!saving} onClick={() => decide('A_ETUDIER')}>Remettre à étudier</Button>
+            )}
+          </Space>
+        </div>
+      ) : product.status === 'A_ETUDIER' && (
+        <p className="text-muted small mt-2 mb-0">En attente de la décision de l'administrateur (revue du soir).</p>
+      )}
+    </div>
+  );
+}
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -78,6 +124,10 @@ export default function ProductDetail() {
     setSharing(false);
   };
 
+  const decide = (status, note) => call(
+    () => axios.put(`${API_BASE_URL}/products/${id}/decision`, { status, note }),
+    `Décision enregistrée : ${STATUS[status].label}`, "Erreur lors de l'enregistrement de la décision");
+
   if (loadError) return <Alert type="error" message={loadError} showIcon action={<Link to="/produits">Retour</Link>} />;
   if (!product) return <div className="text-center py-5"><Spin /></div>;
 
@@ -107,6 +157,8 @@ export default function ProductDetail() {
           <span style={{ whiteSpace: 'pre-wrap' }}>{product.description || '—'}</span>
         </Descriptions.Item>
       </Descriptions>
+
+      <DecisionPanel product={product} onDecide={decide} />
 
       <h2 className="h5">Partagé avec</h2>
       <p className="text-muted small mb-2">Les sociétés du groupe à qui ce produit est destiné.</p>
