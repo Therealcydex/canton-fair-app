@@ -58,16 +58,6 @@ the end and the row counts are checked. Run it on a development database, never 
 
 ## Deploy
 
-1. **Database**: on a database that still has the schema v1 tables, run `npm run db:drop-v1 -- --yes`
-   once (their data is lost). Then `npm run db:setup` runs, in order, `china_provinces.sql`,
-   `canton_fair_categories.sql` and `create_sourcing_schema.sql`, and creates the admin.
-2. **Backend**: `npm ci --omit=dev`, a production `.env` (its own `JWT_SECRET`), then
-   `pm2 start ecosystem.config.js` (see the comments in that file). Keep `backend/uploads/`
-   between deployments: it holds the product photos.
-3. **Web app**: `REACT_APP_API_BASE_URL=https://<server>/api npm run build`, then serve
-   `frontend/build/` as static files.
-4. **Mobile app**: `VITE_API_BASE_URL=https://<server>/api`, then the Android build in
-   `mobile/README.md` (Capacitor needs Node 22). Switch `capacitor.config.ts` to https.
-
-If the API runs behind a reverse proxy (nginx), add `app.set('trust proxy', 1)` in
-`backend/index.js` so the login attempt limit sees the users' addresses, not the proxy's.
+`deploy/README.md`: one https address on the database server (`https://76-13-55-161.sslip.io`),
+the web app at `/`, the iPhone app at `/m/` (Safari › Add to Home Screen), the API at `/api/`
+behind nginx, nightly backups, and the checks before the fair (China, security).

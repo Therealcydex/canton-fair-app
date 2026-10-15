@@ -11,7 +11,7 @@ whole group. It has its own tables and its own login, with sign-up validated by 
 follows the Smart360 code conventions in `guide-nouveau-projet-smart360.md`, but none of the
 Smart360 data: no `LISTE_DES_SALARIES`, no `Boutique`, no UPPERCASE table names.
 
-- `docs/sourcing-spec.md` holds the actors, requirements (BF01–BF17, BNF01–BNF06), decisions (D1–D35, several replaced by schema v2) and open questions. The decisions are not yet validated by the Product Owner. Read it before working on a feature, and add a decision there when you make one.
+- `docs/sourcing-spec.md` holds the actors, requirements (BF01–BF17, BNF01–BNF06), decisions (D1–D36, several replaced by schema v2) and open questions. The decisions are not yet validated by the Product Owner. Read it before working on a feature, and add a decision there when you make one.
 - `docs/sourcing-status.md` tracks the state of each requirement, what was checked, and the migration scripts in order. Update it when a requirement changes.
 - Sprints 0–6 were built on schema v1; branch `feat/sourcing-schema-v2` moves everything to schema v2 and adds sign-up. What remains: the PO's validation, the Android build (Node 22), and the hand checks listed in the status file.
 
@@ -25,7 +25,7 @@ Backend (`backend/`, Node 20):
 - Copy `.env.example` to `.env` and fill in the values. `JWT_SECRET` deliberately has no default.
 - `npm run test:api` runs the API scenarios in `tests/*.scenario.js` against the running backend; `npm run test:api -- booths` runs only the files whose name contains "booths". Add scenarios there for every new rule.
 - The local database is XAMPP MariaDB 10.4 on port 3306 (`root`, no password). Its client is `/c/xampp/mysql/bin/mysql.exe`. The target is MySQL 8, so keep SQL portable to both.
-- `ecosystem.config.js` runs it under PM2 in production, as a single instance.
+- `ecosystem.config.js` runs it under PM2 in production, as a single instance. Production: `deploy/README.md` (nginx, https at `76-13-55-161.sslip.io`, `deploy/deploy.sh` from the PC, `HOST=127.0.0.1`, `TRUST_PROXY=1`, database user `sourcing_app`, nightly backup).
 
 Frontend (`frontend/`, Create React App, React 18.3):
 - `PORT=3001 npm start` runs the dev server (the backend uses 3000).
@@ -36,6 +36,7 @@ Mobile (`mobile/`): Vite 4, React 18, TypeScript, Tailwind 3 and Capacitor 8. Se
 - `npm run dev` serves it on port 5173; the API address comes from `VITE_API_BASE_URL` (`.env`).
 - `npm run dev:phone` serves it over https (local certificate) and proxies /api and /uploads to the backend on port 3000: use it to test on a phone, since the QR scanner's camera needs https (D34).
 - `contacts.wechat_qr` (D34): a scanned link (`http(s)://`, the apps draw the QR code from it), an older photo path (`/uploads/wechat/`), or older text. Share the logic of `mobile/src/qr.ts` and `frontend/src/utils/qr.js`.
+- The production build is the iPhone home-screen app (D36): `public/manifest.webmanifest`, `public/sw.js` (never caches `/api` or `/uploads`), icons from `node scripts/make-icons.cjs`; it is built with relative paths and served at `/m/`.
 - `npm run lint` and `npm run build` (which runs `tsc`) must pass.
 - The Capacitor CLI (`npx cap ...`, `npm run android:sync`) needs Node 22; the rest runs on Node 20.
 

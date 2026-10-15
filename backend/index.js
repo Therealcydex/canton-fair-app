@@ -6,6 +6,9 @@ const { fail, serverError } = require('./utils/http');
 const { UPLOAD_ROOT } = require('./utils/upload');
 const app = express();
 app.disable('x-powered-by');
+// Behind nginx (deploy/): TRUST_PROXY=1 makes req.ip the user's address, not nginx's, so the
+// login and sign-up limits (middleware/loginLimiter.js) count each user separately.
+if (process.env.TRUST_PROXY === '1') app.set('trust proxy', 1);
 
 // JWT_SECRET has no default (protected routes refuse every request without it); warn early.
 if (!process.env.JWT_SECRET) console.error('JWT_SECRET is not set: every login and protected route will be refused');
@@ -43,4 +46,6 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
+// HOST=127.0.0.1 in production: only nginx (same server) reaches the API, never the internet directly.
+const HOST = process.env.HOST || undefined;
+app.listen(PORT, HOST, () => console.log(`Server is running on ${HOST || 'all interfaces'}, port ${PORT}`));

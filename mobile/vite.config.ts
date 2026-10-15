@@ -8,12 +8,15 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 // open the live camera (QR scanner, D34) on https. The dev server then uses a local certificate
 // (accept the warning once on the phone) and passes /api and /uploads to the backend itself, so
 // the app calls its own https address and no PC address is needed in .env.
-export default defineConfig(({ mode }) => {
+// The build uses relative paths ("./"): the same files work at https://<server>/m/ (installed
+// iPhone app, deploy/README.md) and inside the Android app.
+export default defineConfig(({ command, mode }) => {
   const phone = mode === 'phone';
   // A VITE_ variable already in process.env wins over the .env files.
   if (phone) process.env.VITE_API_BASE_URL = '/api';
   const backend = process.env.VITE_DEV_API_TARGET || 'http://localhost:3000';
   return {
+    base: command === 'build' ? './' : '/',
     plugins: phone ? [react(), basicSsl()] : [react()],
     server: {
       port: 5173,
