@@ -11,7 +11,7 @@ acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 | BF01 | Login, inactive users refused | À valider | API, navigateur (web, mobile) |
 | BF02 | Companies with a branch (admin) | À valider | API |
 | BF03 | Users (admin): create, edit, activate, delete | À valider | API, navigateur (web) |
-| BF04 | Suppliers, province from the list, booths and % visited | À valider | API, navigateur (web, mobile) |
+| BF04 | Suppliers, province from the list, booths and % visited | À valider | API, navigateur (web, mobile); D40 web pages: search by phone, sorting, supplier page tabs (contacts with QR, stands visited / total updated by the switch, products) in the browser on the local database |
 | BF05 | Contacts and their WeChat QR code (D33, D34: scanned) | À valider | API (scanned content: refusals, save, replaces a photo, has_qr, CSV), téléphone (scanner tested on a phone over https by the user, 2026-10-15); web picture reading not checked by hand yet |
 | BF06 | Category tree | Remplacé | Canton Fair list, read only: API, navigateur |
 | BF07 | Booths, booth code, Canton category of the phase | À valider | API, navigateur (web: refused overlap, creation, edit) |
@@ -19,8 +19,8 @@ acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 | BF09 | Visit log | Remplacé | "Visited" flag: API, navigateur (web, mobile) |
 | BF10 | Products, price, shipping type | À valider | API, navigateur (web: refused price shown, mobile) |
 | BF11 | Product photos | À valider | API, navigateur (mobile) |
-| BF12 | Product list and filters | À valider | API, navigateur |
-| BF13 | Share a product with companies | À valider | API, navigateur (web multi-select) |
+| BF12 | Product list and filters | À valider | API, navigateur; "Partagés / Non partagés" filter (D40): API, navigateur |
+| BF13 | Share a product with companies | À valider | API, navigateur (web multi-select); D40 sharing several products at once (add, replace, refusals) and "Partager" on one row: API, navigateur (2 products added to a company, empty choice refused, shares removed again one by one) |
 | BF14 | Products shared with my company | À valider | API, navigateur |
 | BF15 | Mobile app | Partiel | Navigateur; QR scanner on a phone (https). iPhone home-screen app (D36) ready, to install once online (deploy/README.md); the Android APK needs Node 22 |
 | BF16 | Sign-up validated by the admin | À valider | API, navigateur (web and mobile sign-up, pending login refused, activation) |
@@ -33,7 +33,7 @@ acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 | BNF04 | Online only | À valider | |
 | BNF05 | Hashed passwords | À valider | API |
 | BNF06 | Schema changes as scripts | À valider | |
-| D1–D39 | Decisions in `sourcing-spec.md` §5 (several replaced by v2) | À valider | |
+| D1–D40 | Decisions in `sourcing-spec.md` §5 (several replaced by v2) | À valider | Web home page (D40): API, navigateur (figures, phases, companies) |
 
 ## Not checked by hand yet
 

@@ -49,14 +49,14 @@ async function validateSupplier(body, existing) {
   return v;
 }
 
-// Every supplier of the group, filtered by name (q) and province_id.
+// Every supplier of the group, filtered by name or phone (q, D40) and province_id.
 exports.list = handle('Supplier list', async (req, res) => {
   const params = [];
   let where = '1=1';
   const q = clean(req.query.q);
   if (q) {
-    where += ' AND v.name LIKE ?';
-    params.push(likeContains(q));
+    where += ' AND (v.name LIKE ? OR v.phone LIKE ?)';
+    params.push(likeContains(q), likeContains(q));
   }
   if (req.query.province_id) {
     const provinceId = toId(req.query.province_id);

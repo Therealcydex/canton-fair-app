@@ -11,6 +11,7 @@ router.use(requireAuth);
 router.get('/', c.list);
 router.post('/', c.create);
 router.get('/review', c.review); // before /:id
+router.post('/shares', c.shareMany); // D40: several products at once
 router.get('/:id', c.getById);
 router.put('/:id', c.update);
 router.delete('/:id', c.remove);

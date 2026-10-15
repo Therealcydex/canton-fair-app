@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
-import { Alert, App, Button, Input, Rate, Select, Space, Table } from 'antd';
+import { Alert, App, Button, Input, Rate, Select, Space, Table, Tag } from 'antd';
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import FormModal from '../../components/FormModal';
@@ -34,16 +34,37 @@ export default function Suppliers() {
 
   useEffect(() => { load(); }, [load]);
 
+  // "Guangdong 广东", as the buyers read the province on the fair's documents.
+  const provinceLabel = (id) => {
+    const p = provinces.find((x) => x.id === id);
+    return p ? [p.name_en, p.name_zh].filter(Boolean).join(' ') : null;
+  };
+  const visitPct = (r) => (r.booth_visit_pct === null ? -1 : Number(r.booth_visit_pct));
+
+  // D40: design from Claude Design ("Fournisseurs", version A).
   const columns = [
     { title: 'N°', dataIndex: 'supplier_no', width: 70, sorter: (a, b) => a.supplier_no - b.supplier_no },
-    { title: 'Nom', dataIndex: 'name', render: (v, r) => <Link to={`/fournisseurs/${r.id}`}>{v}</Link> },
-    { title: 'Province', dataIndex: 'province' },
-    { title: 'Téléphone', dataIndex: 'phone', responsive: ['md'] },
-    { title: 'Note', dataIndex: 'rating', width: 150, render: (v) => (v ? <Rate disabled value={v} /> : '—') },
-    { title: 'Contacts', dataIndex: 'contacts_count', width: 90, responsive: ['lg'] },
-    { title: 'Stands', dataIndex: 'nbr_booths', width: 80, responsive: ['lg'] },
-    { title: 'Visités', dataIndex: 'booth_visit_pct', width: 90, render: (v) => (v === null ? '—' : `${v} %`) },
-    { title: 'Produits', dataIndex: 'products_count', width: 90, responsive: ['lg'] },
+    {
+      title: 'Nom', dataIndex: 'name', sorter: (a, b) => a.name.localeCompare(b.name),
+      render: (v, r) => <Link to={`/fournisseurs/${r.id}`}>{v}</Link>,
+    },
+    { title: 'Province', dataIndex: 'province_id', render: (v, r) => provinceLabel(v) || r.province || '—' },
+    { title: 'Téléphone', dataIndex: 'phone', responsive: ['md'], render: (v) => v || '—' },
+    {
+      title: 'Note', dataIndex: 'rating', width: 150, sorter: (a, b) => (a.rating || 0) - (b.rating || 0),
+      render: (v) => (v ? <Rate disabled value={v} style={{ fontSize: 14 }} /> : <span className="text-muted small">Non noté</span>),
+    },
+    { title: 'Stands', dataIndex: 'nbr_booths', width: 80, align: 'right', responsive: ['lg'] },
+    {
+      title: '% visités', dataIndex: 'booth_visit_pct', width: 110, align: 'right', sorter: (a, b) => visitPct(a) - visitPct(b),
+      render: (v) => (v === null
+        ? <span className="text-muted">—</span>
+        : <Tag color={Number(v) === 100 ? 'green' : Number(v) > 0 ? 'blue' : 'default'} className="m-0">{v} %</Tag>),
+    },
+    {
+      title: 'Produits', dataIndex: 'products_count', width: 100, align: 'right', responsive: ['lg'],
+      sorter: (a, b) => a.products_count - b.products_count,
+    },
   ];
 
   return (
@@ -52,12 +73,15 @@ export default function Suppliers() {
         <h1 className="h4 m-0">Fournisseurs</h1>
         <Button type="primary" onClick={() => setCreating(true)}>Nouveau fournisseur</Button>
       </Space>
-      <Space className="mb-3" wrap>
-        <Input.Search placeholder="Rechercher par nom" allowClear style={{ width: 260 }}
-          onSearch={(q) => setFilters((f) => ({ ...f, q }))} />
-        <Select placeholder="Province" allowClear showSearch optionFilterProp="label" style={{ width: 200 }} value={filters.province_id}
-          options={provinces.map((p) => ({ value: p.id, label: p.name_en }))}
-          onChange={(province_id) => setFilters((f) => ({ ...f, province_id }))} />
+      <Space className="mb-3 w-100 justify-content-between" wrap>
+        <Space wrap>
+          <Input.Search placeholder="Rechercher par nom ou téléphone" allowClear style={{ width: 280 }}
+            onSearch={(q) => setFilters((f) => ({ ...f, q }))} />
+          <Select placeholder="Province" allowClear showSearch optionFilterProp="label" style={{ width: 220 }} value={filters.province_id}
+            options={provinces.map((p) => ({ value: p.id, label: provinceLabel(p.id) }))}
+            onChange={(province_id) => setFilters((f) => ({ ...f, province_id }))} />
+        </Space>
+        {!loading && !loadError && <span className="text-muted small">{rows.length} fournisseur{rows.length > 1 ? 's' : ''}</span>}
       </Space>
       {loadError && <Alert type="error" message={loadError} showIcon className="mb-3" />}
       <Table rowKey="id" columns={columns} dataSource={rows} loading={loading} size="middle"
