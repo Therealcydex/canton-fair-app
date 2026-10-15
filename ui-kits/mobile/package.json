@@ -1,0 +1,13 @@
+{
+  "name": "sourcing-mobile-ui",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mobile UI kit of the Sourcing app (mobile/src/components/ui.tsx), packaged for Claude Design.",
+  "module": "src/index.ts",
+  "types": "dist/types/index.d.ts",
+  "scripts": {
+    "build:css": "node ../../mobile/node_modules/tailwindcss/lib/cli.js -c tailwind.config.cjs -i ../../mobile/src/index.css -o dist/styles.css --minify",
+    "build:types": "node ../../mobile/node_modules/typescript/bin/tsc -p tsconfig.json && node -e \"require('fs').writeFileSync('dist/types/index.d.ts','export * from \\x27./ui-kits/mobile/src/index\\x27;\\n')\"",
+    "build": "npm run build:css && npm run build:types"
+  }
+}

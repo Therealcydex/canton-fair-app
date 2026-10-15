@@ -1,0 +1,36 @@
+{
+  "projectId": "2596077c-95c4-499e-b544-ef778f1873e0",
+  "shape": "package",
+  "pkg": "sourcing-web-ui",
+  "globalName": "SourcingWebUI",
+  "buildCmd": "npm run build",
+  "entry": "src/index.js",
+  "cssEntry": "dist/styles.css",
+  "docsDir": ".design-sync/docs",
+  "provider": {
+    "component": "WebRoot"
+  },
+  "componentSrcMap": {
+    "WebRoot": null,
+    "Routes": null,
+    "Route": null,
+    "Link": null,
+    "AppLayout": "../../frontend/src/components/AppLayout.jsx",
+    "FormModal": "../../frontend/src/components/FormModal.jsx"
+  },
+  "dtsPropsFor": {
+    "AppLayout": "",
+    "FormModal": "open: boolean; title: React.ReactNode; initialValues?: Record<string, unknown>; onSubmit: (values: Record<string, unknown>) => Promise<unknown>; onSaved?: (result: unknown) => void; onCancel: () => void; width?: number; children: React.ReactNode;"
+  },
+  "overrides": {
+    "AppLayout": {
+      "cardMode": "single",
+      "viewport": "1200x520"
+    },
+    "FormModal": {
+      "cardMode": "single",
+      "viewport": "760x720"
+    }
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}

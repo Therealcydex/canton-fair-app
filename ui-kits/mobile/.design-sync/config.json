@@ -1,0 +1,37 @@
+{
+  "projectId": "d1fad863-301f-471e-a675-2372620f8482",
+  "shape": "package",
+  "pkg": "sourcing-mobile-ui",
+  "globalName": "SourcingMobileUI",
+  "buildCmd": "npm run build",
+  "entry": "src/index.ts",
+  "cssEntry": "dist/styles.css",
+  "docsDir": ".design-sync/docs",
+  "provider": {
+    "component": "MemoryRouter"
+  },
+  "componentSrcMap": {
+    "MemoryRouter": null,
+    "Routes": null,
+    "Route": null,
+    "Page": "../../mobile/src/components/ui.tsx",
+    "Card": "../../mobile/src/components/ui.tsx",
+    "Button": "../../mobile/src/components/ui.tsx",
+    "ErrorBox": "../../mobile/src/components/ui.tsx",
+    "Notice": "../../mobile/src/components/ui.tsx",
+    "Loading": "../../mobile/src/components/ui.tsx",
+    "Badge": "../../mobile/src/components/ui.tsx",
+    "Field": "../../mobile/src/components/ui.tsx",
+    "TabsLayout": "../../mobile/src/components/ui.tsx"
+  },
+  "dtsPropsFor": {
+    "Button": "variant?: \"primary\" | \"secondary\" | \"danger\"; type?: \"button\" | \"submit\" | \"reset\"; disabled?: boolean; onClick?: React.MouseEventHandler<HTMLButtonElement>; className?: string; style?: React.CSSProperties; children?: React.ReactNode;"
+  },
+  "overrides": {
+    "TabsLayout": {
+      "cardMode": "single",
+      "viewport": "390x640"
+    }
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}

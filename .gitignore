@@ -26,3 +26,11 @@ Thumbs.db
 
 # Uploaded product photos
 backend/uploads/
+
+# design-sync (Claude Design kits): staged scripts, build output, machine state
+ui-kits/*/dist/
+ui-kits/*/ds-bundle/
+ui-kits/*/.ds-sync/
+ui-kits/*/.design-sync/.cache/
+ui-kits/*/.design-sync/learnings/
+ui-kits/*/.design-sync/node_modules
