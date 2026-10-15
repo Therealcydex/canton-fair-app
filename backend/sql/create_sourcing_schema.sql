@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS booths (
     num_end       SMALLINT NULL,                         -- NULL if single booth
     booth_code    VARCHAR(30) GENERATED ALWAYS AS (
                     CONCAT(hall, '.', floor,
-                           IF(letter IS NULL, '',
+                           IF(num_start IS NULL, '',     -- D35: not the bare CHAR column (MariaDB 11.8)
                               CONCAT(RTRIM(letter), num_start, IF(num_end IS NULL, '', CONCAT('-', num_end)))))
                   ) STORED,
     category_id   INT NULL,                              -- category + sub category (canton_fair_category)
