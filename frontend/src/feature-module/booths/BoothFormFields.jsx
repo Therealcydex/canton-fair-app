@@ -82,7 +82,7 @@ export default function BoothFormFields({ lockSupplier }) {
       </Row>
       <Form.Item noStyle shouldUpdate>
         {({ getFieldsValue }) => (
-          <div className="text-muted mb-3">Code du stand : <b>{previewCode(getFieldsValue())}</b>
+          <div className="text-muted mb-3">Code du booth : <b>{previewCode(getFieldsValue())}</b>
             {' '}(lettre et numéro vides = seulement le hall et l'étage, ex. 9.1)</div>
         )}
       </Form.Item>

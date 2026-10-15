@@ -23,7 +23,7 @@ export default function BoothDetail() {
       const { data } = await axios.get(`${API_BASE_URL}/booths/${id}`);
       setBooth(data.data);
     } catch (err) {
-      setLoadError(apiError(err, 'Erreur lors du chargement du stand'));
+      setLoadError(apiError(err, 'Erreur lors du chargement du booth'));
     }
   }, [id]);
 
@@ -32,8 +32,8 @@ export default function BoothDetail() {
   const remove = async () => {
     try {
       await axios.delete(`${API_BASE_URL}/booths/${id}`);
-      message.success('Stand supprimé');
-      navigate('/stands');
+      message.success('Booth supprimé');
+      navigate('/booths');
     } catch (err) {
       message.error(apiError(err, 'Erreur lors de la suppression'));
     }
@@ -42,22 +42,22 @@ export default function BoothDetail() {
   const setVisited = async (visited) => {
     try {
       await axios.patch(`${API_BASE_URL}/booths/${id}/visited`, { visited });
-      message.success(visited ? 'Stand marqué visité' : 'Stand remis à visiter');
+      message.success(visited ? 'Booth marqué visité' : 'Booth remis à visiter');
       load();
     } catch (err) {
       message.error(apiError(err, "Erreur lors de l'enregistrement"));
     }
   };
 
-  if (loadError) return <Alert type="error" message={loadError} showIcon action={<Link to="/stands">Retour</Link>} />;
+  if (loadError) return <Alert type="error" message={loadError} showIcon action={<Link to="/booths">Retour</Link>} />;
   if (!booth) return <div className="text-center py-5"><Spin /></div>;
 
   return (
     <>
-      <Link to="/stands">← Stands</Link>
+      <Link to="/booths">← Booths</Link>
       <Space className="my-2 w-100 justify-content-between" wrap>
         <h1 className="h4 m-0">
-          Stand {booth.booth_code}{' '}
+          Booth {booth.booth_code}{' '}
           {booth.visited ? <Tag color="green" className="ms-2">Visité</Tag> : <Tag color="orange" className="ms-2">À visiter</Tag>}
         </h1>
         <Space wrap>
@@ -65,7 +65,7 @@ export default function BoothDetail() {
             ? <Button onClick={() => setVisited(false)}>Remettre à visiter</Button>
             : <Button type="primary" onClick={() => setVisited(true)}>Marquer visité</Button>}
           <Button onClick={() => setEditing(true)}>Modifier</Button>
-          <Popconfirm title="Supprimer ce stand ?" okText="Supprimer" cancelText="Annuler" onConfirm={remove}>
+          <Popconfirm title="Supprimer ce booth ?" okText="Supprimer" cancelText="Annuler" onConfirm={remove}>
             <Button danger>Supprimer</Button>
           </Popconfirm>
         </Space>
@@ -86,11 +86,11 @@ export default function BoothDetail() {
         <Descriptions.Item label="Commentaire" span="filled"><span style={{ whiteSpace: 'pre-wrap' }}>{booth.comment || '—'}</span></Descriptions.Item>
       </Descriptions>
 
-      <FormModal open={editing} title="Modifier le stand" width={640}
+      <FormModal open={editing} title="Modifier le booth" width={640}
         initialValues={{ ...booth, visited: !!booth.visited, category_path: categoryPath(categories, booth.category_id) }}
         onCancel={() => setEditing(false)}
         onSubmit={(values) => axios.put(`${API_BASE_URL}/booths/${id}`, boothPayload(values))}
-        onSaved={() => { setEditing(false); message.success('Stand modifié'); load(); }}>
+        onSaved={() => { setEditing(false); message.success('Booth modifié'); load(); }}>
         <BoothFormFields />
       </FormModal>
     </>

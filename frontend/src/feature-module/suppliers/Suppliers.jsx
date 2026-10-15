@@ -54,7 +54,7 @@ export default function Suppliers() {
       title: 'Note', dataIndex: 'rating', width: 150, sorter: (a, b) => (a.rating || 0) - (b.rating || 0),
       render: (v) => (v ? <Rate disabled value={v} style={{ fontSize: 14 }} /> : <span className="text-muted small">Non noté</span>),
     },
-    { title: 'Stands', dataIndex: 'nbr_booths', width: 80, align: 'right', responsive: ['lg'] },
+    { title: 'Booths', dataIndex: 'nbr_booths', width: 80, align: 'right', responsive: ['lg'] },
     {
       title: '% visités', dataIndex: 'booth_visit_pct', width: 110, align: 'right', sorter: (a, b) => visitPct(a) - visitPct(b),
       render: (v) => (v === null

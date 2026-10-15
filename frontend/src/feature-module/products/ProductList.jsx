@@ -85,6 +85,10 @@ export default function ProductList({ filters, supplierId, companies }) {
     },
     !supplierId && { title: 'Fournisseur', dataIndex: 'supplier_name', responsive: ['md'], render: (v) => v || '—' },
     {
+      title: 'Booth', dataIndex: 'booth_code', width: 120, responsive: ['md'],
+      render: (v, p) => (v ? <Link to={`/booths/${p.booth_id}`}>{v}</Link> : '—'),
+    },
+    {
       title: 'Décision', dataIndex: 'status', width: 130,
       render: (v, p) => {
         const tag = <Tag color={STATUS[v]?.color} className="m-0">{STATUS[v]?.label || v}</Tag>;

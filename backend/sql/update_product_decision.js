@@ -60,6 +60,9 @@ async function main() {
     for (const step of steps) {
       if (!needed[step.name]) throw new Error(`unknown step "${step.name}" in update_product_decision.sql`);
       if (!(await needed[step.name]())) continue;
+      // D43: the view only when this update changed the table; on a run with nothing to do it would
+      // replace the newer v_products (with the booth columns) by the D38 one.
+      if (step.name === 'view' && run === 0) continue;
       await conn.query(step.sql);
       if (step.name !== 'view') {
         console.log(`  ${step.name}`);
@@ -69,7 +72,7 @@ async function main() {
     const [[{ products }]] = await conn.query('SELECT COUNT(*) AS products FROM products');
     console.log(run
       ? `update_product_decision.sql: ${run} step(s) run on ${dbName} (${products} products)`
-      : `products already has the decision columns on ${dbName}: nothing to do (view refreshed)`);
+      : `products already has the decision columns on ${dbName}: nothing to do`);
   } finally {
     await conn.end();
   }

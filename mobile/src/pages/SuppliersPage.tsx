@@ -32,7 +32,7 @@ export default function SuppliersPage() {
           <Card className="active:bg-slate-50">
             <div className="font-medium">{s.name}</div>
             <div className="text-sm text-slate-500">
-              {[s.province, s.rating ? '★'.repeat(s.rating) : null, `${s.nbr_booths} stand(s)`, `${s.products_count} produit(s)`].filter(Boolean).join(' · ')}
+              {[s.province, s.rating ? '★'.repeat(s.rating) : null, `${s.nbr_booths} booth(s)`, `${s.products_count} produit(s)`].filter(Boolean).join(' · ')}
             </div>
           </Card>
         </Link>

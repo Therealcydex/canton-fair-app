@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api, jsonBody } from '../config/api';
-import type { ShippingType, Supplier } from '../types';
+import type { Booth, ShippingType, Supplier } from '../types';
 import { Button, ErrorBox, Field, Notice, Page, inputClass } from '../components/ui';
 
 const MAX_MB = 8;
@@ -12,12 +12,14 @@ export default function ProductNew() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const backTo = params.get('stand') ? `/stands/${params.get('stand')}` : null; // the booth page it was opened from
+  const backTo = params.get('booth') ? `/booths/${params.get('booth')}` : null; // the booth page it was opened from
   const [form, setForm] = useState({
     supplier_id: params.get('supplier') || '',
+    booth_id: params.get('booth') || '', // D43: the booth it was found at
     name: '', supplier_ref: '', price: '', unit: '', moq: '', shipping_type: 'FOB', description: '',
   });
   const [shippingTypes, setShippingTypes] = useState<ShippingType[]>([]);
+  const [booths, setBooths] = useState<Booth[]>([]); // the booths of the chosen supplier
   const [photos, setPhotos] = useState<File[]>([]);
   const [productId, setProductId] = useState<number | null>(null); // set once saved
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +32,18 @@ export default function ProductNew() {
     api<Supplier[]>('/suppliers', 'Erreur lors du chargement des fournisseurs').then(setSuppliers).catch((e: Error) => setError(e.message));
     api<ShippingType[]>('/lists/shipping-types', 'Erreur').then(setShippingTypes).catch(() => {});
   }, []);
+
+  // D43: the booth choice follows the supplier; a booth of another supplier is dropped.
+  useEffect(() => {
+    if (!form.supplier_id) { setBooths([]); return; }
+    let live = true;
+    api<Booth[]>(`/booths?supplier_id=${form.supplier_id}`, 'Erreur').then((list) => {
+      if (!live) return;
+      setBooths(list);
+      setForm((f) => (f.booth_id && !list.some((b) => String(b.id) === f.booth_id) && !params.get('booth') ? { ...f, booth_id: '' } : f));
+    }).catch(() => {});
+    return () => { live = false; };
+  }, [form.supplier_id, params]);
 
   const set = (key: keyof typeof form) => (e: { target: { value: string } }) =>
     setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -60,6 +74,7 @@ export default function ProductNew() {
           method: 'POST',
           body: jsonBody({
             supplier_id: form.supplier_id || null,
+            booth_id: form.booth_id || null,
             name: form.name,
             supplier_ref: form.supplier_ref || null,
             price: form.price.replace(',', '.') || null,
@@ -94,6 +109,15 @@ export default function ProductNew() {
               {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </Field>
+          {(booths.length > 0 || form.booth_id) && (
+            <Field label="Booth" hint="Le booth où le produit a été vu">
+              <select className={inputClass} value={form.booth_id} onChange={set('booth_id')}>
+                <option value="">Non précisé</option>
+                {booths.map((b) => <option key={b.id} value={b.id}>{b.booth_code} · phase {b.phase}</option>)}
+                {form.booth_id && !booths.some((b) => String(b.id) === form.booth_id) && <option value={form.booth_id}>Booth de la page d'origine</option>}
+              </select>
+            </Field>
+          )}
           <Field label="Nom du produit">
             <input className={inputClass} value={form.name} onChange={set('name')} maxLength={200} required />
           </Field>

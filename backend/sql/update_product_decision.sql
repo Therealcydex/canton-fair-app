@@ -36,7 +36,7 @@ ALTER TABLE products ADD CONSTRAINT fk_products_decided_by FOREIGN KEY (decided_
 ALTER TABLE products ADD CONSTRAINT fk_products_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL;
 
 -- step: view
--- Same text as create_sourcing_schema.sql.
+-- The view as it was at D38; update_product_booth.sql (D43) adds the booth columns, so run it after.
 CREATE OR REPLACE VIEW v_products AS
 SELECT pr.id, pr.supplier_id, pr.supplier_ref, pr.name, pr.description, pr.price, pr.unit,
        pr.moq, pr.shipping_type, st.name AS shipping_name,

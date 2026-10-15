@@ -164,6 +164,9 @@ function BossQueue({ review, reload }: { review: Review; reload: () => Promise<R
           {product.supplier_id
             ? <Link to={`/fournisseurs/${product.supplier_id}`} className="text-sm text-blue-700">{product.supplier_name}</Link>
             : <p className="text-sm text-slate-500">Sans fournisseur</p>}
+          {product.booth_id && (
+            <Link to={`/booths/${product.booth_id}`} className="block text-sm text-blue-700">Booth {product.booth_code} · phase {product.booth_phase}</Link>
+          )}
         </div>
         <p className="text-base font-medium">{priceLine(product)}</p>
         {product.supplier_ref && <p className="text-sm text-slate-600">Réf. {product.supplier_ref}</p>}
@@ -218,7 +221,7 @@ function ProductRow({ product: p, children }: { product: Product; children?: Rea
           <span className="truncate font-medium">{p.name}</span>
           <Badge className={`shrink-0 ${STATUS[p.status].badge}`}>{STATUS[p.status].label}</Badge>
         </div>
-        <div className="truncate text-sm text-slate-600">{p.supplier_name || 'Sans fournisseur'} · {priceLine(p)}</div>
+        <div className="truncate text-sm text-slate-600">{p.supplier_name || 'Sans fournisseur'}{p.booth_code ? ` · Booth ${p.booth_code}` : ''} · {priceLine(p)}</div>
         {children}
       </div>
     </Card>

@@ -150,8 +150,11 @@ export default function ProductDetail() {
         <Descriptions.Item label="MOQ">{product.moq ?? '—'}</Descriptions.Item>
         <Descriptions.Item label="Expédition">{product.shipping_type ? `${product.shipping_type} — ${product.shipping_name}` : '—'}</Descriptions.Item>
         <Descriptions.Item label="Référence fournisseur">{product.supplier_ref || '—'}</Descriptions.Item>
-        <Descriptions.Item label="Fournisseur" span="filled">
+        <Descriptions.Item label="Fournisseur">
           {product.supplier_id ? <Link to={`/fournisseurs/${product.supplier_id}`}>{product.supplier_name}</Link> : '—'}
+        </Descriptions.Item>
+        <Descriptions.Item label="Booth">
+          {product.booth_id ? <Link to={`/booths/${product.booth_id}`}>{product.booth_code} · phase {product.booth_phase}</Link> : '—'}
         </Descriptions.Item>
         <Descriptions.Item label="Description" span="filled">
           <span style={{ whiteSpace: 'pre-wrap' }}>{product.description || '—'}</span>

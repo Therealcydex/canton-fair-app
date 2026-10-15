@@ -13,7 +13,7 @@ async function loadOne(sql, rawId, notFound) {
 }
 
 const loadSupplier = (id) => loadOne('SELECT * FROM suppliers WHERE id = ?', id, 'Fournisseur introuvable');
-const loadBooth = (id) => loadOne('SELECT * FROM booths WHERE id = ?', id, 'Stand introuvable');
+const loadBooth = (id) => loadOne('SELECT * FROM booths WHERE id = ?', id, 'Booth introuvable');
 const loadProduct = (id) => loadOne('SELECT * FROM products WHERE id = ?', id, 'Produit introuvable');
 const loadCompany = (id) => loadOne('SELECT * FROM companies WHERE id = ?', id, 'Société introuvable');
 

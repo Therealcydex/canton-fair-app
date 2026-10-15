@@ -56,12 +56,28 @@ async function validateProduct(req, existing) {
     if (!s) return { status: 400, message: 'Fournisseur introuvable' };
     p.supplier_id = supplierId;
   }
+
+  // D43: the booth where the product was found (optional). It must be a booth of the product's
+  // supplier; a product without a supplier takes the booth's.
+  const boothRaw = body.booth_id !== undefined ? body.booth_id : existing?.booth_id;
+  p.booth_id = null;
+  if (boothRaw !== undefined && boothRaw !== null && boothRaw !== '') {
+    const boothId = toId(boothRaw);
+    if (!boothId) return { status: 400, message: 'Booth invalide' };
+    const [[booth]] = await db.query('SELECT id, supplier_id, booth_code FROM booths WHERE id = ?', [boothId]);
+    if (!booth) return { status: 400, message: 'Booth introuvable' };
+    if (booth.supplier_id && p.supplier_id && booth.supplier_id !== p.supplier_id) {
+      return { status: 400, message: `Le booth ${booth.booth_code} est celui d'un autre fournisseur` };
+    }
+    if (!p.supplier_id && booth.supplier_id) p.supplier_id = booth.supplier_id;
+    p.booth_id = boothId;
+  }
   return { values: p };
 }
 
 // Every product of the group. Filters: supplier_id, shipping_type, shared_with (a company id),
-// mine=1 (shared with the caller's company), shared=1|0 (D40), status (D38), q (name, reference,
-// description).
+// mine=1 (shared with the caller's company), shared=1|0 (D40), status (D38), booth_id (D43),
+// q (name, reference, description).
 exports.list = handle('Product list', async (req, res) => {
   const params = [];
   let where = '1=1';
@@ -70,6 +86,12 @@ exports.list = handle('Product list', async (req, res) => {
     if (!supplierId) return fail(res, 400, 'Filtre supplier_id invalide');
     where += ' AND v.supplier_id = ?';
     params.push(supplierId);
+  }
+  if (req.query.booth_id) {
+    const boothId = toId(req.query.booth_id);
+    if (!boothId) return fail(res, 400, 'Filtre booth_id invalide');
+    where += ' AND v.booth_id = ?';
+    params.push(boothId);
   }
   if (req.query.shipping_type) {
     where += ' AND v.shipping_type = ?';
@@ -142,9 +164,9 @@ exports.create = handle('Product create', async (req, res) => {
   if (!v.values) return fail(res, v.status, v.message);
   const p = v.values;
   const [r] = await db.query(
-    `INSERT INTO products (supplier_id, supplier_ref, name, description, price, unit, moq, shipping_type, created_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [p.supplier_id, p.supplier_ref, p.name, p.description, p.price, p.unit, p.moq, p.shipping_type, req.user.id]
+    `INSERT INTO products (supplier_id, booth_id, supplier_ref, name, description, price, unit, moq, shipping_type, created_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [p.supplier_id, p.booth_id, p.supplier_ref, p.name, p.description, p.price, p.unit, p.moq, p.shipping_type, req.user.id]
   );
   res.json({ success: true, data: { id: r.insertId } });
 });
@@ -156,9 +178,9 @@ exports.update = handle('Product update', async (req, res) => {
   if (!v.values) return fail(res, v.status, v.message);
   const p = v.values;
   await db.query(
-    `UPDATE products SET supplier_id = ?, supplier_ref = ?, name = ?, description = ?, price = ?,
+    `UPDATE products SET supplier_id = ?, booth_id = ?, supplier_ref = ?, name = ?, description = ?, price = ?,
             unit = ?, moq = ?, shipping_type = ? WHERE id = ?`,
-    [p.supplier_id, p.supplier_ref, p.name, p.description, p.price, p.unit, p.moq, p.shipping_type, r.row.id]
+    [p.supplier_id, p.booth_id, p.supplier_ref, p.name, p.description, p.price, p.unit, p.moq, p.shipping_type, r.row.id]
   );
   res.json({ success: true, data: { id: r.row.id } });
 });

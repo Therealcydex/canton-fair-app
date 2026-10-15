@@ -19,7 +19,7 @@ export default function BoothsPage({ planning }: { planning: boolean }) {
   useEffect(() => {
     setBooths(null);
     setError(null);
-    api<Booth[]>('/booths', 'Erreur lors du chargement des stands')
+    api<Booth[]>('/booths', 'Erreur lors du chargement des booths')
       .then(setBooths)
       .catch((e: Error) => setError(e.message));
   }, [planning]);
@@ -60,14 +60,14 @@ export default function BoothsPage({ planning }: { planning: boolean }) {
     }
   };
 
-  const empty = !planning ? 'Aucun stand.'
-    : (booths || []).length === 0 ? 'Aucun stand à visiter.'
-      : todoCount === 0 && hideVisited && !q.trim() ? 'Tous les stands sont visités.' : 'Aucun stand trouvé.';
+  const empty = !planning ? 'Aucun booth.'
+    : (booths || []).length === 0 ? 'Aucun booth à visiter.'
+      : todoCount === 0 && hideVisited && !q.trim() ? 'Tous les booths sont visités.' : 'Aucun booth trouvé.';
 
   return (
-    <Page title={planning ? 'À visiter' : 'Stands'}
+    <Page title={planning ? 'À visiter' : 'Booths'}
       action={<Link to="/plan" className="rounded bg-white/15 px-2 py-1 text-sm">Plan des halls</Link>}>
-      <input className={inputClass} placeholder="Fournisseur ou code du stand" value={q} onChange={(e) => setQ(e.target.value)} />
+      <input className={inputClass} placeholder="Fournisseur ou code du booth" value={q} onChange={(e) => setQ(e.target.value)} />
       <ErrorBox message={error} />
       {!booths && !error && <Loading />}
       {planning && booths && booths.length > 0 && (
@@ -97,7 +97,7 @@ export default function BoothsPage({ planning }: { planning: boolean }) {
           </div>
           {g.rows.map((b) => (
             <Card key={b.id} className="flex items-center gap-3">
-              <Link to={`/stands/${b.id}`} className="flex min-w-0 flex-1 items-center gap-3 active:opacity-70">
+              <Link to={`/booths/${b.id}`} className="flex min-w-0 flex-1 items-center gap-3 active:opacity-70">
                 <div className={`w-28 shrink-0 font-bold ${planning ? 'text-lg' : ''}`}>{b.booth_code}</div>
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">{b.supplier_name || 'Sans fournisseur'}</div>

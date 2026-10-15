@@ -133,7 +133,7 @@ export default function SupplierPage() {
   useEffect(() => {
     Promise.all([
       loadSupplier(),
-      api<Booth[]>(`/booths?supplier_id=${id}`, 'Erreur lors du chargement des stands').then(setBooths),
+      api<Booth[]>(`/booths?supplier_id=${id}`, 'Erreur lors du chargement des booths').then(setBooths),
       api<Product[]>(`/products?supplier_id=${id}`, 'Erreur lors du chargement des produits').then(setProducts),
     ]).catch((e: Error) => setError(e.message));
   }, [id, loadSupplier]);
@@ -145,7 +145,7 @@ export default function SupplierPage() {
       action={<Link to={`/produits/nouveau?supplier=${supplier.id}`} className="rounded bg-blue-600 px-2 py-1 text-sm">+ Produit</Link>}>
       <Card className="space-y-1 text-sm">
         {(supplier.province || supplier.rating) && <p>{[supplier.province, supplier.rating ? '★'.repeat(supplier.rating) : null].filter(Boolean).join(' · ')}</p>}
-        <p className="text-slate-600">{supplier.nbr_booths ? `${supplier.booth_visit_pct} % des ${supplier.nbr_booths} stand(s) visités` : 'Aucun stand'}</p>
+        <p className="text-slate-600">{supplier.nbr_booths ? `${supplier.booth_visit_pct} % des ${supplier.nbr_booths} booth(s) visités` : 'Aucun booth'}</p>
         {supplier.phone && <p><a className="text-blue-700" href={`tel:${supplier.phone}`}>{supplier.phone}</a></p>}
         {supplier.email && <p><a className="text-blue-700" href={`mailto:${supplier.email}`}>{supplier.email}</a></p>}
         {supplier.address && <p className="text-slate-600">{supplier.address}</p>}
@@ -161,9 +161,9 @@ export default function SupplierPage() {
       ))}
       <NewContact supplierId={supplier.id} onSaved={loadSupplier} />
 
-      <h2 className="px-1 pt-2 font-semibold">Stands ({booths.length})</h2>
+      <h2 className="px-1 pt-2 font-semibold">Booths ({booths.length})</h2>
       {booths.map((b) => (
-        <Link key={b.id} to={`/stands/${b.id}`} className="block">
+        <Link key={b.id} to={`/booths/${b.id}`} className="block">
           <Card className="flex items-center justify-between active:bg-slate-50">
             <span className="font-bold">{b.booth_code}</span>
             {b.visited
@@ -181,6 +181,7 @@ export default function SupplierPage() {
             <Badge className={`shrink-0 ${STATUS[p.status].badge}`}>{STATUS[p.status].label}</Badge>
           </div>
           <p className="text-slate-600">{formatPrice(p.price)}{p.unit ? ` / ${p.unit}` : ''}{p.moq ? ` · MOQ ${p.moq}` : ''}{p.shipping_type ? ` · ${p.shipping_type}` : ''}</p>
+          {p.booth_code && <p className="text-xs text-slate-500">Booth {p.booth_code} · phase {p.booth_phase}</p>}
           {p.decision_note && <p className="text-slate-800">« {p.decision_note} »</p>}
         </Card>
       ))}

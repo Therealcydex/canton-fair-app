@@ -84,6 +84,9 @@ export interface Product {
   shipping_name: string | null;
   shared_with: string | null;
   cover_url: string | null;
+  booth_id: number | null;     // D43: the booth where it was found
+  booth_code: string | null;
+  booth_phase: number | null;
   images_count?: number;
   description?: string | null;
   // D38: the boss's decision (evening review)

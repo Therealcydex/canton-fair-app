@@ -8,11 +8,28 @@ import { useList } from '../../utils/lists';
 // a shipping type of the list) and explains a refusal.
 export default function ProductFormFields({ lockSupplier }) {
   const [suppliers, setSuppliers] = useState([]);
+  const [booths, setBooths] = useState([]);
   const shippingTypes = useList('shipping-types');
+  const form = Form.useFormInstance();
+  const supplierId = Form.useWatch('supplier_id');
 
   useEffect(() => {
     axios.get(`${API_BASE_URL}/suppliers`).then((r) => setSuppliers(r.data.data)).catch(() => {});
   }, []);
+
+  // D43: the booth where the product was found, among the booths of the chosen supplier. A booth
+  // of another supplier is cleared when the supplier changes (the server refuses it anyway).
+  useEffect(() => {
+    if (!supplierId) { setBooths([]); return undefined; }
+    let alive = true;
+    axios.get(`${API_BASE_URL}/booths`, { params: { supplier_id: supplierId } }).then((r) => {
+      if (!alive) return;
+      setBooths(r.data.data);
+      const current = form.getFieldValue('booth_id');
+      if (current && !r.data.data.some((b) => b.id === current)) form.setFieldValue('booth_id', null);
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [supplierId, form]);
 
   return (
     <>
@@ -24,6 +41,12 @@ export default function ProductFormFields({ lockSupplier }) {
           <Form.Item name="supplier_id" label="Fournisseur">
             <Select showSearch allowClear optionFilterProp="label" disabled={lockSupplier} placeholder="Aucun"
               options={suppliers.map((s) => ({ value: s.id, label: s.name }))} />
+          </Form.Item>
+        </Col>
+        <Col xs={24} sm={12}>
+          <Form.Item name="booth_id" label="Booth" extra={supplierId ? (booths.length ? '' : "Ce fournisseur n'a pas de booth") : "Choisissez d'abord le fournisseur"}>
+            <Select allowClear placeholder="Non précisé" disabled={!booths.length}
+              options={booths.map((b) => ({ value: b.id, label: `${b.booth_code} · phase ${b.phase}` }))} />
           </Form.Item>
         </Col>
         <Col xs={24} sm={12}>
@@ -56,6 +79,7 @@ export default function ProductFormFields({ lockSupplier }) {
 export const productPayload = (v) => ({
   ...v,
   supplier_id: v.supplier_id ?? null,
+  booth_id: v.booth_id ?? null,
   price: v.price ? String(v.price).replace(',', '.') : null,
   moq: v.moq ?? null,
 });

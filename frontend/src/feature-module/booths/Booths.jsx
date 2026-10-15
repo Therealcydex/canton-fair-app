@@ -12,7 +12,7 @@ export default function Booths({ planning = false }) {
 
   return (
     <>
-      <h1 className="h4 mb-3">{planning ? 'Stands à visiter' : 'Stands'}</h1>
+      <h1 className="h4 mb-3">{planning ? 'Booths à visiter' : 'Booths'}</h1>
       <Space className="mb-3" wrap>
         <Input.Search placeholder="Code ou fournisseur" allowClear style={{ width: 220 }} onSearch={(q) => set('q')(q || undefined)} />
         <Select placeholder="Phase" allowClear style={{ width: 110 }} onChange={set('phase')}

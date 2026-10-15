@@ -25,7 +25,7 @@ export default function BoothList({ filters, supplierId, planning, hideSupplier,
       const { data } = await axios.get(`${API_BASE_URL}/booths`, { params: JSON.parse(query) });
       setRows(data.data);
     } catch (err) {
-      setLoadError(apiError(err, 'Erreur lors du chargement des stands'));
+      setLoadError(apiError(err, 'Erreur lors du chargement des booths'));
     } finally {
       setLoading(false);
     }
@@ -46,8 +46,8 @@ export default function BoothList({ filters, supplierId, planning, hideSupplier,
 
   const columns = [
     {
-      title: 'Stand', dataIndex: 'booth_code',
-      render: (v, b) => <Link to={`/stands/${b.id}`}><strong>{v}</strong></Link>,
+      title: 'Booth', dataIndex: 'booth_code',
+      render: (v, b) => <Link to={`/booths/${b.id}`}><strong>{v}</strong></Link>,
     },
     !hideSupplier && {
       title: 'Fournisseur', dataIndex: 'supplier_name',
@@ -73,20 +73,20 @@ export default function BoothList({ filters, supplierId, planning, hideSupplier,
 
   return (
     <>
-      <Button className="mb-2" onClick={() => setCreating(true)}>Nouveau stand</Button>
+      <Button className="mb-2" onClick={() => setCreating(true)}>Nouveau booth</Button>
       {loadError && <Alert type="error" message={loadError} showIcon className="mb-3" />}
       <Table rowKey="id" columns={columns} dataSource={rows} loading={loading} size="middle"
         scroll={{ x: true }} pagination={{ pageSize: 50 }}
-        locale={{ emptyText: planning ? 'Aucun stand à visiter' : 'Aucun stand' }} />
+        locale={{ emptyText: planning ? 'Aucun booth à visiter' : 'Aucun booth' }} />
 
-      <FormModal open={creating} title="Nouveau stand" width={640}
+      <FormModal open={creating} title="Nouveau booth" width={640}
         initialValues={{ supplier_id: supplierId, visited: false, floor: 1 }}
         onCancel={() => setCreating(false)}
         onSubmit={(values) => axios.post(`${API_BASE_URL}/booths`, boothPayload(values))}
         onSaved={(res) => {
           setCreating(false);
-          message.success(`Stand ${res.data.data.booth_code} créé`);
-          if (supplierId) { load(); onChanged?.(); } else navigate(`/stands/${res.data.data.id}`);
+          message.success(`Booth ${res.data.data.booth_code} créé`);
+          if (supplierId) { load(); onChanged?.(); } else navigate(`/booths/${res.data.data.id}`);
         }}>
         <BoothFormFields lockSupplier={!!supplierId} />
       </FormModal>

@@ -10,7 +10,7 @@ const MENU = [
   { to: '/fournisseurs', label: 'Fournisseurs' },
   { to: '/contacts', label: 'Contacts' },
   { to: '/a-visiter', label: 'À visiter' },
-  { to: '/stands', label: 'Stands' },
+  { to: '/booths', label: 'Booths' },
   { to: '/produits', label: 'Produits' },
   { to: '/plan-du-salon', label: 'Plan du salon' }, // D42
 ];

@@ -53,9 +53,9 @@ export default function Accueil() {
   const kpis = [
     { label: 'Fournisseurs', value: data.suppliers, sub: <Link to="/fournisseurs">Voir les fournisseurs</Link> },
     {
-      label: 'Stands visités',
+      label: 'Booths visités',
       value: <>{visited}<span className="text-muted fs-6"> / {planned}</span></>,
-      sub: planned ? `${pct(visited, planned)} % des stands prévus` : 'Aucun stand prévu',
+      sub: planned ? `${pct(visited, planned)} % des booths prévus` : 'Aucun booth prévu',
     },
     { label: 'Produits enregistrés', value: data.products, sub: `+${data.products_week} ces 7 derniers jours` },
     {
@@ -81,7 +81,7 @@ export default function Accueil() {
       </Row>
       <Row gutter={[16, 16]}>
         <Col xs={24} xl={14}>
-          <Card title="Stands par phase" size="small">
+          <Card title="Booths par phase" size="small">
             <Table rowKey="phase" size="middle" pagination={false} dataSource={data.phases} scroll={{ x: true }}
               columns={[
                 {
@@ -98,7 +98,7 @@ export default function Accueil() {
                 {
                   title: 'Avancement', align: 'right',
                   render: (_, r) => {
-                    if (!r.planned) return <Tag className="m-0">Aucun stand</Tag>;
+                    if (!r.planned) return <Tag className="m-0">Aucun booth</Tag>;
                     const p = pct(r.visited, r.planned);
                     return <Tag color={pctColor(p)} className="m-0">{r.visited ? `${p} %` : 'À venir'}</Tag>;
                   },
@@ -115,7 +115,7 @@ export default function Accueil() {
                   </Table.Summary.Cell>
                 </Table.Summary.Row>
               )} />
-            <div className="mt-2 small"><Link to="/a-visiter">Stands à visiter →</Link></div>
+            <div className="mt-2 small"><Link to="/a-visiter">Booths à visiter →</Link></div>
           </Card>
         </Col>
         <Col xs={24} xl={10}>

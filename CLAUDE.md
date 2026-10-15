@@ -11,7 +11,7 @@ whole group. It has its own tables and its own login, with sign-up validated by 
 follows the Smart360 code conventions in `guide-nouveau-projet-smart360.md`, but none of the
 Smart360 data: no `LISTE_DES_SALARIES`, no `Boutique`, no UPPERCASE table names.
 
-- `docs/sourcing-spec.md` holds the actors, requirements (BF01–BF20, BNF01–BNF06), decisions (D1–D42, several replaced by schema v2) and open questions. The decisions are not yet validated by the Product Owner. Read it before working on a feature, and add a decision there when you make one.
+- `docs/sourcing-spec.md` holds the actors, requirements (BF01–BF20, BNF01–BNF06), decisions (D1–D44, several replaced by schema v2) and open questions. The decisions are not yet validated by the Product Owner. Read it before working on a feature, and add a decision there when you make one.
 - `docs/sourcing-status.md` tracks the state of each requirement, what was checked, and the migration scripts in order. Update it when a requirement changes.
 - Sprints 0–6 were built on schema v1; branch `feat/sourcing-schema-v2` moves everything to schema v2 and adds sign-up. What remains: the PO's validation, the Android build (Node 22), and the hand checks listed in the status file.
 
@@ -20,7 +20,7 @@ Smart360 data: no `LISTE_DES_SALARIES`, no `Boutique`, no UPPERCASE table names.
 Backend (`backend/`, Node 20):
 - `npm run dev` runs the server with nodemon on port 3000. `npm start` runs it without reloading.
 - `npm run db:setup` creates the database if it is missing and runs, in order, `sql/china_provinces.sql`, `sql/canton_fair_categories.sql` (only into an empty table), `sql/canton_fair_sections_140.sql` (the sections it lacks, D41) and `sql/create_sourcing_schema.sql`. It then seeds the admin (`role = 'ADMIN'`) from `SEED_ADMIN_USERNAME` and `SEED_ADMIN_PASSWORD`. It is safe to run twice.
-- `npm run db:update-booth-code` (D32) , `npm run db:update-product-decision` (D38) `npm run db:add-canton-sections` (D41) and `npm run db:update-fair-plan` (D42) bring a database set up before them up to date; each step runs only if still needed.
+- `npm run db:update-booth-code` (D32) , `npm run db:update-product-decision` (D38) `npm run db:add-canton-sections` (D41) `npm run db:update-fair-plan` (D42) and `npm run db:update-product-booth` (D43) bring a database set up before them up to date; each step runs only if still needed.
 - `npm run db:drop-v1 -- --yes` drops the schema v1 tables, once, before `db:setup` (it refuses tables that are not v1). `npm run db:demo` loads demo data through the API.
 - `backend/.env` points to the remote `Smart360_copy` (MariaDB 11.8); the local values are in a comment there. The API scenarios refuse to run on a remote database.
 - Copy `.env.example` to `.env` and fill in the values. `JWT_SECRET` deliberately has no default.
@@ -58,8 +58,8 @@ shared helpers instead of rewriting them:
 Tarek's schema v2 (`backend/sql/create_sourcing_schema.sql`, corrections D22-D30 in the spec):
 - `companies` (name, branch) are Tarek's companies. A user may belong to one (`users.company_id`, SET NULL on delete).
 - `suppliers` have a `province_id` (`china_province`), `contacts`, `booths` (supplier optional) and `products` (supplier optional).
-- `booths`: phase 1-3, hall, floor 1-4, letter and numbers (optional, together); `booth_code` is a generated column in the fair's notation (`11.3J26`, `14.3I16-17`, `9.1`, D32), and a stand is unique per phase; `category_id` points to `canton_fair_category` (read-only list, per phase); `visited` is the "to visit" flag.
-- `products`: `price DECIMAL(12,2)`, `shipping_type` (FK to `shipping_types`, FOB by default), `product_images`, `product_shares` (`product_id`, `company_id`). D38: `status` (`A_ETUDIER` until the admin decides `RETENU`, `ECHANTILLON`, `A_COMMANDER` or `REJETE`), `decision_note`, `decided_by/at`, `created_by/at`. Only the admin decides (`PUT /api/products/:id/decision`); `GET /api/products/review` is the evening review queue (mobile "Revue" tab).
+- `booths`: phase 1-3, hall, floor 1-4, letter and numbers (optional, together); `booth_code` is a generated column in the fair's notation (`11.3J26`, `14.3I16-17`, `9.1`, D32), and a booth is unique per phase (the apps say "booth", never "stand", D44); `category_id` points to `canton_fair_category` (read-only list, per phase); `visited` is the "to visit" flag.
+- `products`: `price DECIMAL(12,2)`, `shipping_type` (FK to `shipping_types`, FOB by default), `product_images`, `product_shares` (`product_id`, `company_id`). D38: `status` (`A_ETUDIER` until the admin decides `RETENU`, `ECHANTILLON`, `A_COMMANDER` or `REJETE`), `decision_note`, `decided_by/at`, `created_by/at`. Only the admin decides (`PUT /api/products/:id/decision`); `GET /api/products/review` is the evening review queue (mobile "Revue" tab). D43: `booth_id`, the booth where it was found (a booth of its supplier).
 - Views `v_booths`, `v_suppliers` (booth count, % visited), `v_products` (shipping name, shared with): keep them free of GROUP BY (D23).
 - D42: `section_halls` holds the halls of each section (typed by the admin, `GET`/`PUT /api/fair-plan`); `suppliers.cantonfair_url` only takes a cantonfair.org.cn address.
 - Reference lists are served by `GET /api/lists/provinces|shipping-types|canton-categories`.

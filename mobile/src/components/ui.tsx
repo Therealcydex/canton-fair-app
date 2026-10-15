@@ -66,7 +66,7 @@ export const inputClass = 'block w-full rounded-lg border border-slate-300 bg-wh
 // Bottom tab bar of the logged-in screens.
 const TABS = [
   { to: '/', label: 'À visiter', end: true },
-  { to: '/stands', label: 'Stands' },
+  { to: '/booths', label: 'Booths' },
   { to: '/fournisseurs', label: 'Fournisseurs' },
   { to: '/revue', label: 'Revue' }, // D38: the evening review
   { to: '/compte', label: 'Compte' },

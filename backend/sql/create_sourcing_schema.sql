@@ -130,13 +130,15 @@ CREATE TABLE IF NOT EXISTS products (
     decided_at     DATETIME NULL,
     created_by     INT NULL,                      -- D38: the buyer who recorded it
     created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    booth_id       INT NULL,                      -- D43: the booth where it was found (update_product_booth.js)
     KEY ix_products_name (name),                  -- D24: search by name
     KEY ix_products_status (status, created_at),  -- D38: the review queue
     CONSTRAINT chk_product_status CHECK (status IN ('A_ETUDIER', 'RETENU', 'ECHANTILLON', 'A_COMMANDER', 'REJETE')),
     FOREIGN KEY (supplier_id)   REFERENCES suppliers(id)        ON DELETE CASCADE,
     FOREIGN KEY (shipping_type) REFERENCES shipping_types(code) ON UPDATE CASCADE,
     CONSTRAINT fk_products_decided_by FOREIGN KEY (decided_by) REFERENCES users(id) ON DELETE SET NULL,
-    CONSTRAINT fk_products_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+    CONSTRAINT fk_products_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_products_booth FOREIGN KEY (booth_id) REFERENCES booths(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------- Hall plan of the fair (D42) ----------
@@ -197,7 +199,7 @@ SELECT s.id, s.name, s.phone, s.email, s.website, s.address, s.province_id, s.ra
 FROM suppliers s
 LEFT JOIN china_province p ON p.id = s.province_id;
 
--- Products with shipping name, the companies they're shared with, and the decision (D38)
+-- Products with shipping name, the companies they're shared with, the decision (D38) and the booth (D43)
 CREATE OR REPLACE VIEW v_products AS
 SELECT pr.id, pr.supplier_id, pr.supplier_ref, pr.name, pr.description, pr.price, pr.unit,
        pr.moq, pr.shipping_type, st.name AS shipping_name,
@@ -205,8 +207,10 @@ SELECT pr.id, pr.supplier_id, pr.supplier_ref, pr.name, pr.description, pr.price
           FROM product_shares ps JOIN companies co ON co.id = ps.company_id
          WHERE ps.product_id = pr.id) AS shared_with,
        pr.status, pr.decision_note, pr.decided_at, pr.decided_by, du.name AS decided_by_name,
-       pr.created_at, pr.created_by, cu.name AS created_by_name
+       pr.created_at, pr.created_by, cu.name AS created_by_name,
+       pr.booth_id, bo.booth_code, bo.phase AS booth_phase
 FROM products pr
 LEFT JOIN shipping_types st ON st.code = pr.shipping_type
 LEFT JOIN users du          ON du.id = pr.decided_by
-LEFT JOIN users cu          ON cu.id = pr.created_by;
+LEFT JOIN users cu          ON cu.id = pr.created_by
+LEFT JOIN booths bo         ON bo.id = pr.booth_id;

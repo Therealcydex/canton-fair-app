@@ -75,7 +75,7 @@ export default function SupplierDetail() {
     },
     {
       key: 'booths',
-      label: <Space size={6}>Stands<Tag className="m-0">{visited}/{booths}</Tag></Space>,
+      label: <Space size={6}>Booths<Tag className="m-0">{visited}/{booths}</Tag></Space>,
       children: <BoothList supplierId={supplier.id} hideSupplier onChanged={load} />,
     },
     {
@@ -96,7 +96,7 @@ export default function SupplierDetail() {
         <Space wrap>
           <Button onClick={() => setEditing(true)}>Modifier</Button>
           <Popconfirm title="Supprimer ce fournisseur ?"
-            description="Ses contacts, ses produits et leurs photos seront supprimés ; ses stands restent, sans fournisseur."
+            description="Ses contacts, ses produits et leurs photos seront supprimés ; ses booths restent, sans fournisseur."
             okText="Supprimer" cancelText="Annuler" onConfirm={remove}>
             <Button danger>Supprimer</Button>
           </Popconfirm>
@@ -123,7 +123,7 @@ export default function SupplierDetail() {
                 : '—',
             },
             { key: 'rating', label: 'Note', children: supplier.rating ? <Rate disabled value={supplier.rating} style={{ fontSize: 14 }} /> : 'Non noté' },
-            { key: 'booths', label: 'Stands visités', children: booths ? `${visited} / ${booths}` : 'Aucun stand' },
+            { key: 'booths', label: 'Booths visités', children: booths ? `${visited} / ${booths}` : 'Aucun booth' },
             { key: 'address', label: 'Adresse', span: 'filled', children: supplier.address || '—' },
             { key: 'notes', label: 'Notes', span: 'filled', children: <span style={{ whiteSpace: 'pre-wrap' }}>{supplier.notes || '—'}</span> },
           ]} />

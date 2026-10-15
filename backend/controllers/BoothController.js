@@ -70,7 +70,7 @@ async function validateBooth(req, existing) {
   }
 
   // D26, D32: two booths of one phase cannot overlap at the same place ("12.1A22-24" and
-  // "12.1A23" are the same stand). A booth known only by "9.1" overlaps nothing.
+  // "12.1A23" are the same booth). A booth known only by "9.1" overlaps nothing.
   if (b.letter === null) return { values: b };
   const end = b.num_end ?? b.num_start;
   const [[overlap]] = await db.query(
@@ -80,11 +80,11 @@ async function validateBooth(req, existing) {
      LIMIT 1`,
     [existing?.id ?? 0, b.phase, b.hall, b.floor, b.letter, end, b.num_start]
   );
-  if (overlap) return { status: 409, message: `Cet emplacement chevauche le stand ${overlap.booth_code} (phase ${b.phase})` };
+  if (overlap) return { status: 409, message: `Cet emplacement chevauche le booth ${overlap.booth_code} (phase ${b.phase})` };
   return { values: b };
 }
 
-// Runs a write; a duplicate stand (uq_booth_place) that slipped between the check and the write (two
+// Runs a write; a duplicate booth (uq_booth_place) that slipped between the check and the write (two
 // users at the same moment) still ends in a 409.
 async function writeBooth(res, b, sql, params) {
   try {
@@ -92,7 +92,7 @@ async function writeBooth(res, b, sql, params) {
     return r;
   } catch (e) {
     if (e.code === 'ER_DUP_ENTRY') {
-      fail(res, 409, `Le stand ${boothCode(b)} existe déjà`);
+      fail(res, 409, `Le booth ${boothCode(b)} existe déjà`);
       return null;
     }
     throw e;
