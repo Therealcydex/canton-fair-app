@@ -1,16 +1,25 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
-import { Alert, App, Input, Table, Tabs } from 'antd';
+import { Alert, App, Input, Spin, Table, Tabs } from 'antd';
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import { useAuth } from '../../context/AuthContext';
 import { isAdmin } from '../../utils/access';
-import { formatHalls } from '../../utils/fairPlan';
+import { AREAS, hallsOf } from '../../utils/fairPlan';
 
-// D47: the halls one line per hall ("Hall 14 · étages 3, 4").
-const HallLines = ({ text }) => (
-  <div>{formatHalls(text).map((line) => <div key={line}>{line}</div>)}</div>
-);
+// D48: the sections of a phase grouped as on the official plan: Area A, D, C, B, each section with
+// its codes in that area, in the plan's order (the API's); a section in two areas shows in both.
+// Sections without halls come last.
+const groupByArea = (rows) => {
+  const groups = AREAS.map((area) => ({ key: area, title: `Area ${area}`, rows: [] }));
+  const other = { key: '?', title: 'Autres', rows: [] };
+  const empty = { key: 'none', title: 'Sans hall', rows: [] };
+  rows.forEach((row) => {
+    if (!row.halls) empty.rows.push(row);
+    else (groups.find((g) => g.key === row.area) || other).rows.push(row);
+  });
+  return [...groups, other, empty].filter((g) => g.rows.length);
+};
 
 const PHASES = [
   { phase: 1, label: 'Phase 1 · 15-19 oct.' },
@@ -35,8 +44,9 @@ function HallsInput({ row, onSave }) {
   );
 }
 
-// D42: the hall plan of the fair: which halls hold each exhibition section in this session.
-// Everyone reads it; the admin types the halls from the official printed plan.
+// D42: the hall plan of the fair: which halls hold each exhibition section in this session, laid
+// out like the official plan (D48). Everyone reads it; the admin can correct a section (the field
+// holds all its codes, whatever the area).
 export default function FairPlan() {
   const { user } = useAuth();
   const { message } = App.useApp();
@@ -67,13 +77,13 @@ export default function FairPlan() {
   };
 
   const columns = [
-    { title: 'Catégorie', dataIndex: 'category', width: 220, responsive: ['md'] },
     { title: 'Section', dataIndex: 'section' },
     {
-      title: 'Halls', dataIndex: 'halls', width: 300,
+      title: 'Halls', dataIndex: 'halls', width: 420,
+      // The admin's field holds all the codes of the section (every area); the server splits them.
       render: (v, row) => (admin
-        ? <><HallsInput row={row} onSave={save} />{v && <div className="text-muted small mt-1"><HallLines text={v} /></div>}</>
-        : (v ? <HallLines text={v} /> : <span className="text-muted">—</span>)),
+        ? <HallsInput row={{ ...row, halls: hallsOf(rows || [], row.phase, row.section) }} onSave={save} />
+        : (v || <span className="text-muted">—</span>)),
     },
   ];
 
@@ -85,17 +95,18 @@ export default function FairPlan() {
         Les halls de chaque section pour la session en cours{rows ? ` (${known} section(s) sur ${rows.length} renseignée(s))` : ''}.
       </p>
       <Alert type="info" showIcon className="mb-3"
-        message={admin
-          ? "Halls repris du plan du site cantonfair.org.cn, titré « 137e session » : vérifiez-les sur place (plan imprimé ou application du salon) et corrigez une section en modifiant ses halls."
-          : "Halls repris du plan du site cantonfair.org.cn (titré « 137e session ») : à vérifier sur place. L'administrateur corrige les sections qui ont changé."} />
+        message={<>Plan officiel de la 140e session (<a href="https://365.cantonfair.org.cn/en-US/exhibition-hall-map?phase=first" target="_blank" rel="noreferrer">site Canton Fair 365</a>).{admin ? ' Vous pouvez corriger une section : le champ contient tous ses halls.' : ''}</>} />
       {error && <Alert type="error" message={error} showIcon className="mb-3" />}
       <Tabs items={PHASES.map((p) => ({
         key: String(p.phase),
         label: p.label,
-        children: (
-          <Table rowKey={(r) => `${r.phase}|${r.section}`} columns={columns} loading={!rows && !error} size="small"
-            dataSource={(rows || []).filter((r) => r.phase === p.phase)} pagination={false} scroll={{ x: true }} />
-        ),
+        children: !rows && !error ? <Spin /> : groupByArea((rows || []).filter((r) => r.phase === p.phase)).map((g) => (
+          <div key={g.key} className="mb-4">
+            <h2 className="h6 mb-2">{g.title}</h2>
+            <Table rowKey={(r) => `${g.key}|${r.section}`} columns={columns} size="small"
+              dataSource={g.rows} pagination={false} scroll={{ x: true }} />
+          </div>
+        )),
       }))} />
     </>
   );

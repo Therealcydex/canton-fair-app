@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Cascader, Col, Form, Input, InputNumber, Row, Select, Switch } from 'antd';
 import { API_BASE_URL } from '../../config/config';
 import { categoryOptions, useList } from '../../utils/lists';
-import { formatHalls, hallsOf, useFairPlan } from '../../utils/fairPlan';
+import { hallsOf, useFairPlan } from '../../utils/fairPlan';
 
 // Fields of the booth form. The server checks the same rules (phase 1-3, floor 1-4, letter A-Z,
 // letter and number together (D32), a category of the booth's phase) and refuses a booth that
@@ -88,7 +88,7 @@ export default function BoothFormFields({ lockSupplier }) {
       </Form.Item>
       <Form.Item name="category_path" label="Catégorie (salon de Canton)"
         extra={phase
-          ? (options.length ? (sectionHalls ? `Halls de cette section : ${formatHalls(sectionHalls).join(' ; ')}` : '') : `Pas de catégories pour la phase ${phase}`)
+          ? (options.length ? (sectionHalls ? `Halls de cette section : ${sectionHalls}` : '') : `Pas de catégories pour la phase ${phase}`)
           : 'Choisissez d\'abord la phase'}>
         <Cascader options={options} allowClear showSearch disabled={!options.length}
           placeholder="Catégorie / section / sous-catégorie" />

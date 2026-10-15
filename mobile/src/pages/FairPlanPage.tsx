@@ -2,13 +2,14 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { api, jsonBody } from '../config/api';
 import { useAuth } from '../authContext';
 import { isAdmin } from '../decision';
-import { formatHalls } from '../halls';
+import { AREAS, sectionHalls } from '../halls';
 import { Card, ErrorBox, Loading, Page, inputClass } from '../components/ui';
 
 interface PlanRow {
   phase: number;
   category: string;
   section: string;
+  area: string | null; // D48: A, B, C or D; null when the section has no halls
   halls: string | null;
 }
 
@@ -18,15 +19,16 @@ const PHASES = [
   { phase: 3, label: 'Phase 3', dates: '31 oct.-4 nov.' },
 ];
 
-// D42: "Plan des halls": which halls hold each exhibition section in this session, by phase. The
-// admin taps a section to type its halls from the official printed plan; the others read it.
+// D42: "Plan des halls": which halls hold each exhibition section in this session, by phase, laid
+// out like the official plan (D48): Area A, D, C, B, each section with its codes in that area (a
+// section in two areas shows in both). The admin taps a section to correct all its codes.
 export default function FairPlanPage() {
   const { user } = useAuth();
   const admin = isAdmin(user);
   const [phase, setPhase] = useState(1);
   const [rows, setRows] = useState<PlanRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState<string | null>(null); // the section being edited
+  const [editing, setEditing] = useState<string | null>(null); // "area|section" being edited
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -34,11 +36,17 @@ export default function FairPlanPage() {
     .then(setRows).catch((e: Error) => setError(e.message)), []);
   useEffect(() => { load(); }, [load]);
 
-  // The sections of the chosen phase, under their category.
+  // The sections of the chosen phase, by area as on the plan; sections without halls come last.
   const groups = useMemo(() => {
-    const map = new Map<string, PlanRow[]>();
-    for (const r of (rows || []).filter((x) => x.phase === phase)) map.set(r.category, [...(map.get(r.category) || []), r]);
-    return [...map.entries()];
+    const byKey = new Map<string, { title: string; rows: PlanRow[] }>();
+    for (const area of [...AREAS, '?', 'none']) {
+      byKey.set(area, { title: area === '?' ? 'Autres' : area === 'none' ? 'Sans hall' : `Area ${area}`, rows: [] });
+    }
+    for (const r of (rows || []).filter((x) => x.phase === phase)) {
+      const key = !r.halls ? 'none' : byKey.has(r.area || '') ? (r.area as string) : '?';
+      byKey.get(key)?.rows.push(r);
+    }
+    return [...byKey.entries()].filter(([, g]) => g.rows.length);
   }, [rows, phase]);
 
   const save = async (e: FormEvent, row: PlanRow) => {
@@ -69,16 +77,16 @@ export default function FairPlanPage() {
         ))}
       </div>
       <p className="px-1 text-xs text-slate-500">
-        Halls repris du plan du site du salon (titré « 137e session ») : à vérifier sur place.
-        {admin ? ' Touchez une section pour corriger ses halls.' : " L'administrateur corrige les sections qui ont changé."}
+        Plan officiel de la 140e session (site Canton Fair 365).
+        {admin ? ' Touchez une section pour corriger ses halls.' : ''}
       </p>
       <ErrorBox message={error} />
       {!rows && !error && <Loading />}
-      {groups.map(([category, sections]) => (
-        <section key={category} className="space-y-2">
-          <h2 className="px-1 text-sm font-semibold uppercase tracking-wide text-slate-500">{category}</h2>
+      {groups.map(([area, group]) => (
+        <section key={area} className="space-y-2">
+          <h2 className="px-1 text-sm font-semibold uppercase tracking-wide text-slate-500">{group.title}</h2>
           <Card className="divide-y divide-slate-100 p-0">
-            {sections.map((s) => (editing === s.section ? (
+            {group.rows.map((s) => (editing === `${area}|${s.section}` ? (
               <form key={s.section} onSubmit={(e) => save(e, s)} className="space-y-2 p-3">
                 <p className="text-sm font-medium">{s.section}</p>
                 <input className={inputClass} value={value} onChange={(e) => setValue(e.target.value)} maxLength={255}
@@ -90,12 +98,10 @@ export default function FairPlanPage() {
               </form>
             ) : (
               <button key={s.section} type="button" disabled={!admin}
-                onClick={() => { setEditing(s.section); setValue(s.halls || ''); setError(null); }}
+                onClick={() => { setEditing(`${area}|${s.section}`); setValue(sectionHalls(rows || [], s.phase, s.section)); setError(null); }}
                 className="block w-full p-3 text-left disabled:cursor-default">
                 <span className="block text-sm font-medium">{s.section}</span>
-                {s.halls
-                  ? formatHalls(s.halls).map((line) => <span key={line} className="block text-sm text-slate-700">{line}</span>)
-                  : <span className="block text-sm text-slate-400">{admin ? 'Ajouter les halls' : '—'}</span>}
+                <span className={`block text-sm ${s.halls ? 'text-slate-700' : 'text-slate-400'}`}>{s.halls || (admin ? 'Ajouter les halls' : '—')}</span>
               </button>
             )))}
           </Card>

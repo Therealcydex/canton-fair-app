@@ -41,6 +41,10 @@ async function main() {
   const needed = {
     'add-supplier-link': async () => !(await hasColumn('suppliers', 'cantonfair_url')),
     'add-section-halls': async () => !(await hasTable('section_halls')),
+    'add-hall-area': async () => !(await hasColumn('section_halls', 'area')),
+    'hall-area-key': async () => !(await one(
+      `SELECT 1 AS x FROM information_schema.KEY_COLUMN_USAGE
+       WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'section_halls' AND CONSTRAINT_NAME = 'PRIMARY' AND COLUMN_NAME = 'area'`, [])),
     view: async () => true,
   };
 

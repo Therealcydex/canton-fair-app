@@ -148,10 +148,12 @@ CREATE TABLE IF NOT EXISTS products (
 CREATE TABLE IF NOT EXISTS section_halls (
     phase       TINYINT      NOT NULL CHECK (phase BETWEEN 1 AND 3),
     section     VARCHAR(150) NOT NULL,                 -- a section of canton_fair_category
-    halls       VARCHAR(255) NOT NULL,
+    area        CHAR(1)      NOT NULL DEFAULT '',      -- D48: A (halls 1-8), B (9-13), C (14-16), D (17-21)
+    halls       VARCHAR(255) NOT NULL,                 -- the codes of the section in that area
+    position    SMALLINT     NULL,                     -- D48: its rank in that area on the official plan
     updated_by  INT NULL,
     updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (phase, section),
+    PRIMARY KEY (phase, section, area),                -- D48: a section can be in two areas
     CONSTRAINT fk_section_halls_user FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
