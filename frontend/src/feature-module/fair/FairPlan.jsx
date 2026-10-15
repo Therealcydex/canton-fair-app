@@ -5,7 +5,6 @@ import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import { useAuth } from '../../context/AuthContext';
 import { isAdmin } from '../../utils/access';
-import { formatDateTime } from '../../utils/decision';
 
 const PHASES = [
   { phase: 1, label: 'Phase 1 · 15-19 oct.' },
@@ -67,10 +66,6 @@ export default function FairPlan() {
     {
       title: 'Halls', dataIndex: 'halls', width: 300,
       render: (v, row) => (admin ? <HallsInput row={row} onSave={save} /> : (v ? <b>{v}</b> : <span className="text-muted">—</span>)),
-    },
-    {
-      title: 'Mis à jour', dataIndex: 'updated_at', width: 190, responsive: ['lg'],
-      render: (v, row) => (v ? <span className="text-muted small">{row.updated_by_name || '—'}, {formatDateTime(v)}</span> : ''),
     },
   ];
 
