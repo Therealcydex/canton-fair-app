@@ -68,7 +68,8 @@ export default function FairPlanPage() {
         ))}
       </div>
       <p className="px-1 text-xs text-slate-500">
-        {admin ? 'Touchez une section pour saisir ses halls depuis le plan officiel de cette session.' : "Halls saisis par l'administrateur depuis le plan officiel de la session."}
+        Halls repris du plan du site du salon (titré « 137e session ») : à vérifier sur place.
+        {admin ? ' Touchez une section pour corriger ses halls.' : " L'administrateur corrige les sections qui ont changé."}
       </p>
       <ErrorBox message={error} />
       {!rows && !error && <Loading />}

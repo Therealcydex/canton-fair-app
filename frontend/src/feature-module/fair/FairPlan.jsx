@@ -78,8 +78,8 @@ export default function FairPlan() {
       </p>
       <Alert type="info" showIcon className="mb-3"
         message={admin
-          ? "Recopiez les halls depuis le plan officiel de cette session (plan imprimé ou application du salon). Le plan du site cantonfair.org.cn est celui de la 137e session : les halls ont changé depuis."
-          : "Les halls sont saisis par l'administrateur depuis le plan officiel de la session."} />
+          ? "Halls repris du plan du site cantonfair.org.cn, titré « 137e session » : vérifiez-les sur place (plan imprimé ou application du salon) et corrigez une section en modifiant ses halls."
+          : "Halls repris du plan du site cantonfair.org.cn (titré « 137e session ») : à vérifier sur place. L'administrateur corrige les sections qui ont changé."} />
       {error && <Alert type="error" message={error} showIcon className="mb-3" />}
       <Tabs items={PHASES.map((p) => ({
         key: String(p.phase),
