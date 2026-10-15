@@ -23,7 +23,8 @@ npm run dev:phone             # https://<PC address on the Wi-Fi>:5173
 ```
 
 - On the phone (same Wi-Fi), open `https://<PC address>:5173`, for example
-  `https://192.168.1.26:5173` (`ipconfig`, "Wireless LAN adapter Wi-Fi", IPv4 Address).
+  `https://192.168.0.130:5173` (`ipconfig`, "Wireless LAN adapter Wi-Fi", IPv4 Address; it changes
+  with the Wi-Fi network).
 - The certificate is a local one: accept the warning once ("Advanced", then "Proceed").
 - The dev server passes `/api` and `/uploads` to the backend on the PC (port 3000, or
   `VITE_DEV_API_TARGET`), so `.env` needs no PC address in this mode.
