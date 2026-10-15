@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Cascader, Input, InputNumber, Select, Space } from 'antd';
 import { categoryOptions, useList } from '../../utils/lists';
 import BoothList from './BoothList';
+import PageHeader from '../../components/PageHeader';
 
 // All booths of the group, or (planning) only those not visited yet (BF07, BF08).
 export default function Booths({ planning = false }) {
@@ -12,7 +13,8 @@ export default function Booths({ planning = false }) {
 
   return (
     <>
-      <h1 className="h4 mb-3">{planning ? 'Booths à visiter' : 'Booths'}</h1>
+      <PageHeader title={planning ? 'Booths à visiter' : 'Booths'} chip="Canton Fair Pazhou"
+        subtitle={planning ? 'Les booths prévus, à marquer visités sur place' : 'Liste des booths et suivi terrain'} />
       <Space className="mb-3" wrap>
         <Input.Search placeholder="Code ou fournisseur" allowClear style={{ width: 220 }} onSearch={(q) => set('q')(q || undefined)} />
         <Select placeholder="Phase" allowClear style={{ width: 110 }} onChange={set('phase')}

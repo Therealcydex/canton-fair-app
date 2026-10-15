@@ -8,6 +8,8 @@ import FormModal from '../../components/FormModal';
 import SupplierFormFields from './SupplierFormFields';
 import { supplierPayload } from './SupplierDetail';
 import { useList } from '../../utils/lists';
+import { PlusOutlined } from '@ant-design/icons';
+import PageHeader from '../../components/PageHeader';
 
 export default function Suppliers() {
   const { message } = App.useApp();
@@ -69,10 +71,9 @@ export default function Suppliers() {
 
   return (
     <>
-      <Space className="mb-3 w-100 justify-content-between" wrap>
-        <h1 className="h4 m-0">Fournisseurs</h1>
-        <Button type="primary" onClick={() => setCreating(true)}>Nouveau fournisseur</Button>
-      </Space>
+      <PageHeader title="Fournisseurs" chip="Foire de Canton"
+        subtitle="Fournisseurs du groupe, leurs contacts, booths et produits"
+        actions={<Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>Nouveau fournisseur</Button>} />
       <Space className="mb-3 w-100 justify-content-between" wrap>
         <Space wrap>
           <Input.Search placeholder="Rechercher par nom ou téléphone" allowClear style={{ width: 280 }}

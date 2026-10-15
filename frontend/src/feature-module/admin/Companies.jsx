@@ -3,6 +3,8 @@ import axios from 'axios';
 import { Alert, App, Button, Form, Input, Modal, Popconfirm, Space, Table } from 'antd';
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
+import { PlusOutlined } from '@ant-design/icons';
+import PageHeader from '../../components/PageHeader';
 
 export default function Companies() {
   const { message } = App.useApp();
@@ -85,10 +87,9 @@ export default function Companies() {
 
   return (
     <>
-      <Space className="mb-3 w-100 justify-content-between" wrap>
-        <h1 className="h4 m-0">Sociétés</h1>
-        <Button type="primary" onClick={() => open(null)}>Nouvelle société</Button>
-      </Space>
+      <PageHeader eyebrow="Administration" title="Sociétés du groupe"
+        subtitle="Les sociétés avec lesquelles les produits sont partagés"
+        actions={<Button type="primary" icon={<PlusOutlined />} onClick={() => open(null)}>Nouvelle société</Button>} />
       {loadError && <Alert type="error" message={loadError} showIcon className="mb-3" />}
       <Table rowKey="id" columns={columns} dataSource={companies} loading={loading} size="middle" pagination={false} scroll={{ x: true }} />
 

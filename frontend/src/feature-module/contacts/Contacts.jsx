@@ -7,6 +7,8 @@ import { apiError } from '../../utils/apiError';
 import FormModal from '../../components/FormModal';
 import WechatQr, { QrPicker, QrThumb } from '../suppliers/WechatQr';
 import ContactFormFields, { contactPayload } from './ContactFormFields';
+import { DownloadOutlined, PlusOutlined, PrinterOutlined } from '@ant-design/icons';
+import PageHeader from '../../components/PageHeader';
 
 const QR_FILTERS = [
   { value: '1', label: 'Avec QR code' },
@@ -164,14 +166,15 @@ export default function Contacts() {
 
   return (
     <>
-      <Space className="mb-3 w-100 justify-content-between" wrap>
-        <h1 className="h4 m-0">Contacts</h1>
-        <Space wrap>
-          <Button onClick={exportCsv} loading={exporting}>Exporter (CSV)</Button>
-          <Button onClick={printQr}>Imprimer les QR codes</Button>
-          <Button type="primary" onClick={() => setEditing({})}>Nouveau contact</Button>
-        </Space>
-      </Space>
+      <PageHeader title="Contacts" chip="WeChat"
+        subtitle="Annuaire des contacts fournisseurs et leurs QR codes WeChat"
+        actions={(
+          <>
+            <Button icon={<DownloadOutlined />} onClick={exportCsv} loading={exporting}>Exporter (CSV)</Button>
+            <Button icon={<PrinterOutlined />} onClick={printQr}>Imprimer les QR codes</Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing({})}>Nouveau contact</Button>
+          </>
+        )} />
       <Space className="mb-3" wrap>
         <Input.Search placeholder="Nom, téléphone, e-mail, fournisseur" allowClear style={{ width: 280 }}
           onSearch={set('q')} />

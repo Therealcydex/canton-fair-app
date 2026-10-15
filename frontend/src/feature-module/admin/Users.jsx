@@ -5,6 +5,8 @@ import { API_BASE_URL } from '../../config/config';
 import { useAuth } from '../../context/AuthContext';
 import { apiError } from '../../utils/apiError';
 import { companyLabel } from '../../utils/lists';
+import { PlusOutlined } from '@ant-design/icons';
+import PageHeader from '../../components/PageHeader';
 
 const ROLES = [
   { value: 'ACHETEUR', label: 'Acheteur' },
@@ -117,12 +119,10 @@ export default function Users() {
 
   return (
     <>
-      <Space className="mb-3 w-100 justify-content-between" wrap>
-        <h1 className="h4 m-0">Utilisateurs</h1>
-        <Button type="primary" onClick={() => open(null)}>Nouvel utilisateur</Button>
-      </Space>
+      <PageHeader eyebrow="Administration" title="Utilisateurs"
+        subtitle="Il n'y a pas d'inscription : créez ici le compte de chaque personne qui doit accéder à l'application. Un compte inactif ne peut pas se connecter."
+        actions={<Button type="primary" icon={<PlusOutlined />} onClick={() => open(null)}>Nouvel utilisateur</Button>} />
       {loadError && <Alert type="error" message={loadError} showIcon className="mb-3" />}
-      <p className="text-muted">Il n'y a pas d'inscription : créez ici le compte de chaque personne qui doit accéder à l'application. Un compte inactif ne peut pas se connecter.</p>
       <Table rowKey="id" columns={columns} dataSource={users} loading={loading}
         size="middle" scroll={{ x: true }} pagination={{ pageSize: 20 }}
         locale={{ emptyText: 'Aucun utilisateur' }} />

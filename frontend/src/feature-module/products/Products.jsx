@@ -7,6 +7,8 @@ import { useAuth } from '../../context/AuthContext';
 import { companyLabel, useList } from '../../utils/lists';
 import { STATUS } from '../../utils/decision';
 import ProductList, { NewProductModal } from './ProductList';
+import { PlusOutlined } from '@ant-design/icons';
+import PageHeader from '../../components/PageHeader';
 
 // Every product of the group (BF10, BF12), and those shared with the user's company (BF14).
 export default function Products() {
@@ -48,10 +50,9 @@ export default function Products() {
   // D40: design from Claude Design ("Produits", version A): select products, then "Partager avec…".
   return (
     <>
-      <Space className="mb-3 w-100 justify-content-between" wrap>
-        <h1 className="h4 m-0">Produits</h1>
-        <Button type="primary" onClick={() => setCreating(true)}>Nouveau produit</Button>
-      </Space>
+      <PageHeader title="Produits" chip="Catalogue"
+        subtitle="Catalogue de sourcing et partage avec les sociétés du groupe"
+        actions={<Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>Nouveau produit</Button>} />
       <Tabs activeKey={tab} destroyOnHidden
         onChange={(k) => { setFilters({}); setParams(k === 'mine' ? { vue: 'partages' } : {}); }}
         items={[

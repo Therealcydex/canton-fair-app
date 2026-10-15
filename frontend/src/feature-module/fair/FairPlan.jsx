@@ -6,6 +6,7 @@ import { apiError } from '../../utils/apiError';
 import { useAuth } from '../../context/AuthContext';
 import { isAdmin } from '../../utils/access';
 import { AREAS, hallsOf } from '../../utils/fairPlan';
+import PageHeader from '../../components/PageHeader';
 
 // D48: the sections of a phase grouped as on the official plan: Area A, D, C, B, each section with
 // its codes in that area, in the plan's order (the API's); a section in two areas shows in both.
@@ -90,10 +91,8 @@ export default function FairPlan() {
   const known = rows ? rows.filter((r) => r.halls).length : 0;
   return (
     <>
-      <h1 className="h4 mb-2">Plan du salon</h1>
-      <p className="text-muted mb-3">
-        Les halls de chaque section pour la session en cours{rows ? ` (${known} section(s) sur ${rows.length} renseignée(s))` : ''}.
-      </p>
+      <PageHeader title="Plan du salon" chip="140e session"
+        subtitle={`Les halls de chaque section pour la session en cours${rows ? ` (${known} section(s) sur ${rows.length} renseignée(s))` : ''}.`} />
       <Alert type="info" showIcon className="mb-3"
         message={<>Plan officiel de la 140e session (<a href="https://365.cantonfair.org.cn/en-US/exhibition-hall-map?phase=first" target="_blank" rel="noreferrer">site Canton Fair 365</a>).{admin ? ' Vous pouvez corriger une section : le champ contient tous ses halls.' : ''}</>} />
       {error && <Alert type="error" message={error} showIcon className="mb-3" />}

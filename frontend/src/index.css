@@ -1,10 +1,368 @@
+/* Look from the Google Stitch project "Canton Fair Sourcing Portal" (D49); same colours as src/theme.js. */
+:root {
+  --sc-primary: #002a81;
+  --sc-primary-soft: #dce1ff;
+  --sc-accent: #1f6feb;
+  --sc-topbar: #2f3031;
+  --sc-surface: #faf9f9;
+  --sc-panel: #f4f3f3;
+  --sc-border: #e3e2e2;
+  --sc-text: #1b1c1c;
+  --sc-muted: #434653;
+  --sc-success: #2e7d32;
+  --sc-success-soft: #e6f4e7;
+  --sc-warning: #b45309;
+  --sc-warning-soft: #ffe8d4;
+  --sc-font-body: 'Geist Sans', -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --sc-font-heading: 'Space Grotesk', 'Geist Sans', sans-serif;
+
+  --bs-primary: var(--sc-primary);
+  --bs-primary-rgb: 0, 42, 129;
+  --bs-link-color: var(--sc-primary);
+  --bs-link-color-rgb: 0, 42, 129;
+  --bs-link-hover-color: var(--sc-accent);
+  --bs-body-font-family: var(--sc-font-body);
+  --bs-body-color: var(--sc-text);
+  --bs-body-bg: var(--sc-surface);
+  --bs-secondary-color: var(--sc-muted);
+}
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: var(--sc-font-body);
+  background: var(--sc-surface);
+  color: var(--sc-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
+  font-family: var(--sc-font-heading);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Small uppercase label used across the screens (table headers, figure labels, eyebrows). */
+.sc-label,
+.ant-table-wrapper .ant-table-thead > tr > th {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sc-muted);
+}
+
+.ant-table-wrapper .ant-table {
+  border: 1px solid var(--sc-border);
+}
+
+.ant-tag {
+  font-weight: 600;
+}
+
+/* Top bar (components/AppLayout.jsx). */
+.app-topbar {
+  background: var(--sc-topbar);
+  padding-top: 0;
+  padding-bottom: 0;
+  min-height: 48px;
+}
+
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--sc-font-heading);
+  font-weight: 700;
+  color: #fff !important;
+}
+
+.app-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  background: var(--sc-accent);
+  color: #fff;
+}
+
+.app-topbar .nav-link {
+  color: #d6d6d6;
+  padding: 14px 14px !important;
+}
+
+.app-topbar .nav-link:hover,
+.app-topbar .nav-link:focus {
+  color: #fff;
+}
+
+.app-topbar .navbar-nav .nav-link.active {
+  background: var(--sc-accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.app-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--sc-primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.app-main {
+  min-height: calc(100vh - 48px - 41px);
+}
+
+.app-footer {
+  border-top: 1px solid var(--sc-border);
+  background: #fff;
+  font-size: 12px;
+  color: var(--sc-muted);
+}
+
+/* Page header (components/PageHeader.jsx). */
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.page-eyebrow {
+  color: var(--sc-primary);
+  margin-bottom: 4px;
+}
+
+.page-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 26px;
+}
+
+.page-chip {
+  font-family: var(--sc-font-body);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sc-primary);
+  background: var(--sc-primary-soft);
+  border-radius: 3px;
+  padding: 3px 8px;
+}
+
+.page-subtitle {
+  color: var(--sc-muted);
+  margin-top: 2px;
+}
+
+/* Figure tile (Accueil). */
+.kpi-tile {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--sc-border);
+  border-radius: 6px;
+}
+
+.kpi-tile-body {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 16px;
+  flex: 1;
+}
+
+.kpi-value {
+  font-family: var(--sc-font-heading);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.1;
+  margin-top: 6px;
+}
+
+.kpi-value small {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--sc-muted);
+}
+
+.kpi-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  background: var(--sc-primary-soft);
+  color: var(--sc-primary);
+}
+
+.kpi-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--sc-border);
+  font-size: 12px;
+  color: var(--sc-muted);
+}
+
+.sc-progress {
+  height: 6px;
+  background: var(--sc-border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.sc-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--sc-primary);
+}
+
+/* Panel with a grey header (Accueil). */
+.sc-panel {
+  height: 100%;
+  background: #fff;
+  border: 1px solid var(--sc-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.sc-panel-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--sc-panel);
+}
+
+.sc-panel-head h2 {
+  font-size: 17px;
+  margin: 0;
+}
+
+.sc-panel-head .sc-panel-icon {
+  color: var(--sc-primary);
+  margin-top: 2px;
+}
+
+.sc-panel .ant-table-wrapper .ant-table {
+  border: 0;
+  border-radius: 0;
+}
+
+.sc-panel-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--sc-border);
+  font-size: 12px;
+  color: var(--sc-muted);
+}
+
+.sc-panel-foot a {
+  font-family: var(--sc-font-heading);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* Stacked bar of the shares per company. */
+.share-bar {
+  display: flex;
+  height: 12px;
+  background: var(--sc-border);
+  overflow: hidden;
+}
+
+.share-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 12px;
+  color: var(--sc-muted);
+}
+
+.share-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 5px;
+  vertical-align: -1px;
+}
+
+/* Sign-in page (feature-module/auth/Login.jsx). */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: radial-gradient(circle at 70% 80%, #eef2fd 0, var(--sc-surface) 45%);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 440px;
+  background: #fff;
+  border: 1px solid var(--sc-border);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 22, 78, 0.08);
+  overflow: hidden;
+}
+
+.login-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--sc-panel);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sc-muted);
+}
+
+.login-note {
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.login-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  margin: 0 auto 12px;
 }
 
 code {
@@ -43,6 +401,7 @@ code {
 
 @media print {
   .navbar,
+  .app-footer,
   .no-print {
     display: none !important;
   }
