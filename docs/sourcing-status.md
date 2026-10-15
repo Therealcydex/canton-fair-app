@@ -25,13 +25,14 @@ acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 | BF15 | Mobile app | Partiel | Navigateur; QR scanner on a phone (https). iPhone home-screen app (D36) ready, to install once online (deploy/README.md); the Android APK needs Node 22 |
 | BF16 | Sign-up validated by the admin | À valider | API, navigateur (web and mobile sign-up, pending login refused, activation) |
 | BF17 | Contacts page (QR code in the edit form), CSV export, QR code sheet | À valider | API (list, filters, export), navigateur (table, filters, supplier link, add, edit, QR replace and remove in the form, delete, export content, QR sheet; the print preview itself was not opened) |
+| BF18 | Business card scan (mobile), new supplier from a card | À valider | Navigateur (real OCR on a rendered card: 6/6 fields in 4 s; new supplier + contact + WeChat id saved; a blank photo gives the message). Not yet on an iPhone with a real card |
 | BNF01 | Tenant isolation | Remplacé | Data shared by the group (schema v2) |
 | BNF02 | Token on every route except login and sign-up | À valider | API |
 | BNF03 | French refusal messages, no SQL | À valider | API (every refusal checked) |
 | BNF04 | Online only | À valider | |
 | BNF05 | Hashed passwords | À valider | API |
 | BNF06 | Schema changes as scripts | À valider | |
-| D1–D36 | Decisions in `sourcing-spec.md` §5 (several replaced by v2) | À valider | |
+| D1–D37 | Decisions in `sourcing-spec.md` §5 (several replaced by v2) | À valider | |
 
 ## Not checked by hand yet
 

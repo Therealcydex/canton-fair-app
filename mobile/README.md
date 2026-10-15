@@ -54,6 +54,14 @@ On a phone, `VITE_API_BASE_URL` must be the address of the server on the network
 (`capacitor.config.ts`: `androidScheme: 'http'`, `cleartext: true`); switch to https before
 publishing.
 
+## Business cards
+
+"Scanner une carte de visite" (new supplier, new contact) reads the card on the phone with
+tesseract.js, in English (D37). Its files (about 11 MB on the server, 7 MB downloaded once by the
+phone) are copied from node_modules to `public/ocr/` by `scripts/copy-ocr.cjs` before `npm run
+dev`, `dev:phone` and `build`; they are not committed. The fields found are only suggestions:
+the buyer checks them before saving.
+
 ## Rules
 
 - Every request goes through `authFetch` then `ensureOk` (`src/config/api.ts`): `fetch` does not

@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Business-card reader files, copied from node_modules by scripts/copy-ocr.cjs
+public/ocr/

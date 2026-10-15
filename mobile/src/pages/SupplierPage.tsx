@@ -3,9 +3,12 @@ import { Link, useParams } from 'react-router-dom';
 import { api, jsonBody } from '../config/api';
 import { isQrLink, isQrPhoto, useQrImage } from '../qr';
 import QrScanner from '../components/QrScanner';
+import CardScanButton from '../components/CardScanButton';
+import { ContactFields } from '../components/ContactFields';
+import { emptyContact, saveContact, type ContactValues } from '../contact';
 import { formatPrice } from '../format';
 import type { Booth, Contact, Product, Supplier } from '../types';
-import { Badge, Button, Card, ErrorBox, Field, Loading, Page, inputClass } from '../components/ui';
+import { Badge, Button, Card, ErrorBox, Loading, Page } from '../components/ui';
 
 // A contact: tap to call or write, and its WeChat QR code, read with the scanner at the booth
 // (D34). The drawn QR code opens full screen on tap, to be scanned from another phone.
@@ -70,11 +73,11 @@ function ContactCard({ supplierId, contact, onChanged }: { supplierId: number; c
   );
 }
 
-// A quick contact (name, phone), so a QR code can be scanned for a supplier that has none yet.
+// A new contact for this supplier, typed or read from a business card (D37), so a QR code can
+// then be scanned for it.
 function NewContact({ supplierId, onSaved }: { supplierId: number; onSaved: () => Promise<void> }) {
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [values, setValues] = useState<ContactValues>(emptyContact);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -83,12 +86,8 @@ function NewContact({ supplierId, onSaved }: { supplierId: number; onSaved: () =
     setSaving(true);
     setError(null);
     try {
-      await api(`/suppliers/${supplierId}/contacts`, "Erreur lors de l'enregistrement du contact", {
-        method: 'POST',
-        body: jsonBody({ name: name.trim() || null, phone: phone.trim() || null }),
-      });
-      setName('');
-      setPhone('');
+      await saveContact(supplierId, values);
+      setValues(emptyContact);
       setOpen(false);
       await onSaved();
     } catch (err) {
@@ -102,9 +101,11 @@ function NewContact({ supplierId, onSaved }: { supplierId: number; onSaved: () =
   return (
     <Card>
       <form onSubmit={submit} className="space-y-3">
+        <CardScanButton onRead={(f) => setValues((v) => ({
+          name: f.name || v.name, phone: f.phone || v.phone, email: f.email || v.email, wechat: f.wechat || v.wechat,
+        }))} />
         <ErrorBox message={error} />
-        <Field label="Nom"><input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} maxLength={150} /></Field>
-        <Field label="Téléphone"><input className={inputClass} value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={50} inputMode="tel" /></Field>
+        <ContactFields values={values} onChange={setValues} />
         <div className="flex gap-2">
           <Button type="submit" className="flex-1" disabled={saving}>{saving ? 'Enregistrement…' : 'Enregistrer'}</Button>
           <Button type="button" variant="secondary" onClick={() => setOpen(false)}>Annuler</Button>

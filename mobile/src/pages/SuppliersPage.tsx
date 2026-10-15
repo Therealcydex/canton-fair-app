@@ -21,7 +21,8 @@ export default function SuppliersPage() {
   }, [q]);
 
   return (
-    <Page title="Fournisseurs">
+    <Page title="Fournisseurs"
+      action={<Link to="/fournisseurs/nouveau" className="rounded bg-blue-600 px-2 py-1 text-sm">+ Fournisseur</Link>}>
       <input className={inputClass} placeholder="Rechercher un fournisseur" value={q} onChange={(e) => setQ(e.target.value)} />
       <ErrorBox message={error} />
       {!suppliers && !error && <Loading />}
