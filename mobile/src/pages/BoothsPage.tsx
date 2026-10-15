@@ -65,7 +65,8 @@ export default function BoothsPage({ planning }: { planning: boolean }) {
       : todoCount === 0 && hideVisited && !q.trim() ? 'Tous les stands sont visités.' : 'Aucun stand trouvé.';
 
   return (
-    <Page title={planning ? 'À visiter' : 'Stands'}>
+    <Page title={planning ? 'À visiter' : 'Stands'}
+      action={<Link to="/plan" className="rounded bg-white/15 px-2 py-1 text-sm">Plan des halls</Link>}>
       <input className={inputClass} placeholder="Fournisseur ou code du stand" value={q} onChange={(e) => setQ(e.target.value)} />
       <ErrorBox message={error} />
       {!booths && !error && <Loading />}

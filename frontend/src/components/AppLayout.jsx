@@ -12,6 +12,7 @@ const MENU = [
   { to: '/a-visiter', label: 'À visiter' },
   { to: '/stands', label: 'Stands' },
   { to: '/produits', label: 'Produits' },
+  { to: '/plan-du-salon', label: 'Plan du salon' }, // D42
 ];
 const ADMIN_MENU = [
   { to: '/admin/utilisateurs', label: 'Utilisateurs', show: isAdmin },

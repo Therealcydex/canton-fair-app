@@ -28,6 +28,7 @@ app.use('/api/lists', require('./routes/listRoutes'));
 app.use('/api/booths', require('./routes/boothRoutes'));
 app.use('/api/products', require('./routes/productRoutes'));
 app.use('/api/dashboard', require('./routes/dashboardRoutes'));
+app.use('/api/fair-plan', require('./routes/fairPlanRoutes'));
 
 // Product photos (D17): random file names, served as images only.
 app.use('/uploads', express.static(UPLOAD_ROOT, {

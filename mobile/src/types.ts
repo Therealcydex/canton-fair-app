@@ -52,6 +52,7 @@ export interface Supplier {
   phone: string | null;
   email: string | null;
   website: string | null;
+  cantonfair_url: string | null; // D42: the exhibitor's page on cantonfair.org.cn
   address: string | null;
   province_id: number | null;
   province: string | null;

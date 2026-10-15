@@ -1,5 +1,6 @@
 import { Col, Form, Input, Rate, Row, Select } from 'antd';
 import { useList } from '../../utils/lists';
+import { CANTON_FAIR_URL } from '../../utils/fairPlan';
 
 // Fields of the supplier form; the server checks the same rules (name required, 1-5 rating…).
 export default function SupplierFormFields() {
@@ -28,6 +29,11 @@ export default function SupplierFormFields() {
           </Form.Item>
         </Col>
       </Row>
+      <Form.Item name="cantonfair_url" label="Page sur le site du salon"
+        extra="Copiez l'adresse de la page de l'exposant sur cantonfair.org.cn"
+        rules={[{ pattern: CANTON_FAIR_URL, message: 'Adresse du site cantonfair.org.cn attendue (https://…)' }]}>
+        <Input maxLength={255} placeholder="https://www.cantonfair.org.cn/…" />
+      </Form.Item>
       <Form.Item name="address" label="Adresse"><Input.TextArea rows={2} /></Form.Item>
       <Form.Item name="rating" label="Note"><Rate allowClear /></Form.Item>
       <Form.Item name="notes" label="Notes"><Input.TextArea rows={3} /></Form.Item>

@@ -27,13 +27,14 @@ acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 | BF17 | Contacts page (QR code in the edit form), CSV export, QR code sheet | À valider | API (list, filters, export), navigateur (table, filters, supplier link, add, edit, QR replace and remove in the form, delete, export content, QR sheet; the print preview itself was not opened) |
 | BF18 | Business card scan (mobile), new supplier from a card | À valider | Navigateur (real OCR on a rendered card: 6/6 fields in 4 s; new supplier + contact + WeChat id saved; a blank photo gives the message). Not yet on an iPhone with a real card. QR code scanned in the new supplier and new contact forms (mobile, from a photo of a QR) and read in the web new-contact form: saved with the contact (navigateur) |
 | BF19 | Product decision, evening review (D38) | À valider | API (decision admin-only, refused values, undo, queue and counts, status filter, edit keeps the decision); navigateur (mobile review as admin: decide with a note, next product, undo back to the same product, Décidés list; buyer read-only; badges and note on the supplier page; layout at 375 px; web decision block as admin and buyer, column and filter). Not yet on an iPhone |
+| BF20 | Hall plan, supplier's Canton Fair page (D42) | À valider | API (plan read by all, filled by the admin only, refused values, clear; link refused for other sites and look-alike hosts, kept on edit, removed); navigateur (mobile plan as admin and buyer, link refused then saved and opened, "+ Fournisseur" field; web plan edit, halls shown in the booth form, link in the supplier form and page). The 140th plan is still to type from the official plan |
 | BNF01 | Tenant isolation | Remplacé | Data shared by the group (schema v2) |
 | BNF02 | Token on every route except login and sign-up | À valider | API |
 | BNF03 | French refusal messages, no SQL | À valider | API (every refusal checked) |
 | BNF04 | Online only | À valider | |
 | BNF05 | Hashed passwords | À valider | API |
 | BNF06 | Schema changes as scripts | À valider | |
-| D1–D41 | Decisions in `sourcing-spec.md` §5 (several replaced by v2) | À valider | Web home page (D40): API, navigateur (figures, phases, companies) |
+| D1–D42 | Decisions in `sourcing-spec.md` §5 (several replaced by v2) | À valider | Web home page (D40): API, navigateur (figures, phases, companies) |
 
 ## Not checked by hand yet
 
@@ -51,4 +52,5 @@ acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 | `backend/sql/create_sourcing_schema.sql` | `npm run db:setup` | Schema v2: tables, shipping types, views; then the admin user |
 | `backend/sql/update_booth_code.sql` | `npm run db:update-booth-code` | D32, once, on a database set up before it: booth code `11.3J26`, optional letter and number, stand unique per phase. Each step runs only if still needed (D35), so it also finishes a run that stopped half-way. Done on the remote `Smart360_copy` on 2026-10-15 |
 | `backend/sql/canton_fair_sections_140.sql` | `npm run db:add-canton-sections` (new database: `npm run db:setup`) | D41: the 23 missing sections of the 140th fair (Phase 1, Fashion Jewelry, Rural Vitalization, Intelligent Healthcare); a row is added only if its section is missing. Done on the remote `Smart360_copy` on 2026-10-15 (444 rows) |
+| `backend/sql/update_fair_plan.sql` | `npm run db:update-fair-plan` | D42: `suppliers.cantonfair_url`, table `section_halls`, `v_suppliers` refreshed. Each step runs only if still needed. Done on the remote `Smart360_copy` on 2026-10-15 |
 | `backend/sql/update_product_decision.sql` | `npm run db:update-product-decision` | D38, once, on a database set up before it: decision status, note, who decided and when, who recorded the product and when; `v_products` refreshed. Each step runs only if still needed. Done on the remote `Smart360_copy` on 2026-10-15 |

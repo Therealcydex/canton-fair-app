@@ -116,6 +116,12 @@ export default function SupplierDetail() {
                 : '—',
             },
             { key: 'email', label: 'E-mail', children: supplier.email || '—' },
+            {
+              key: 'cantonfair', label: 'Page du salon',
+              children: supplier.cantonfair_url
+                ? <a href={supplier.cantonfair_url} target="_blank" rel="noreferrer">Ouvrir sur cantonfair.org.cn ↗</a>
+                : '—',
+            },
             { key: 'rating', label: 'Note', children: supplier.rating ? <Rate disabled value={supplier.rating} style={{ fontSize: 14 }} /> : 'Non noté' },
             { key: 'booths', label: 'Stands visités', children: booths ? `${visited} / ${booths}` : 'Aucun stand' },
             { key: 'address', label: 'Adresse', span: 'filled', children: supplier.address || '—' },

@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Cascader, Col, Form, Input, InputNumber, Row, Select, Switch } from 'antd';
 import { API_BASE_URL } from '../../config/config';
 import { categoryOptions, useList } from '../../utils/lists';
+import { hallsOf, useFairPlan } from '../../utils/fairPlan';
 
 // Fields of the booth form. The server checks the same rules (phase 1-3, floor 1-4, letter A-Z,
 // letter and number together (D32), a category of the booth's phase) and refuses a booth that
@@ -27,6 +28,10 @@ export default function BoothFormFields({ lockSupplier }) {
   const [suppliers, setSuppliers] = useState([]);
   const categories = useList('canton-categories');
   const phase = Form.useWatch('phase');
+  const categoryPath = Form.useWatch('category_path');
+  const plan = useFairPlan();
+  // D42: the halls of the chosen section, from the hall plan.
+  const sectionHalls = categoryPath?.[1] ? hallsOf(plan, phase, categoryPath[1]) : null;
 
   useEffect(() => {
     axios.get(`${API_BASE_URL}/suppliers`).then((r) => setSuppliers(r.data.data)).catch(() => {});
@@ -82,7 +87,9 @@ export default function BoothFormFields({ lockSupplier }) {
         )}
       </Form.Item>
       <Form.Item name="category_path" label="Catégorie (salon de Canton)"
-        extra={phase ? (options.length ? '' : `Pas de catégories pour la phase ${phase}`) : 'Choisissez d\'abord la phase'}>
+        extra={phase
+          ? (options.length ? (sectionHalls ? `Halls de cette section : ${sectionHalls}` : '') : `Pas de catégories pour la phase ${phase}`)
+          : 'Choisissez d\'abord la phase'}>
         <Cascader options={options} allowClear showSearch disabled={!options.length}
           placeholder="Catégorie / section / sous-catégorie" />
       </Form.Item>

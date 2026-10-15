@@ -14,6 +14,7 @@ export default function SupplierNew() {
   const navigate = useNavigate();
   const [company, setCompany] = useState('');
   const [website, setWebsite] = useState('');
+  const [fairUrl, setFairUrl] = useState(''); // D42: the exhibitor's page on cantonfair.org.cn
   const [contact, setContact] = useState<ContactValues>(emptyContact);
   const [supplierId, setSupplierId] = useState<number | null>(null); // set once saved
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +31,7 @@ export default function SupplierNew() {
       if (!id) {
         const created = await api<{ id: number }>('/suppliers', "Erreur lors de l'enregistrement du fournisseur", {
           method: 'POST',
-          body: jsonBody({ name: company.trim(), website: website.trim() || null }),
+          body: jsonBody({ name: company.trim(), website: website.trim() || null, cantonfair_url: fairUrl.trim() || null }),
         });
         id = created.id;
         setSupplierId(id);
@@ -62,6 +63,10 @@ export default function SupplierNew() {
           </Field>
           <Field label="Site web">
             <input className={inputClass} value={website} onChange={(e) => setWebsite(e.target.value)} maxLength={255} autoCapitalize="none" />
+          </Field>
+          <Field label="Page sur le site du salon" hint="Facultatif : l'adresse de la page de l'exposant sur cantonfair.org.cn">
+            <input className={inputClass} value={fairUrl} onChange={(e) => setFairUrl(e.target.value)} maxLength={255}
+              type="url" inputMode="url" autoCapitalize="none" placeholder="https://www.cantonfair.org.cn/…" />
           </Field>
         </fieldset>
         <h2 className="px-1 pt-2 font-semibold">Contact</h2>

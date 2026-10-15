@@ -12,7 +12,8 @@
     "db:drop-v1": "node sql/drop_v1_tables.js",
     "db:update-booth-code": "node sql/update_booth_code.js",
     "db:update-product-decision": "node sql/update_product_decision.js",
-    "db:add-canton-sections": "node sql/add_canton_sections.js"
+    "db:add-canton-sections": "node sql/add_canton_sections.js",
+    "db:update-fair-plan": "node sql/update_fair_plan.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

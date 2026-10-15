@@ -15,6 +15,7 @@ import Booths from '../feature-module/booths/Booths';
 import BoothDetail from '../feature-module/booths/BoothDetail';
 import Products from '../feature-module/products/Products';
 import ProductDetail from '../feature-module/products/ProductDetail';
+import FairPlan from '../feature-module/fair/FairPlan';
 
 // One route per page; module pages live in src/feature-module/<module>/.
 export default function AppRouter() {
@@ -35,6 +36,7 @@ export default function AppRouter() {
             <Route path="/stands/:id" element={<BoothDetail />} />
             <Route path="/produits" element={<Products />} />
             <Route path="/produits/:id" element={<ProductDetail />} />
+            <Route path="/plan-du-salon" element={<FairPlan />} />
             <Route element={<RequireAccess allow={isAdmin} />}>
               <Route path="/admin/utilisateurs" element={<Users />} />
               <Route path="/admin/societes" element={<Companies />} />

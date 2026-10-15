@@ -9,6 +9,7 @@ const SUPPLIER_FIELDS = {
   phone: { label: 'Téléphone', type: 'string', max: 50 },
   email: { label: 'E-mail', type: 'email', max: 150 },
   website: { label: 'Site web', type: 'string', max: 255 },
+  cantonfair_url: { label: 'Page du salon', type: 'string', max: 255 },
   address: { label: 'Adresse', type: 'text', max: 2000 },
   province_id: { label: 'Province', type: 'int', min: 1 },
   rating: { label: 'Note', type: 'int', min: 1, maxValue: 5 },
@@ -38,10 +39,26 @@ const SUPPLIER_SELECT = `
          (SELECT COUNT(*) FROM products p WHERE p.supplier_id = v.id) AS products_count
   FROM v_suppliers v`;
 
+// D42: the exhibitor's page on the fair's site, only an http(s) address of cantonfair.org.cn
+// (or cantonfair.org): the apps open it as a link.
+function isCantonFairUrl(value) {
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  return ['http:', 'https:'].includes(url.protocol)
+    && /(^|\.)cantonfair\.org(\.cn)?$/i.test(url.hostname);
+}
+
 // Validates a supplier; province_id must be a row of china_province.
 async function validateSupplier(body, existing) {
   const v = validate(body, SUPPLIER_FIELDS, existing);
   if (!v.values) return v;
+  if (v.values.cantonfair_url && !isCantonFairUrl(v.values.cantonfair_url)) {
+    return { message: 'Page du salon : adresse du site cantonfair.org.cn attendue (https://…)' };
+  }
   if (v.values.province_id) {
     const [[p]] = await db.query('SELECT id FROM china_province WHERE id = ?', [v.values.province_id]);
     if (!p) return { message: 'Province introuvable' };
@@ -84,9 +101,9 @@ exports.create = handle('Supplier create', async (req, res) => {
   if (!v.values) return fail(res, 400, v.message);
   const s = v.values;
   const [r] = await db.query(
-    `INSERT INTO suppliers (name, phone, email, website, address, province_id, rating, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [s.name, s.phone, s.email, s.website, s.address, s.province_id, s.rating, s.notes]
+    `INSERT INTO suppliers (name, phone, email, website, cantonfair_url, address, province_id, rating, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [s.name, s.phone, s.email, s.website, s.cantonfair_url, s.address, s.province_id, s.rating, s.notes]
   );
   res.json({ success: true, data: { id: r.insertId } });
 });
@@ -98,9 +115,9 @@ exports.update = handle('Supplier update', async (req, res) => {
   if (!v.values) return fail(res, 400, v.message);
   const s = v.values;
   await db.query(
-    `UPDATE suppliers SET name = ?, phone = ?, email = ?, website = ?, address = ?, province_id = ?,
-            rating = ?, notes = ? WHERE id = ?`,
-    [s.name, s.phone, s.email, s.website, s.address, s.province_id, s.rating, s.notes, r.row.id]
+    `UPDATE suppliers SET name = ?, phone = ?, email = ?, website = ?, cantonfair_url = ?, address = ?,
+            province_id = ?, rating = ?, notes = ? WHERE id = ?`,
+    [s.name, s.phone, s.email, s.website, s.cantonfair_url, s.address, s.province_id, s.rating, s.notes, r.row.id]
   );
   res.json({ success: true, data: { id: r.row.id } });
 });

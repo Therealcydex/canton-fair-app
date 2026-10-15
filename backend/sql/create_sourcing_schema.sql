@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS suppliers (
     phone        VARCHAR(50),
     email        VARCHAR(150),
     website      VARCHAR(255),
+    cantonfair_url VARCHAR(255),                        -- D42: the exhibitor's page on cantonfair.org.cn
     address      TEXT,
     province_id  INT,                                   -- list from china_province
     rating       TINYINT CHECK (rating BETWEEN 1 AND 5),
@@ -138,6 +139,20 @@ CREATE TABLE IF NOT EXISTS products (
     CONSTRAINT fk_products_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ---------- Hall plan of the fair (D42) ----------
+-- The halls of each exhibition section in the current session ("14.3, 14.4, 15.4"), typed by the
+-- admin from the official printed plan: the plan changes from one session to the next.
+-- update_fair_plan.js creates it on an existing database.
+CREATE TABLE IF NOT EXISTS section_halls (
+    phase       TINYINT      NOT NULL CHECK (phase BETWEEN 1 AND 3),
+    section     VARCHAR(150) NOT NULL,                 -- a section of canton_fair_category
+    halls       VARCHAR(255) NOT NULL,
+    updated_by  INT NULL,
+    updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (phase, section),
+    CONSTRAINT fk_section_halls_user FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ---------- Product images ----------
 CREATE TABLE IF NOT EXISTS product_images (
     id          INT AUTO_INCREMENT PRIMARY KEY,
@@ -175,7 +190,7 @@ LEFT JOIN suppliers s            ON s.id = b.supplier_id;
 -- Suppliers with Nbr Booths and Booth Visit %
 CREATE OR REPLACE VIEW v_suppliers AS
 SELECT s.id, s.name, s.phone, s.email, s.website, s.address, s.province_id, s.rating, s.notes,
-       p.name_en AS province,
+       s.cantonfair_url, p.name_en AS province,
        (SELECT COUNT(*) FROM booths b WHERE b.supplier_id = s.id) AS nbr_booths,
        (SELECT ROUND(100 * SUM(b.visited) / NULLIF(COUNT(*), 0))
           FROM booths b WHERE b.supplier_id = s.id) AS booth_visit_pct

@@ -11,6 +11,7 @@ import SuppliersPage from './pages/SuppliersPage';
 import SupplierPage from './pages/SupplierPage';
 import SupplierNew from './pages/SupplierNew';
 import ReviewPage from './pages/ReviewPage';
+import FairPlanPage from './pages/FairPlanPage';
 
 function RequireAuth() {
   const { user } = useAuth();
@@ -37,6 +38,7 @@ export default function App() {
             <Route path="/fournisseurs/nouveau" element={<SupplierNew />} />
             <Route path="/fournisseurs/:id" element={<SupplierPage />} />
             <Route path="/produits/nouveau" element={<ProductNew />} />
+            <Route path="/plan" element={<FairPlanPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

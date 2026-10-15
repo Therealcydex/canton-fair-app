@@ -5,6 +5,7 @@ import { isQrLink, isQrPhoto, useQrImage } from '../qr';
 import QrScanner from '../components/QrScanner';
 import CardScanButton from '../components/CardScanButton';
 import { ContactFields } from '../components/ContactFields';
+import FairLink from '../components/FairLink';
 import { emptyContact, saveContact, type ContactValues } from '../contact';
 import { formatPrice } from '../format';
 import { STATUS } from '../decision';
@@ -149,6 +150,9 @@ export default function SupplierPage() {
         {supplier.email && <p><a className="text-blue-700" href={`mailto:${supplier.email}`}>{supplier.email}</a></p>}
         {supplier.address && <p className="text-slate-600">{supplier.address}</p>}
         {supplier.notes && <p className="whitespace-pre-wrap text-slate-600">{supplier.notes}</p>}
+        <div className="border-t border-slate-100 pt-2">
+          <FairLink supplierId={supplier.id} url={supplier.cantonfair_url} onSaved={loadSupplier} />
+        </div>
       </Card>
 
       <h2 className="px-1 pt-2 font-semibold">Contacts ({supplier.contacts?.length || 0})</h2>
