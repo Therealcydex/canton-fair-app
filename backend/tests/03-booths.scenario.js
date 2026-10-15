@@ -45,6 +45,14 @@ module.exports = async (ctx) => {
   // D32: the phase is not in the code, and the same stand holds another supplier at the next phase
   const other = expect('same stand, phase 3', await api('POST', '/booths', { token: A, body: { ...base, phase: 3, supplier_id: null } }), 200);
   check('phase 3 booth has the same code', other.body.data.booth_code === '126.1F10-12');
+
+  // D41: Phase 1 sections (added from the 140th fair's list) are chosen like the others.
+  const phase1 = (await api('GET', '/lists/canton-categories?phase=1', { token: A })).body.data;
+  check('the 20 Phase 1 sections are listed', phase1.length === 20 && phase1.some((c) => c.section === 'Lighting Equipment'));
+  expect('phase 1 category on a phase 2 booth', await api('POST', '/booths', { token: A, body: { ...base, category_id: phase1[0].id } }), 400);
+  expect('phase 1 booth with a phase 1 category', await api('POST', '/booths', {
+    token: A, body: { ...base, phase: 1, supplier_id: null, category_id: phase1[0].id },
+  }), 200);
   // D32: only the hall and floor known ("9.1"); several suppliers can share that
   const hallOnly = { ...base, hall: 127, floor: 2, letter: null, num_start: null, num_end: null, supplier_id: null };
   const h1 = expect('booth with hall and floor only', await api('POST', '/booths', { token: A, body: hallOnly }), 200);

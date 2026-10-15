@@ -1,5 +1,6 @@
 -- backend/sql/canton_fair_categories.sql (from Tarek's canton_fair_categories.sql)
 -- Canton Fair (140th) exhibit categories, Phase 2 + Phase 3. Source: https://www.cantonfair.org.cn/en-US
+-- The sections it lacks (all of Phase 1 and three more) are in canton_fair_sections_140.sql (D41).
 -- The table has no natural key: run_schema_setup.js only runs the INSERT when the table is empty.
 
 SET NAMES utf8mb4;

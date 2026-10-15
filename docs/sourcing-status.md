@@ -33,7 +33,7 @@ acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 | BNF04 | Online only | À valider | |
 | BNF05 | Hashed passwords | À valider | API |
 | BNF06 | Schema changes as scripts | À valider | |
-| D1–D40 | Decisions in `sourcing-spec.md` §5 (several replaced by v2) | À valider | Web home page (D40): API, navigateur (figures, phases, companies) |
+| D1–D41 | Decisions in `sourcing-spec.md` §5 (several replaced by v2) | À valider | Web home page (D40): API, navigateur (figures, phases, companies) |
 
 ## Not checked by hand yet
 
@@ -50,4 +50,5 @@ acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 | `backend/sql/canton_fair_categories.sql` | `npm run db:setup` | The 421 Canton Fair categories (only loaded into an empty table) |
 | `backend/sql/create_sourcing_schema.sql` | `npm run db:setup` | Schema v2: tables, shipping types, views; then the admin user |
 | `backend/sql/update_booth_code.sql` | `npm run db:update-booth-code` | D32, once, on a database set up before it: booth code `11.3J26`, optional letter and number, stand unique per phase. Each step runs only if still needed (D35), so it also finishes a run that stopped half-way. Done on the remote `Smart360_copy` on 2026-10-15 |
+| `backend/sql/canton_fair_sections_140.sql` | `npm run db:add-canton-sections` (new database: `npm run db:setup`) | D41: the 23 missing sections of the 140th fair (Phase 1, Fashion Jewelry, Rural Vitalization, Intelligent Healthcare); a row is added only if its section is missing. Done on the remote `Smart360_copy` on 2026-10-15 (444 rows) |
 | `backend/sql/update_product_decision.sql` | `npm run db:update-product-decision` | D38, once, on a database set up before it: decision status, note, who decided and when, who recorded the product and when; `v_products` refreshed. Each step runs only if still needed. Done on the remote `Smart360_copy` on 2026-10-15 |

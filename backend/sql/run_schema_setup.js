@@ -7,8 +7,8 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 
-// In this order: the two lists, then the tables that reference them.
-const FILES = ['china_provinces.sql', 'canton_fair_categories.sql', 'create_sourcing_schema.sql'];
+// In this order: the lists, then the tables that reference them.
+const FILES = ['china_provinces.sql', 'canton_fair_categories.sql', 'canton_fair_sections_140.sql', 'create_sourcing_schema.sql'];
 
 // Splits a file into statements: drops "--" comments, then cuts on ";".
 // The files keep ";" and "--" out of their string values.
@@ -46,7 +46,7 @@ async function main() {
       let run = 0;
       for (const statement of statementsOf(file)) {
         // canton_fair_category has no natural key: fill it only while it is empty.
-        if (/^INSERT INTO canton_fair_category/i.test(statement)) {
+        if (file === 'canton_fair_categories.sql' && /^INSERT INTO canton_fair_category/i.test(statement)) {
           const [[{ n }]] = await conn.query('SELECT COUNT(*) AS n FROM canton_fair_category');
           if (n > 0) continue;
         }
