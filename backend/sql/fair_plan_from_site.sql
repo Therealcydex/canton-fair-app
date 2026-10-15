@@ -5,9 +5,8 @@
 -- admin checks them on site and corrects a section in "Plan du salon" / "Plan des halls".
 -- Not loaded: International Pavilion (every phase), "Stone/Iron Decoration and Outdoor Spa
 -- Equipment" (phase 2, 13.0) and "Traditional Chinese Specialties" (phase 3, 6.0), which are not
--- sections of canton_fair_category. Not on the maps, so left empty: Fashion Jewelry and
--- Prefabricated House and Courtyard Facilities (phase 2), Rural Vitalization and Intelligent
--- Healthcare (phase 3).
+-- sections of canton_fair_category. Four sections are not on the maps: three come from other
+-- sources (end of the file, D47); Rural Vitalization (phase 3) stays empty, no source found.
 -- INSERT IGNORE: a section whose halls were already typed is never overwritten; safe to run twice.
 -- Run it with add_fair_plan_from_site.js (npm run db:add-fair-plan).
 
@@ -72,3 +71,11 @@ INSERT IGNORE INTO section_halls (phase, section, halls, updated_by) VALUES (3, 
 INSERT IGNORE INTO section_halls (phase, section, halls, updated_by) VALUES (3, 'Medicines, Health Products and Medical Devices', '9.2, 10.2', NULL);
 INSERT IGNORE INTO section_halls (phase, section, halls, updated_by) VALUES (3, 'Food', '11.2, 12.2, 13.2', NULL);
 INSERT IGNORE INTO section_halls (phase, section, halls, updated_by) VALUES (3, 'Office Supplies', '9.3, 10.3, 11.3', NULL);
+
+-- D47: three sections that are not on the site's maps, from other sources (checked on 2026-10-15).
+-- Intelligent Healthcare: an exhibitor's page, "Hall 21.2 · Booths B41-48", Intelligent Healthcare
+-- Zone (https://www.yjtmedical.com/yjt-medical-140th-canton-fair-2026.html).
+-- Fashion Jewelry and Prefabricated House: one trade-guide summary only, so marked "à vérifier".
+INSERT IGNORE INTO section_halls (phase, section, halls, updated_by) VALUES (3, 'Intelligent Healthcare', '21.2 (Friendship Hall)', NULL);
+INSERT IGNORE INTO section_halls (phase, section, halls, updated_by) VALUES (2, 'Fashion Jewelry', '21.2 (à vérifier)', NULL);
+INSERT IGNORE INTO section_halls (phase, section, halls, updated_by) VALUES (2, 'Prefabricated House and Courtyard Facilities', '9.0 (extérieur, à vérifier), 12.0 (extérieur, à vérifier), 13.0 (extérieur, à vérifier)', NULL);

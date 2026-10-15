@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { api, jsonBody } from '../config/api';
 import { useAuth } from '../authContext';
 import { isAdmin } from '../decision';
+import { formatHalls } from '../halls';
 import { Card, ErrorBox, Loading, Page, inputClass } from '../components/ui';
 
 interface PlanRow {
@@ -90,9 +91,11 @@ export default function FairPlanPage() {
             ) : (
               <button key={s.section} type="button" disabled={!admin}
                 onClick={() => { setEditing(s.section); setValue(s.halls || ''); setError(null); }}
-                className="flex w-full items-center justify-between gap-3 p-3 text-left disabled:cursor-default">
-                <span className="min-w-0 text-sm">{s.section}</span>
-                <span className={`shrink-0 text-right text-sm ${s.halls ? 'font-semibold' : 'text-slate-400'}`}>{s.halls || (admin ? 'Ajouter' : '—')}</span>
+                className="block w-full p-3 text-left disabled:cursor-default">
+                <span className="block text-sm font-medium">{s.section}</span>
+                {s.halls
+                  ? formatHalls(s.halls).map((line) => <span key={line} className="block text-sm text-slate-700">{line}</span>)
+                  : <span className="block text-sm text-slate-400">{admin ? 'Ajouter les halls' : '—'}</span>}
               </button>
             )))}
           </Card>

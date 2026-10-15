@@ -7,13 +7,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Sourcing** is a standalone app for the buyers of Tarek's group at the Canton Fair. Buyers keep
 suppliers and contacts, plan the booths to visit and mark them visited, record products (price,
 MOQ, shipping type, photos) and share products with Tarek's companies. The data is shared by the
-whole group. It has its own tables and its own login, with sign-up validated by the admin. It
+whole group. It has its own tables and its own login; there is no sign-up, the admin creates the accounts (D46). It
 follows the Smart360 code conventions in `guide-nouveau-projet-smart360.md`, but none of the
 Smart360 data: no `LISTE_DES_SALARIES`, no `Boutique`, no UPPERCASE table names.
 
-- `docs/sourcing-spec.md` holds the actors, requirements (BF01–BF20, BNF01–BNF06), decisions (D1–D45, several replaced by schema v2) and open questions. The decisions are not yet validated by the Product Owner. Read it before working on a feature, and add a decision there when you make one.
+- `docs/sourcing-spec.md` holds the actors, requirements (BF01–BF20, BNF01–BNF06), decisions (D1–D47, several replaced by schema v2) and open questions. The decisions are not yet validated by the Product Owner. Read it before working on a feature, and add a decision there when you make one.
 - `docs/sourcing-status.md` tracks the state of each requirement, what was checked, and the migration scripts in order. Update it when a requirement changes.
-- Sprints 0–6 were built on schema v1; branch `feat/sourcing-schema-v2` moves everything to schema v2 and adds sign-up. What remains: the PO's validation, the Android build (Node 22), and the hand checks listed in the status file.
+- Sprints 0–6 were built on schema v1; branch `feat/sourcing-schema-v2` moves everything to schema v2 (sign-up was added, then removed by D46). What remains: the PO's validation, the Android build (Node 22), and the hand checks listed in the status file.
 
 ## Commands
 
@@ -51,7 +51,7 @@ shared helpers instead of rewriting them:
 - `utils/scope.js`: `loadSupplier`, `loadBooth`, `loadProduct`, `loadCompany` find a record by id (400 for a bad id, 404 when missing).
 - `utils/access.js`: `isAdmin`, `ROLES`.
 - `utils/upload.js`: photo upload (product photos; older WeChat QR photos in `uploads/wechat/`, D33). It checks the file content against JPEG/PNG/WebP signatures, saves under random names and deletes files. Delete the files when you delete their rows (D28).
-- `middleware/auth.js`: `requireAuth` (reloads the user on every request, refuses `is_active = 0`), `requireAdmin`. `middleware/loginLimiter.js` limits failed logins and sign-ups.
+- `middleware/auth.js`: `requireAuth` (reloads the user on every request, refuses `is_active = 0`), `requireAdmin`. `middleware/loginLimiter.js` limits failed logins.
 
 ## Data model (schema v2) and access rule
 
@@ -61,18 +61,18 @@ Tarek's schema v2 (`backend/sql/create_sourcing_schema.sql`, corrections D22-D30
 - `booths`: phase 1-3, hall, floor 1-4, letter and numbers (optional, together); `booth_code` is a generated column in the fair's notation (`11.3J26`, `14.3I16-17`, `9.1`, D32), and a booth is unique per phase (the apps say "booth", never "stand", D44); `category_id` points to `canton_fair_category` (read-only list, per phase); `visited` is the "to visit" flag.
 - `products`: `price DECIMAL(12,2)`, `shipping_type` (FK to `shipping_types`, FOB by default), `product_images`, `product_shares` (`product_id`, `company_id`). D38: `status` (`A_ETUDIER` until the admin decides `RETENU`, `ECHANTILLON`, `A_COMMANDER` or `REJETE`), `decision_note`, `decided_by/at`, `created_by/at`. Only the admin decides (`PUT /api/products/:id/decision`); `GET /api/products/review` is the evening review queue (mobile "Revue" tab). D43: `booth_id`, the booth where it was found (a booth of its supplier).
 - Views `v_booths`, `v_suppliers` (booth count, % visited), `v_products` (shipping name, shared with): keep them free of GROUP BY (D23).
-- D42: `section_halls` holds the halls of each section (typed by the admin, `GET`/`PUT /api/fair-plan`); `suppliers.cantonfair_url` only takes a cantonfair.org.cn address.
+- D42: `section_halls` holds the halls of each section in the fair's notation (typed by the admin, `GET`/`PUT /api/fair-plan`), shown one line per hall by `formatHalls` (`frontend/src/utils/fairPlan.js`, `mobile/src/halls.ts`, D47); `suppliers.cantonfair_url` only takes a cantonfair.org.cn address.
 - Reference lists are served by `GET /api/lists/provinces|shipping-types|canton-categories`.
 - `GET /api/contacts` (filters `q`, `supplier_id`, `has_qr`) lists every contact with its supplier, and `GET /api/contacts/export` gives the same list as CSV; contacts are still written through `/api/suppliers/:id/contacts`.
 
-Access rule: there is **no per-company isolation** any more. Every active user reads and writes every supplier, contact, booth and product, and shares products with companies. `role = 'ADMIN'` also manages companies and users and validates sign-ups (`requireAdmin`). Everyone else is `ACHETEUR`; `level` is free text. A sign-up creates an inactive `ACHETEUR`.
+Access rule: there is **no per-company isolation** any more. Every active user reads and writes every supplier, contact, booth and product, and shares products with companies. `role = 'ADMIN'` also manages companies and users: it creates every account and activates or deactivates it (`requireAdmin`). Everyone else is `ACHETEUR`; `level` is free text. There is no sign-up (D46).
 
 The tables are lowercase and live next to the ERP's UPPERCASE tables in `Smart360_copy`: never touch an UPPERCASE table. The pool keeps decimals as strings (`decimalNumbers: false`), so never round prices through a JavaScript float.
 
 ## Backend rules (from the guide, non-negotiable)
 
 - **Load dotenv first.** `require('dotenv').config()` is the first line of `index.js`, because `config/db.js` reads `process.env` when it is required.
-- **Authentication**: every route file calls `router.use(requireAuth)`, except the public `POST /api/login`, `POST /api/signup` and `GET /api/signup/companies`. Identity comes only from `req.user` (the signed token), never from `req.query` or `req.body`. A sign-up never takes its role or activation from the body.
+- **Authentication**: every route file calls `router.use(requireAuth)`, except the public `POST /api/login` (the only public route since sign-up was removed, D46). Identity comes only from `req.user` (the signed token), never from `req.query` or `req.body`.
 - **Passwords**: hash them with `bcryptjs`. They never go into the token or into a response.
 - **SQL**: queries always use `?` placeholders. Multi-table writes run in a transaction (`getConnection`, `beginTransaction`, `commit` or `rollback`, `release`).
 - **Route order**: declare fixed paths such as `/export` before `/:id`.

@@ -15,15 +15,15 @@ example `2/12.1.A.22-24`). The app lets them:
 - record the products they find (price, unit, MOQ, shipping type, photos);
 - share a product with one or several of Tarek's companies (each with an optional branch).
 
-The app is **standalone**: its own tables and its own login, with self sign-up validated by the
-admin. It follows the Smart360 code conventions (`guide-nouveau-projet-smart360.md`) but uses
+The app is **standalone**: its own tables and its own login; the admin creates every account
+(no sign-up, D46). It follows the Smart360 code conventions (`guide-nouveau-projet-smart360.md`) but uses
 none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercase names).
 
 ## 2. Actors
 
 | Actor | Who | Can |
 |---|---|---|
-| Admin | IT / project owner (`role = 'ADMIN'`) | manage companies and users, validate sign-ups, plus everything a buyer can do |
+| Admin | IT / project owner (`role = 'ADMIN'`) | manage companies and users (creates every account, activates or deactivates it), plus everything a buyer can do |
 | Buyer | any active user (`role = 'ACHETEUR'`) | manage the group's suppliers, contacts, booths and products, and share products with companies |
 | Visitor | someone without an account | sign up; the account stays inactive until the admin activates it |
 
@@ -45,8 +45,8 @@ none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercas
 | BF12 | A user lists the products, filterable by supplier, shipping type and company shared with | Haute |
 | BF13 | A user chooses the companies a product is shared with | Moyenne |
 | BF14 | A user sees the products shared with their own company | Moyenne |
-| BF15 | A mobile app gives buyers sign-up, the "to visit" list, one-tap "visited", quick product entry with a camera photo, supplier lookup and a WeChat QR code scanner | Moyenne |
-| BF16 | A visitor signs up (name, company, username, password); the account is inactive until the admin activates it (or refuses it) | Haute |
+| BF15 | A mobile app gives buyers the "to visit" list, one-tap "visited", quick product entry with a camera photo, supplier lookup and a WeChat QR code scanner | Moyenne |
+| BF16 | ~~Sign-up~~ removed (D46): only the admin creates accounts | — |
 | BF17 | Contacts are managed on one page: every contact of every supplier in a table (n°: the line number 1, 2, 3… without gaps, the contact's id staying internal; supplier n° (1, 2, 3… in creation order, without gaps, the same on every page and in the CSV) and name, name, phone, e-mail, WeChat QR code), with search and filters (supplier, with or without QR code); add, edit and delete there, the QR code being added, replaced or removed in the contact's edit form; CSV export for Excel; printable sheet of the QR codes. The supplier page links to its contacts on that page | Moyenne |
 | BF18 | A buyer scans a supplier's business card with the phone: the company, name, phone, e-mail, WeChat id and website fill the new supplier or new contact form, to check before saving (D37) | Haute |
 | BF19 | The admin (the boss) reviews the products recorded by the buyers, one at a time on the phone ("Revue du soir"), and decides for each: kept, sample, to order or rejected, with an optional note for the buyers; he can undo a decision. Every user sees the decision, the note, who recorded the product and when; the product list filters by decision (D38) | Haute |
@@ -57,7 +57,7 @@ none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercas
 | Id | Requirement |
 |---|---|
 | BNF01 | ~~Tenant isolation~~ replaced (v2): the data belongs to the whole group; only the admin manages companies and users |
-| BNF02 | Every API route except login and sign-up requires a valid token; identity comes only from the token |
+| BNF02 | Every API route except login requires a valid token; identity comes only from the token |
 | BNF03 | Refusals return `{ success: false, message }` with a French message; no SQL or stack trace in a message |
 | BNF04 | Online only: the web and mobile apps call the API directly; no offline mode |
 | BNF05 | Passwords are stored hashed (bcrypt), never in clear and never in the token |
@@ -112,6 +112,8 @@ none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercas
 | D43 | Each product can keep the **booth where it was found**: `products.booth_id` (emptied if the booth is deleted), shown as `booth_code` and `booth_phase` in `v_products`. The booth must belong to the product's supplier (or have no supplier), otherwise 400; a product without a supplier takes the booth's. Editing a product keeps its booth. `GET /api/products?booth_id=` filters. A product added from a booth page gets that booth; the product forms offer the booths of the chosen supplier. Existing products stay without a booth (the user's choice: no guessing). Mobile booth page: "Produits de ce booth", then the supplier's other products with their booth; the booth shows on the evening review and the supplier page. Web: booth choice in the product form, "Booth" column in the product list and on the product page. `update_product_booth.js` adds the column; `update_product_decision.js` no longer refreshes `v_products` on a run with nothing to do, so it cannot drop the booth columns | A supplier often has several booths (one per phase): the supplier alone does not say where the product was seen |
 | D44 | The apps say **booth** instead of "stand" everywhere (menus, titles, buttons, messages, server messages), and the page addresses are `/booths` (web) and `#/booths` (mobile); the old `/stands` addresses redirect. "Hall" stays for the buildings ("Plan des halls") | The user's wording: booth is the word used at the fair |
 | D45 | The hall plan (D42) is **pre-filled from the legends of the floor maps on cantonfair.org.cn** (`/en-US/exhibition-hall-map`, one tab per phase, read on 2026-10-15): 54 of the 58 sections, 20 + 14 + 20. The site titles these maps "137th session", so the apps say the halls are to check on site and the admin corrects a section in place. Not used: a ChatGPT transcription of the Phase 1 map image, which swapped several sections (Consumer Electronics, General Machinery, New Materials), dropped Tools and doubled New Energy Resources; the site's own text legend was read instead. Not loaded: International Pavilion (each phase), "Stone/Iron Decoration and Outdoor Spa Equipment" (phase 2, 13.0) and "Traditional Chinese Specialties" (phase 3, 6.0), not sections of our list; left empty because absent from the maps: Fashion Jewelry and Prefabricated House and Courtyard Facilities (phase 2), Rural Vitalization and Intelligent Healthcare (phase 3). `fair_plan_from_site.sql` uses INSERT IGNORE, so a section already typed is never overwritten (`npm run db:add-fair-plan`, done on `Smart360_copy`) | The buyers need the halls now (Phase 1 is open); a plan that is mostly right and marked "to check" helps more than an empty one, and a hall corrected on site is never lost |
+| D46 | **No sign-up**: `POST /api/signup`, `GET /api/signup/companies`, the sign-up limiter and the web and mobile sign-up pages are removed (the old addresses lead to the login page, which says "Pas de compte ? Demandez-le à l'administrateur."). The admin creates every account in "Utilisateurs" and activates or deactivates it; that page is one list with the status (no "pending sign-ups" tab). An inactive account gets "Compte désactivé : contactez l'administrateur" at login. Replaces BF16 and the sign-up parts of D29 | The owner wants the administrator alone to decide who uses the app; it also removes the last public write route |
+| D47 | The halls of a section are **shown one line per hall** ("Hall 14 · étages 3, 4"; `x.0 (extérieur)` → "extérieur", `x.0` → "rez-de-chaussée", `1.1Y` → "zone Y étage 1", other notes such as "Friendship Hall" or "à vérifier" kept at the end) by `formatHalls`, the same in `frontend/src/utils/fairPlan.js` and `mobile/src/halls.ts`; the admin still types the fair's codes. Three of the four sections missing from the site's maps are filled from other sources: Intelligent Healthcare 21.2 (an exhibitor's page in the Intelligent Healthcare Zone), Fashion Jewelry 21.2 and Prefabricated House 9.0/12.0/13.0 outdoor (one trade guide, marked "à vérifier"); Rural Vitalization stays empty, no source found | The codes in a row were hard to read on the fair floor; one line per hall says where to walk |
 
 ## 6. Changelog
 
@@ -135,6 +137,7 @@ none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercas
 | 2026-10-15 | D34: the WeChat QR code is scanned in the new supplier and new contact forms, saved with the contact |
 | 2026-10-15 | BF17: the contacts' N° is the line number (no gaps after a deletion), in the table and the CSV; the QR sheet no longer shows ids. Suppliers too: `supplier_no` (rank by creation, computed by the API) in a new N° column of the suppliers list, on the Contacts page and in the CSV |
 | 2026-10-15 | D43: the booth where each product was found; D44: "Stand" renamed "Booth" in the apps |
+| 2026-10-15 | D46: sign-up removed, the admin creates the accounts; D47: halls shown one line per hall, 57 of 58 sections filled |
 | 2026-10-15 | D45: hall plan pre-filled from the floor maps of the fair's site (54 of 58 sections), to check on site |
 | 2026-10-15 | BF20, D42: hall plan of the fair (typed by the admin) and the supplier's page on cantonfair.org.cn |
 | 2026-10-15 | D41: the 23 missing exhibition sections of the 140th fair (all of Phase 1) added to the category list |

@@ -5,6 +5,12 @@ import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import { useAuth } from '../../context/AuthContext';
 import { isAdmin } from '../../utils/access';
+import { formatHalls } from '../../utils/fairPlan';
+
+// D47: the halls one line per hall ("Hall 14 · étages 3, 4").
+const HallLines = ({ text }) => (
+  <div>{formatHalls(text).map((line) => <div key={line}>{line}</div>)}</div>
+);
 
 const PHASES = [
   { phase: 1, label: 'Phase 1 · 15-19 oct.' },
@@ -65,7 +71,9 @@ export default function FairPlan() {
     { title: 'Section', dataIndex: 'section' },
     {
       title: 'Halls', dataIndex: 'halls', width: 300,
-      render: (v, row) => (admin ? <HallsInput row={row} onSave={save} /> : (v ? <b>{v}</b> : <span className="text-muted">—</span>)),
+      render: (v, row) => (admin
+        ? <><HallsInput row={row} onSave={save} />{v && <div className="text-muted small mt-1"><HallLines text={v} /></div>}</>
+        : (v ? <HallLines text={v} /> : <span className="text-muted">—</span>)),
     },
   ];
 
