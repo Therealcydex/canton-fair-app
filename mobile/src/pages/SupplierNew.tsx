@@ -69,7 +69,7 @@ export default function SupplierNew() {
               type="url" inputMode="url" autoCapitalize="none" placeholder="https://www.cantonfair.org.cn/…" />
           </Field>
         </fieldset>
-        <h2 className="px-1 pt-2 font-semibold">Contact</h2>
+        <h2 className="label px-1 pt-3 font-sans">Contact</h2>
         <ContactFields values={contact} onChange={setContact} />
         <Button type="submit" className="w-full" disabled={saving}>
           {saving ? 'Enregistrement…' : supplierId ? 'Renvoyer le contact' : 'Enregistrer'}

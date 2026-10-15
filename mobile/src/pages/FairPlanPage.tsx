@@ -84,7 +84,7 @@ export default function FairPlanPage() {
       {!rows && !error && <Loading />}
       {groups.map(([area, group]) => (
         <section key={area} className="space-y-2">
-          <h2 className="px-1 text-sm font-semibold uppercase tracking-wide text-slate-500">{group.title}</h2>
+          <h2 className="label px-1 font-sans">{group.title}</h2>
           <Card className="divide-y divide-slate-100 p-0">
             {group.rows.map((s) => (editing === `${area}|${s.section}` ? (
               <form key={s.section} onSubmit={(e) => save(e, s)} className="space-y-2 p-3">

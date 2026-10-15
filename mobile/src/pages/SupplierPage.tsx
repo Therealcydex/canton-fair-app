@@ -155,17 +155,17 @@ export default function SupplierPage() {
         </div>
       </Card>
 
-      <h2 className="px-1 pt-2 font-semibold">Contacts ({supplier.contacts?.length || 0})</h2>
+      <h2 className="label px-1 pt-3 font-sans">Contacts ({supplier.contacts?.length || 0})</h2>
       {supplier.contacts?.map((c) => (
         <ContactCard key={c.id} supplierId={supplier.id} contact={c} onChanged={loadSupplier} />
       ))}
       <NewContact supplierId={supplier.id} onSaved={loadSupplier} />
 
-      <h2 className="px-1 pt-2 font-semibold">Booths ({booths.length})</h2>
+      <h2 className="label px-1 pt-3 font-sans">Booths ({booths.length})</h2>
       {booths.map((b) => (
         <Link key={b.id} to={`/booths/${b.id}`} className="block">
           <Card className="flex items-center justify-between active:bg-slate-50">
-            <span className="font-bold">{b.booth_code}</span>
+            <span className="font-display font-bold text-blue-700">{b.booth_code}</span>
             {b.visited
               ? <Badge className="bg-green-100 text-green-800">Visité</Badge>
               : <Badge className="bg-orange-100 text-orange-800">À visiter</Badge>}
@@ -173,7 +173,7 @@ export default function SupplierPage() {
         </Link>
       ))}
 
-      <h2 className="px-1 pt-2 font-semibold">Produits ({products.length})</h2>
+      <h2 className="label px-1 pt-3 font-sans">Produits ({products.length})</h2>
       {products.map((p) => (
         <Card key={p.id} className="text-sm">
           <div className="flex items-start justify-between gap-2">
