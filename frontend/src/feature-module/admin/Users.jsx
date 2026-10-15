@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
-import { Alert, App, Badge, Button, Form, Input, Modal, Popconfirm, Select, Space, Switch, Table, Tabs, Tag } from 'antd';
+import { Alert, App, Button, Form, Input, Modal, Popconfirm, Select, Space, Switch, Table, Tag } from 'antd';
 import { API_BASE_URL } from '../../config/config';
 import { useAuth } from '../../context/AuthContext';
 import { apiError } from '../../utils/apiError';
@@ -11,18 +11,11 @@ const ROLES = [
   { value: 'ADMIN', label: 'Administrateur' },
 ];
 
-// "2026-10-14 09:05:00" -> "14/10/2026 09:05"
-const formatDate = (s) => {
-  const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(s || '');
-  return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}` : '—';
-};
-
 export default function Users() {
   const { user: me } = useAuth();
   const { message } = App.useApp();
   const [users, setUsers] = useState([]);
   const [companies, setCompanies] = useState([]);
-  const [tab, setTab] = useState('all');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [editing, setEditing] = useState(null); // null = closed, {} = new, user = edit
@@ -49,11 +42,6 @@ export default function Users() {
 
   useEffect(() => { load(); }, [load]);
 
-  const pending = users.filter((u) => !u.is_active);
-  // Pending tab: sign-ups waiting for the admin, newest first.
-  const shown = tab === 'pending'
-    ? [...pending].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
-    : users;
 
   const open = (u) => {
     setFormError(null);
@@ -94,7 +82,7 @@ export default function Users() {
   const remove = async (u) => {
     try {
       await axios.delete(`${API_BASE_URL}/users/${u.id}`);
-      message.success(u.is_active ? 'Utilisateur supprimé' : 'Inscription refusée');
+      message.success('Utilisateur supprimé');
       load();
     } catch (err) {
       message.error(apiError(err, 'Erreur lors de la suppression'));
@@ -109,9 +97,7 @@ export default function Users() {
     { title: 'Société', key: 'company', render: (_, u) => (u.company_id ? companyLabel({ name: u.company_name, branch: u.company_branch }) : '—') },
     { title: 'Niveau', dataIndex: 'level', render: (v) => v || '—' },
     { title: 'Rôle', dataIndex: 'role', render: (v) => ROLES.find((r) => r.value === v)?.label || v },
-    tab === 'pending'
-      ? { title: 'Demandé le', dataIndex: 'created_at', render: formatDate }
-      : { title: 'Statut', dataIndex: 'is_active', render: (v) => (v ? <Tag color="green">Actif</Tag> : <Tag color="orange">Inactif</Tag>) },
+    { title: 'Statut', dataIndex: 'is_active', render: (v) => (v ? <Tag color="green">Actif</Tag> : <Tag color="orange">Inactif</Tag>) },
     {
       title: '', key: 'actions', width: 260,
       render: (_, u) => (
@@ -119,9 +105,9 @@ export default function Users() {
           {!u.is_active && <Button size="small" type="primary" onClick={() => activate(u)}>Activer</Button>}
           <Button size="small" onClick={() => open(u)}>Modifier</Button>
           {u.id !== me.id && (
-            <Popconfirm title={u.is_active ? 'Supprimer cet utilisateur ?' : 'Refuser cette inscription ?'}
+            <Popconfirm title="Supprimer cet utilisateur ?"
               description="Le compte est supprimé." okText="Supprimer" cancelText="Annuler" onConfirm={() => remove(u)}>
-              <Button size="small" danger>{u.is_active ? 'Supprimer' : 'Refuser'}</Button>
+              <Button size="small" danger>Supprimer</Button>
             </Popconfirm>
           )}
         </Space>
@@ -136,13 +122,10 @@ export default function Users() {
         <Button type="primary" onClick={() => open(null)}>Nouvel utilisateur</Button>
       </Space>
       {loadError && <Alert type="error" message={loadError} showIcon className="mb-3" />}
-      <Tabs activeKey={tab} onChange={setTab} items={[
-        { key: 'all', label: 'Tous' },
-        { key: 'pending', label: <Badge count={pending.length} size="small" offset={[10, 0]}>En attente de validation</Badge> },
-      ]} />
-      <Table rowKey="id" columns={columns} dataSource={shown} loading={loading}
+      <p className="text-muted">Il n'y a pas d'inscription : créez ici le compte de chaque personne qui doit accéder à l'application. Un compte inactif ne peut pas se connecter.</p>
+      <Table rowKey="id" columns={columns} dataSource={users} loading={loading}
         size="middle" scroll={{ x: true }} pagination={{ pageSize: 20 }}
-        locale={{ emptyText: tab === 'pending' ? 'Aucune inscription en attente' : 'Aucun utilisateur' }} />
+        locale={{ emptyText: 'Aucun utilisateur' }} />
 
       <Modal open={!!editing} title={editing?.id ? "Modifier l'utilisateur" : 'Nouvel utilisateur'}
         onCancel={() => setEditing(null)} onOk={save} okText="Enregistrer" cancelText="Annuler"

@@ -3,7 +3,6 @@ import AppLayout from '../components/AppLayout';
 import { RequireAccess, RequireAuth } from '../components/Guards';
 import { isAdmin } from '../utils/access';
 import Login from '../feature-module/auth/Login';
-import SignUp from '../feature-module/auth/SignUp';
 import Accueil from '../feature-module/accueil/Accueil';
 import Users from '../feature-module/admin/Users';
 import Companies from '../feature-module/admin/Companies';
@@ -29,7 +28,6 @@ export default function AppRouter() {
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/inscription" element={<SignUp />} />
         <Route element={<RequireAuth />}>
           <Route element={<AppLayout />}>
             <Route path="/" element={<Accueil />} />

@@ -1,4 +1,4 @@
-// BF01-BF03 and BF16: login, sign-up and its validation, companies, users.
+// BF01-BF03: login, companies, users. No sign-up (D46): the admin creates the accounts.
 const { api, expect, check, login, PREFIX } = require('./lib');
 
 module.exports = async (ctx) => {
@@ -21,38 +21,23 @@ module.exports = async (ctx) => {
   check('me is the token owner', me.body.data?.id === users.buyerA);
   expect('unknown API route', await api('GET', '/nowhere', { token: tokens.buyerA }), 404);
 
-  // Sign-up (BF16)
-  const pub = expect('companies for sign-up, without a token', await api('GET', '/signup/companies'), 200);
-  check('sign-up list shows only id, name, branch',
-    pub.body.data.length > 0 && pub.body.data.every((c) => Object.keys(c).sort().join() === 'branch,id,name'));
-  const form = { name: `${PREFIX} Nouveau`, username: `${PREFIX}_signup1`, password, company_id: companies.A };
-  expect('sign-up without name', await api('POST', '/signup', { body: { ...form, name: ' ' } }), 400);
-  expect('sign-up with a short password', await api('POST', '/signup', { body: { ...form, password: 'court' } }), 400);
-  expect('sign-up with an invalid username', await api('POST', '/signup', { body: { ...form, username: 'a b' } }), 400);
-  expect('sign-up without company', await api('POST', '/signup', { body: { ...form, company_id: undefined } }), 400);
-  expect('sign-up with an unknown company', await api('POST', '/signup', { body: { ...form, company_id: 999999 } }), 400);
-  expect('sign-up with a taken username', await api('POST', '/signup', { body: { ...form, username: `${PREFIX}_buyerB` } }), 409);
-  const signed = expect('sign-up (role ADMIN in the body is ignored)',
-    await api('POST', '/signup', { body: { ...form, role: 'ADMIN', is_active: 1 } }), 200);
-  const newId = signed.body.data?.id;
-  check('sign-up is pending', signed.body.data?.pending === true);
-  expect('pending account cannot log in', await api('POST', '/login', { body: { username: form.username, password } }), 403);
-
-  expect('buyer lists pending sign-ups', await api('GET', '/users?pending=1', { token: tokens.buyerA }), 403);
-  expect('buyer activates a sign-up', await api('PUT', `/users/${newId}`, { token: tokens.buyerA, body: { is_active: 1 } }), 403);
-  const pending = expect('admin lists pending sign-ups', await api('GET', '/users?pending=1', { token: adminToken }), 200);
-  const row = pending.body.data.find((u) => u.id === newId);
-  check('pending list has the new user, inactive buyer of company A',
-    row && row.is_active === 0 && row.role === 'ACHETEUR' && row.company_id === companies.A);
-  check('pending list has only inactive users', pending.body.data.every((u) => u.is_active === 0));
+  // No sign-up (D46): the public routes are gone; the admin creates the accounts.
+  expect('sign-up route removed', await api('POST', '/signup', { body: { name: 'X', username: `${PREFIX}_signup1`, password } }), 404);
+  expect('sign-up companies route removed', await api('GET', '/signup/companies'), 404);
+  const created = expect('admin creates an inactive account', await api('POST', '/users', {
+    token: adminToken,
+    body: { name: `${PREFIX} Nouveau`, username: `${PREFIX}_new1`, password, level: 'Acheteur', company_id: companies.A, is_active: false },
+  }), 200);
+  const newId = created.body.data?.id;
+  expect('inactive account cannot log in', await api('POST', '/login', { body: { username: `${PREFIX}_new1`, password } }), 403);
+  expect('buyer lists inactive accounts', await api('GET', '/users?pending=1', { token: tokens.buyerA }), 403);
+  expect('buyer activates an account', await api('PUT', `/users/${newId}`, { token: tokens.buyerA, body: { is_active: 1 } }), 403);
+  const pending = expect('admin lists inactive accounts', await api('GET', '/users?pending=1', { token: adminToken }), 200);
+  check('the inactive list has the new account and only inactive ones',
+    pending.body.data.some((u) => u.id === newId) && pending.body.data.every((u) => u.is_active === 0));
   check('no password hash in user list', pending.body.data.every((u) => !('password_hash' in u)));
-  expect('admin activates the sign-up', await api('PUT', `/users/${newId}`, { token: adminToken, body: { is_active: 1, level: 'Acheteur junior' } }), 200);
-  const newToken = await login(form.username, password);
-  check('activated user logs in', !!newToken);
-
-  const refused = expect('second sign-up', await api('POST', '/signup', { body: { ...form, username: `${PREFIX}_signup2` } }), 200);
-  expect('admin refuses (deletes) a sign-up', await api('DELETE', `/users/${refused.body.data.id}`, { token: adminToken }), 200);
-  expect('deleted sign-up is gone', await api('GET', `/users/${refused.body.data.id}`, { token: adminToken }), 404);
+  expect('admin activates it', await api('PUT', `/users/${newId}`, { token: adminToken, body: { is_active: 1 } }), 200);
+  check('activated user logs in', !!(await login(`${PREFIX}_new1`, password)));
 
   // Users (BF03, admin only)
   expect('buyer lists users', await api('GET', '/users', { token: tokens.buyerA }), 403);

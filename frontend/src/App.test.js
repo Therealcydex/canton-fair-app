@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import App from './App';
 
 test('shows the login page when logged out', () => {
@@ -8,10 +8,10 @@ test('shows the login page when logged out', () => {
   expect(screen.getByText('Se connecter')).toBeInTheDocument();
 });
 
-test('the login page links to the sign-up page', async () => {
+// D46: no sign-up, the admin creates the accounts.
+test('the login page has no sign-up link', () => {
   localStorage.clear();
   render(<App />);
-  fireEvent.click(screen.getByText('Créer un compte'));
-  expect(await screen.findByText('Sourcing — Créer un compte')).toBeInTheDocument();
-  expect(screen.getByText('Créer mon compte')).toBeInTheDocument();
+  expect(screen.queryByText('Créer un compte')).not.toBeInTheDocument();
+  expect(screen.getByText("Pas de compte ? Demandez-le à l'administrateur.")).toBeInTheDocument();
 });

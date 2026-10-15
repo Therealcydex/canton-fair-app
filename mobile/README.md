@@ -1,6 +1,6 @@
 # Sourcing — mobile app
 
-App for buyers on the fair floor: sign-up, booths to visit (one tap marks a booth visited), quick product entry with
+App for buyers on the fair floor (accounts are created by the admin, D46): booths to visit (one tap marks a booth visited), quick product entry with
 photos, supplier lookup. Online only (BNF04). Vite 4, React 18, TypeScript, Tailwind 3,
 Capacitor 8 (Android).
 

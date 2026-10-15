@@ -107,7 +107,7 @@ exports.create = handle('User create', async (req, res) => {
   res.json({ success: true, data: { id: ins.insertId } });
 });
 
-// Also how a sign-up is validated: { is_active: 1 } (plus role, level or company if needed).
+// Also how the admin activates or deactivates an account: { is_active: 1 | 0 }.
 exports.update = handle('User update', async (req, res) => {
   const loaded = await loadUser(req.params.id);
   if (!loaded.user) return fail(res, loaded.status, loaded.message);

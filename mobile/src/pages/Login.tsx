@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../authContext';
 import { Button, ErrorBox, Field, inputClass } from '../components/ui';
 
@@ -39,7 +39,7 @@ export default function Login() {
             autoComplete="current-password" required />
         </Field>
         <Button type="submit" className="w-full" disabled={loading}>{loading ? 'Connexion…' : 'Se connecter'}</Button>
-        <p className="text-center text-sm">Pas encore de compte ? <Link to="/inscription" className="text-blue-700">Créer un compte</Link></p>
+        <p className="text-center text-sm text-slate-500">Pas de compte ? Demandez-le à l'administrateur.</p>
       </form>
     </div>
   );
