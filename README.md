@@ -63,10 +63,22 @@ npm run dev:phone         # on a phone on the same Wi-Fi, with the camera: https
 
 ## Database
 
+**The tables are not created when the app is built or started.** They are created by SQL scripts
+that are in this repository, in `backend/sql/`. Nobody needs to send a separate SQL file or a copy
+of a database: the code in git is enough.
+
+| Command (in `backend/`) | What it does |
+|---|---|
+| `npm run db:setup` | Runs, in order, `china_provinces.sql`, `canton_fair_categories.sql`, `canton_fair_sections_140.sql` and `create_sourcing_schema.sql` (reference lists, tables, views), then creates the first administrator from `.env` |
+| `npm run db:add-fair-plan` | Loads the official hall plan of the 140th fair |
+| `npm run db:update-…` | Only for a database created with an older version: brings it up to date (list and order in `docs/sourcing-status.md`, "Migration scripts") |
+
+Every script checks what is already there (`CREATE TABLE IF NOT EXISTS`, `INSERT IGNORE`): running
+one twice does nothing the second time, and existing data is kept.
+
 The app adds its own lowercase tables next to the ERP's tables and never touches the ERP.
-To install it on the real database, or to bring over the data of a copy, follow
-**[deploy/DATABASE.md](deploy/DATABASE.md)**. When a version changes the schema, its `npm run db:…`
-script is listed in `docs/sourcing-status.md` ("Migration scripts").
+To install it on the real database (backup, settings, the app's own database account) or to bring
+over the data of a copy, follow **[deploy/DATABASE.md](deploy/DATABASE.md)**.
 
 ## Tests
 
