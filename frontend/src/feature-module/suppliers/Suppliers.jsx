@@ -8,7 +8,7 @@ import FormModal from '../../components/FormModal';
 import SupplierFormFields from './SupplierFormFields';
 import { supplierPayload } from './SupplierDetail';
 import { useList } from '../../utils/lists';
-import { PlusOutlined } from '@ant-design/icons';
+import { EditOutlined, PlusOutlined } from '@ant-design/icons';
 import PageHeader from '../../components/PageHeader';
 
 export default function Suppliers() {
@@ -20,6 +20,7 @@ export default function Suppliers() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState(null); // the supplier being edited
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -67,6 +68,10 @@ export default function Suppliers() {
       title: 'Produits', dataIndex: 'products_count', width: 100, align: 'right', responsive: ['lg'],
       sorter: (a, b) => a.products_count - b.products_count,
     },
+    {
+      title: '', key: 'actions', width: 110, align: 'right',
+      render: (_, r) => <Button size="small" icon={<EditOutlined />} onClick={() => setEditing(r)}>Modifier</Button>,
+    },
   ];
 
   return (
@@ -87,6 +92,13 @@ export default function Suppliers() {
       {loadError && <Alert type="error" message={loadError} showIcon className="mb-3" />}
       <Table rowKey="id" columns={columns} dataSource={rows} loading={loading} size="middle"
         scroll={{ x: true }} pagination={{ pageSize: 20 }} />
+
+      <FormModal open={!!editing} title="Modifier le fournisseur" width={640} initialValues={editing}
+        onCancel={() => setEditing(null)}
+        onSubmit={(values) => axios.put(`${API_BASE_URL}/suppliers/${editing.id}`, supplierPayload(values))}
+        onSaved={() => { setEditing(null); message.success('Fournisseur modifié'); load(); }}>
+        <SupplierFormFields />
+      </FormModal>
 
       <FormModal open={creating} title="Nouveau fournisseur" width={640}
         onCancel={() => setCreating(false)}

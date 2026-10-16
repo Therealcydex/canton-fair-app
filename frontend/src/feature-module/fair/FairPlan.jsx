@@ -1,15 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Alert, App, Input, Spin, Table, Tabs } from 'antd';
+import { Alert, Spin, Table, Tabs } from 'antd';
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
-import { useAuth } from '../../context/AuthContext';
-import { isAdmin } from '../../utils/access';
-import { AREAS, hallsOf } from '../../utils/fairPlan';
+import { AREAS } from '../../utils/fairPlan';
 import PageHeader from '../../components/PageHeader';
 
-// D48: the sections of a phase grouped as on the official plan: Area A, D, C, B, each section with
-// its codes in that area, in the plan's order (the API's); a section in two areas shows in both.
+// D48: the sections of a phase grouped as on the official plan: Zone A, D, C, B, each section with
+// its codes in that zone, in the plan's order (the API's); a section in two zones shows in both.
 // Sections without halls come last.
 const groupByArea = (rows) => {
   const groups = AREAS.map((area) => ({ key: area, title: `Zone ${area}`, rows: [] }));
@@ -28,73 +26,32 @@ const PHASES = [
   { phase: 3, label: 'Phase 3 · 31 oct.-4 nov.' },
 ];
 
-// The admin's cell: saved on Enter or when leaving the field, only if it changed.
-function HallsInput({ row, onSave }) {
-  const [value, setValue] = useState(row.halls || '');
-  const [saving, setSaving] = useState(false);
-  useEffect(() => setValue(row.halls || ''), [row.halls]);
-  const save = async () => {
-    if (value.trim() === (row.halls || '')) return;
-    setSaving(true);
-    if (!(await onSave(row, value.trim()))) setValue(row.halls || '');
-    setSaving(false);
-  };
-  return (
-    <Input value={value} onChange={(e) => setValue(e.target.value)} onBlur={save} onPressEnter={(e) => e.target.blur()}
-      disabled={saving} maxLength={255} placeholder="ex. 14.3, 14.4, 15.4" allowClear />
-  );
-}
+const columns = [
+  { title: 'Section', dataIndex: 'section' },
+  { title: 'Halls', dataIndex: 'halls', width: 420, render: (v) => v || <span className="text-muted">—</span> },
+];
 
-// D42: the hall plan of the fair: which halls hold each exhibition section in this session, laid
-// out like the official plan (D48). Everyone reads it; the admin can correct a section (the field
-// holds all its codes, whatever the area).
+// D42/D51: the hall plan of the fair, the official plan of the session laid out like it (D48).
+// Read only, for everyone: it is loaded from the official plan (npm run db:add-fair-plan).
 export default function FairPlan() {
-  const { user } = useAuth();
-  const { message } = App.useApp();
-  const admin = isAdmin(user);
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
 
-  const load = useCallback(async () => {
-    try {
-      const { data } = await axios.get(`${API_BASE_URL}/fair-plan`);
-      setRows(data.data);
-    } catch (err) {
-      setError(apiError(err, 'Erreur lors du chargement du plan'));
-    }
+  useEffect(() => {
+    axios.get(`${API_BASE_URL}/fair-plan`)
+      .then(({ data }) => setRows(data.data))
+      .catch((err) => setError(apiError(err, 'Erreur lors du chargement du plan')));
   }, []);
-  useEffect(() => { load(); }, [load]);
 
-  const save = async (row, halls) => {
-    try {
-      await axios.put(`${API_BASE_URL}/fair-plan`, { phase: row.phase, section: row.section, halls });
-      message.success(halls ? `Halls enregistrés : ${row.section}` : `Halls retirés : ${row.section}`);
-      await load();
-      return true;
-    } catch (err) {
-      message.error(apiError(err, "Erreur lors de l'enregistrement"));
-      return false;
-    }
-  };
-
-  const columns = [
-    { title: 'Section', dataIndex: 'section' },
-    {
-      title: 'Halls', dataIndex: 'halls', width: 420,
-      // The admin's field holds all the codes of the section (every area); the server splits them.
-      render: (v, row) => (admin
-        ? <HallsInput row={{ ...row, halls: hallsOf(rows || [], row.phase, row.section) }} onSave={save} />
-        : (v || <span className="text-muted">—</span>)),
-    },
-  ];
-
-  const known = rows ? rows.filter((r) => r.halls).length : 0;
+  // Sections, not rows: a section in two zones counts once.
+  const sections = rows ? new Set(rows.map((r) => `${r.phase}|${r.section}`)).size : 0;
+  const known = rows ? new Set(rows.filter((r) => r.halls).map((r) => `${r.phase}|${r.section}`)).size : 0;
   return (
     <>
       <PageHeader title="Plan du salon" chip="140e session"
-        subtitle={`Les halls de chaque section pour la session en cours${rows ? ` (${known} section(s) sur ${rows.length} renseignée(s))` : ''}.`} />
+        subtitle={`Les halls de chaque section pour la session en cours${rows ? ` (${known} section(s) sur ${sections} renseignée(s))` : ''}.`} />
       <Alert type="info" showIcon className="mb-3"
-        message={<>Plan officiel de la 140e session (<a href="https://365.cantonfair.org.cn/en-US/exhibition-hall-map?phase=first" target="_blank" rel="noreferrer">site Canton Fair 365</a>).{admin ? ' Vous pouvez corriger une section : le champ contient tous ses halls.' : ''}</>} />
+        message={<>Plan officiel de la 140e session (<a href="https://365.cantonfair.org.cn/en-US/exhibition-hall-map?phase=first" target="_blank" rel="noreferrer">site Canton Fair 365</a>).</>} />
       {error && <Alert type="error" message={error} showIcon className="mb-3" />}
       <Tabs items={PHASES.map((p) => ({
         key: String(p.phase),

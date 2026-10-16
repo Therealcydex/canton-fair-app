@@ -27,7 +27,8 @@ const ADMIN_MENU = [
 
 const initials = (name) => (name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
 
-// Side bar, page and footer (D49): fixed on large screens, a drawer opened from the top bar on small ones.
+// Side bar, page and footer (D49): on large screens it shows when the pointer reaches the left edge,
+// on small ones it is a drawer opened from the top bar.
 export default function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -70,6 +71,8 @@ export default function AppLayout() {
 
   return (
     <>
+      {/* Large screens: hidden, it slides in when the pointer reaches the left edge (the zone) and stays while hovered. */}
+      <div className="app-side-zone d-none d-lg-block" aria-hidden="true"><span className="app-side-handle" /></div>
       <aside className="app-sidebar d-none d-lg-flex">{sidebar}</aside>
       <header className="app-topbar-sm d-lg-none">
         <button type="button" className="app-menu-btn" aria-label="Ouvrir le menu" onClick={() => setOpen(true)}>

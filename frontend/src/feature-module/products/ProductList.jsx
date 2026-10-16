@@ -9,6 +9,7 @@ import { STATUS } from '../../utils/decision';
 import { companyLabel } from '../../utils/lists';
 import FormModal from '../../components/FormModal';
 import ProductFormFields, { productPayload } from './ProductFormFields';
+import { EditOutlined } from '@ant-design/icons';
 
 // "New product", opened from the page headers (products page, supplier page).
 export function NewProductModal({ open, supplierId, onClose }) {
@@ -43,6 +44,7 @@ export default function ProductList({ filters, supplierId, companies }) {
   const [loadError, setLoadError] = useState(null);
   const [selected, setSelected] = useState([]);
   const [target, setTarget] = useState(null); // the products being shared
+  const [editing, setEditing] = useState(null); // the product being edited
   const sharing = !!companies;
 
   const query = JSON.stringify({ ...filters, supplier_id: supplierId });
@@ -120,9 +122,14 @@ export default function ProductList({ filters, supplierId, companies }) {
         );
       },
     },
-    sharing && {
-      title: '', key: 'share', width: 100, align: 'right',
-      render: (_, p) => <Button size="small" onClick={() => setTarget([p.id])}>Partager</Button>,
+    {
+      title: '', key: 'actions', width: sharing ? 200 : 110, align: 'right',
+      render: (_, p) => (
+        <Space size={4}>
+          <Button size="small" icon={<EditOutlined />} onClick={() => setEditing(p)}>Modifier</Button>
+          {sharing && <Button size="small" onClick={() => setTarget([p.id])}>Partager</Button>}
+        </Space>
+      ),
     },
   ].filter(Boolean);
 
@@ -152,6 +159,13 @@ export default function ProductList({ filters, supplierId, companies }) {
         scroll={{ x: true }} pagination={{ pageSize: 30 }}
         rowSelection={sharing ? { selectedRowKeys: selected, onChange: setSelected, preserveSelectedRowKeys: false } : undefined}
         locale={{ emptyText: filters?.mine ? 'Aucun produit partagé avec votre société' : 'Aucun produit' }} />
+
+      <FormModal open={!!editing} title="Modifier le produit" width={720} initialValues={editing}
+        onCancel={() => setEditing(null)}
+        onSubmit={(values) => axios.put(`${API_BASE_URL}/products/${editing.id}`, productPayload(values))}
+        onSaved={() => { setEditing(null); message.success('Produit modifié'); load(); }}>
+        <ProductFormFields lockSupplier={!!supplierId} />
+      </FormModal>
 
       {sharing && (
         <FormModal open={!!target} width={520}

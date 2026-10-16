@@ -60,12 +60,42 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
   font-weight: 600;
 }
 
-/* Side bar (components/AppLayout.jsx): fixed on large screens, a drawer on small ones. */
+/* Side bar (components/AppLayout.jsx): on large screens it slides over the page when the pointer
+   reaches the left edge (or the keyboard reaches a link in it); a drawer on small screens. */
 .app-sidebar {
   position: fixed;
   inset: 0 auto 0 0;
   z-index: 1030;
   width: 232px;
+  transform: translateX(-100%);
+  transition: transform 0.2s ease 0.25s; /* the delay keeps it open when the pointer slips out */
+}
+
+.app-side-zone {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 1031;
+  width: 14px;
+}
+
+.app-side-handle {
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 4px;
+  height: 56px;
+  margin-top: -28px;
+  border-radius: 2px;
+  background: var(--sc-accent);
+  opacity: 0.55;
+}
+
+.app-side-zone:hover + .app-sidebar,
+.app-sidebar:hover,
+.app-sidebar:focus-within {
+  transform: none;
+  transition-delay: 0s;
+  box-shadow: 8px 0 24px rgba(0, 21, 41, 0.18);
 }
 
 .app-side {
@@ -191,7 +221,7 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
 
 @media (min-width: 992px) {
   .app-content {
-    margin-left: 232px;
+    padding-left: 14px; /* room for the hover zone */
   }
 }
 
@@ -498,6 +528,7 @@ code {
 
 @media print {
   .app-sidebar,
+  .app-side-zone,
   .app-topbar-sm,
   .app-footer,
   .no-print {
@@ -505,7 +536,7 @@ code {
   }
 
   .app-content {
-    margin-left: 0 !important;
+    padding-left: 0 !important;
   }
 
   .qr-sheet {

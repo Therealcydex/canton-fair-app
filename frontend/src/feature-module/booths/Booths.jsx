@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Cascader, Input, InputNumber, Select, Space } from 'antd';
+import { Button, Cascader, Input, InputNumber, Select, Space } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
 import { categoryOptions, useList } from '../../utils/lists';
 import BoothList from './BoothList';
 import PageHeader from '../../components/PageHeader';
@@ -10,11 +11,13 @@ export default function Booths({ planning = false }) {
   const [filters, setFilters] = useState({});
   const options = useMemo(() => categoryOptions(categories, filters.phase), [categories, filters.phase]);
   const set = (key) => (value) => setFilters((f) => ({ ...f, [key]: value ?? undefined }));
+  const [creating, setCreating] = useState(false);
 
   return (
     <>
       <PageHeader title={planning ? 'Booths à visiter' : 'Booths'} chip="Canton Fair Pazhou"
-        subtitle={planning ? 'Les booths prévus, à marquer visités sur place' : 'Liste des booths et suivi terrain'} />
+        subtitle={planning ? 'Les booths prévus, à marquer visités sur place' : 'Liste des booths et suivi terrain'}
+        actions={<Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>Nouveau booth</Button>} />
       <Space className="mb-3" wrap>
         <Input.Search placeholder="Code ou fournisseur" allowClear style={{ width: 220 }} onSearch={(q) => set('q')(q || undefined)} />
         <Select placeholder="Phase" allowClear style={{ width: 110 }} onChange={set('phase')}
@@ -27,7 +30,8 @@ export default function Booths({ planning = false }) {
             options={[{ value: 0, label: 'À visiter' }, { value: 1, label: 'Visités' }]} />
         )}
       </Space>
-      <BoothList filters={{ ...filters, visited: planning ? 0 : filters.visited }} planning={planning} />
+      <BoothList filters={{ ...filters, visited: planning ? 0 : filters.visited }} planning={planning}
+        createOpen={creating} onCreateOpenChange={setCreating} />
     </>
   );
 }

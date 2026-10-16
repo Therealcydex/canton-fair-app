@@ -35,7 +35,7 @@ acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 | BNF04 | Online only | À valider | |
 | BNF05 | Hashed passwords | À valider | API |
 | BNF06 | Schema changes as scripts | À valider | |
-| D1–D50 | Decisions in `sourcing-spec.md` §5 (several replaced by v2) | À valider | Web home page (D40): API, navigateur (figures, phases, companies); web and mobile look from Stitch (D49): web build and tests, mobile lint and build, web login seen in the browser; the other pages to check in the browser and on a phone |
+| D1–D51 | Decisions in `sourcing-spec.md` §5 (several replaced by v2) | À valider | Web home page (D40): API, navigateur (figures, phases, companies); web and mobile look from Stitch (D49): web build and tests, mobile lint and build, web login seen in the browser; the other pages to check in the browser and on a phone |
 
 ## Not checked by hand yet
 

@@ -6,16 +6,23 @@ import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import FormModal from '../../components/FormModal';
 import BoothFormFields, { boothPayload } from './BoothFormFields';
+import { categoryPath, useList } from '../../utils/lists';
+import { EditOutlined, PlusOutlined } from '@ant-design/icons';
 
-// Table of booths for the given API filters, with "new booth" and a "visited" switch on each row.
-// Used by the booth pages and by the supplier page.
-export default function BoothList({ filters, supplierId, planning, hideSupplier, onChanged }) {
+// Table of booths for the given API filters, with "new booth", a "visited" switch and "Modifier" on
+// each row. Used by the booth pages and by the supplier page. A page that shows "Nouveau booth" in its
+// header passes createOpen / onCreateOpenChange; otherwise the list shows the button itself.
+export default function BoothList({ filters, supplierId, planning, hideSupplier, onChanged, createOpen, onCreateOpenChange }) {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
-  const [creating, setCreating] = useState(false);
+  const [ownCreating, setOwnCreating] = useState(false);
+  const creating = createOpen ?? ownCreating;
+  const setCreating = onCreateOpenChange ?? setOwnCreating;
+  const [editing, setEditing] = useState(null); // the booth being edited
+  const categories = useList('canton-categories');
 
   const query = JSON.stringify({ ...filters, supplier_id: supplierId });
   const load = useCallback(async () => {
@@ -70,15 +77,31 @@ export default function BoothList({ filters, supplierId, planning, hideSupplier,
       ),
     },
     { title: 'Commentaire', dataIndex: 'comment', responsive: ['lg'], ellipsis: true, render: (v) => v || '—' },
+    {
+      title: '', key: 'actions', width: 110, align: 'right',
+      render: (_, b) => <Button size="small" icon={<EditOutlined />} onClick={() => setEditing(b)}>Modifier</Button>,
+    },
   ].filter(Boolean);
 
   return (
     <>
-      <Button className="mb-2" onClick={() => setCreating(true)}>Nouveau booth</Button>
+      {createOpen === undefined && (
+        <div className="d-flex justify-content-end mb-2">
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>Nouveau booth</Button>
+        </div>
+      )}
       {loadError && <Alert type="error" message={loadError} showIcon className="mb-3" />}
       <Table rowKey="id" columns={columns} dataSource={rows} loading={loading} size="middle"
         scroll={{ x: true }} pagination={{ pageSize: 50 }}
         locale={{ emptyText: planning ? 'Aucun booth à visiter' : 'Aucun booth' }} />
+
+      <FormModal open={!!editing} title={editing ? `Modifier le booth ${editing.booth_code}` : ''} width={640}
+        initialValues={editing && { ...editing, visited: !!editing.visited, category_path: categoryPath(categories, editing.category_id) }}
+        onCancel={() => setEditing(null)}
+        onSubmit={(values) => axios.put(`${API_BASE_URL}/booths/${editing.id}`, boothPayload(values))}
+        onSaved={() => { setEditing(null); message.success('Booth modifié'); load(); onChanged?.(); }}>
+        <BoothFormFields lockSupplier={!!supplierId} />
+      </FormModal>
 
       <FormModal open={creating} title="Nouveau booth" width={640}
         initialValues={{ supplier_id: supplierId, visited: false, floor: 1 }}
