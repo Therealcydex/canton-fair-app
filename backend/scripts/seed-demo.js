@@ -1,5 +1,5 @@
 // Loads demonstration data through the API (so every rule applies): Tarek's companies (demo
-// names), two buyers and a pending sign-up, suppliers with contacts, booths, products with photos and shares.
+// names), two buyers and an inactive account (D46: no sign-up), suppliers with contacts, booths, products with photos and shares.
 // Usage (from backend/, the backend running): npm run db:demo [-- http://localhost:3000/api]
 // Logs in as the admin of .env. Stops if the demo data is already there.
 const path = require('path');
@@ -99,10 +99,10 @@ async function main() {
   const sfax = company(COMPANY, 'Sfax');
   const other = company(COMPANY_B, null);
 
-  // Users: two active buyers, and one sign-up waiting for the admin.
+  // Users: two active buyers, and one inactive account the admin can activate (there is no sign-up, D46).
   await call('POST', '/users', admin, { name: 'Amine (acheteur)', username: 'acheteur.a', password: DEMO_PASSWORD, level: 'Acheteur', company_id: tunis });
   await call('POST', '/users', admin, { name: 'Karim (acheteur)', username: 'acheteur.b', password: DEMO_PASSWORD, level: 'Chef des achats', company_id: other });
-  await call('POST', '/signup', null, { name: 'Sarra (inscription)', username: 'sarra.demo', password: DEMO_PASSWORD, company_id: sfax });
+  await call('POST', '/users', admin, { name: 'Sarra (inactive)', username: 'sarra.demo', password: DEMO_PASSWORD, level: 'Acheteur', company_id: sfax, is_active: false });
   const A = await login('acheteur.a', DEMO_PASSWORD);
   const B = await login('acheteur.b', DEMO_PASSWORD);
 
@@ -182,7 +182,7 @@ async function main() {
 
   console.log(`Demo data loaded on ${BASE}:`);
   console.log(`  companies: "${COMPANY}" (Tunis, Sfax) and "${COMPANY_B}"`);
-  console.log(`  users (password ${DEMO_PASSWORD}): acheteur.a, acheteur.b; sarra.demo is a pending sign-up`);
+  console.log(`  users (password ${DEMO_PASSWORD}): acheteur.a, acheteur.b; sarra.demo is inactive (activate it in Utilisateurs)`);
   console.log(`  ${plan.length} suppliers, ${booths} booths (2 visited), ${products} products with photos, ${shares} shares`);
 }
 
