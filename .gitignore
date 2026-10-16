@@ -7,8 +7,6 @@ node_modules/
 
 # Build output
 frontend/build/
-mobile/dist/
-mobile/android/
 
 # Logs
 *.log
