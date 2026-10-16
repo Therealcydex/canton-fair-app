@@ -27,3 +27,6 @@ export const CANTON_FAIR_URL = /^https?:\/\/([^/?#]*\.)?cantonfair\.org(\.cn)?([
 // D48: the plan is laid out like the official one (365.cantonfair.org.cn/en-US/exhibition-hall-map):
 // the API gives one row per section and area, already in the plan's order.
 export const AREAS = ['A', 'D', 'C', 'B']; // the order of the site's legend
+
+// D50: the halls of each zone of the Pazhou complex (as v_booths.zone).
+export const ZONE_HALLS = { A: '1-8', B: '9-13', C: '14-16', D: '17-21' };

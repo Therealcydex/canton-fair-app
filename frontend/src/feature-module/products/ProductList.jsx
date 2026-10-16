@@ -11,13 +11,13 @@ import FormModal from '../../components/FormModal';
 import ProductFormFields, { productPayload } from './ProductFormFields';
 import { EditOutlined } from '@ant-design/icons';
 
-// "New product", opened from the page headers (products page, supplier page).
-export function NewProductModal({ open, supplierId, onClose }) {
+// "New product", opened from the page headers (products page, supplier page, booth page: boothId).
+export function NewProductModal({ open, supplierId, boothId, onClose }) {
   const { message } = App.useApp();
   const navigate = useNavigate();
   return (
     <FormModal open={open} title="Nouveau produit" width={720}
-      initialValues={{ supplier_id: supplierId, shipping_type: 'FOB' }}
+      initialValues={{ supplier_id: supplierId, booth_id: boothId, shipping_type: 'FOB' }}
       onCancel={onClose}
       onSubmit={(values) => axios.post(`${API_BASE_URL}/products`, productPayload(values))}
       onSaved={(res) => {

@@ -1,14 +1,12 @@
 import { useMemo, useState } from 'react';
 import { Button, Cascader, Col, Input, Row, Select } from 'antd';
 import { BuildOutlined, DownloadOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { ZONE_HALLS } from '../../utils/fairPlan';
 import { categoryOptions, useList } from '../../utils/lists';
 import BoothList, { boothNumber } from './BoothList';
 import PageHeader from '../../components/PageHeader';
 
-// D50: the zones of the Pazhou complex by hall (as v_booths.zone).
-const ZONES = [
-  { zone: 'A', halls: '1-8' }, { zone: 'B', halls: '9-13' }, { zone: 'C', halls: '14-16' }, { zone: 'D', halls: '17-21' },
-];
+const ZONES = Object.entries(ZONE_HALLS).map(([zone, halls]) => ({ zone, halls }));
 const HALLS = Array.from({ length: 21 }, (_, i) => i + 1);
 const plural = (n, word) => `${n} ${word}${n > 1 ? 's' : ''}`;
 

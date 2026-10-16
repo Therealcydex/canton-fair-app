@@ -2,6 +2,8 @@
 :root {
   --sc-primary: #002a81;
   --sc-primary-soft: #dce1ff;
+  --sc-primary-container: #003eb3;
+  --sc-error: #ba1a1a;
   --sc-accent: #1f6feb;
   --sc-topbar: #2f3031;
   --sc-surface: #faf9f9;
@@ -486,6 +488,96 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
   color: var(--sc-muted);
 }
 
+/* Booth page (feature-module/booths/BoothDetail.jsx), as the Stitch "Fiche Booth" screen. */
+.booth-crumb {
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.booth-crumb a {
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.booth-hall-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  background: var(--sc-primary-container);
+  color: #fff;
+  font-family: var(--sc-font-heading);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.booth-place {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 3px;
+}
+
+.booth-place > div {
+  padding: 8px 4px;
+  background: var(--sc-panel);
+  text-align: center;
+}
+
+.booth-place-value {
+  font-family: var(--sc-font-heading);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.booth-comment {
+  padding: 14px 16px;
+  background: var(--sc-panel);
+  white-space: pre-wrap;
+}
+
+.booth-contact {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  background: var(--sc-panel);
+}
+
+.booth-contact-initials {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  background: var(--sc-primary-soft);
+  color: var(--sc-primary);
+  font-family: var(--sc-font-heading);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.booth-contact-qr {
+  flex: none;
+  padding: 6px 8px;
+  background: #fff;
+  text-align: center;
+}
+
+.booth-photo-empty {
+  width: 48px;
+  height: 48px;
+  background: var(--sc-panel);
+  border-radius: 4px;
+}
+
+.sc-table .ant-table-footer {
+  background: var(--sc-panel);
+}
+
 /* Form dialog with the dark header of the Stitch forms (FormModal className="sc-modal-dark"). */
 .sc-modal-dark .ant-modal-content {
   padding: 0;
@@ -565,7 +657,7 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
   height: 22px;
   border: 0;
   border-radius: 3px;
-  background: var(--sc-error, #ba1a1a);
+  background: var(--sc-error);
   color: #fff;
   font-size: 14px;
   line-height: 22px;
