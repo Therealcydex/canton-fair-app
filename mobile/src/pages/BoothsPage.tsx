@@ -4,8 +4,9 @@ import { api, jsonBody } from '../config/api';
 import type { Booth } from '../types';
 import { Icon } from '../components/icons';
 import { Badge, Card, ErrorBox, Loading, Page, inputClass } from '../components/ui';
+import { padBoothNumbers } from '../halls';
 
-const hallOf = (b: Booth) => `Phase ${b.phase} · Hall ${b.hall}`;
+const hallOf = (b: Booth) => `Phase ${b.phase} · ${b.zone ? `Zone ${b.zone} · ` : ''}Hall ${b.hall}`;
 
 // "À visiter" (planning) or all booths, grouped by phase and hall, as walked on the fair floor.
 // Planning (D39): every booth is loaded so each hall shows its progress; the round ✓ marks a booth
@@ -27,8 +28,9 @@ export default function BoothsPage({ planning }: { planning: boolean }) {
 
   const groups = useMemo(() => {
     const text = q.trim().toLowerCase();
+    const code = padBoothNumbers(text); // D50: "10.3a8" finds 10.3A08
     const list = (booths || []).filter((b) => !text
-      || (b.supplier_name || '').toLowerCase().includes(text) || b.booth_code.toLowerCase().includes(text));
+      || (b.supplier_name || '').toLowerCase().includes(text) || b.booth_code.toLowerCase().includes(code));
     const map = new Map<string, Booth[]>();
     for (const b of list) map.set(hallOf(b), [...(map.get(hallOf(b)) || []), b]);
     return [...map.entries()].map(([label, rows]) => {

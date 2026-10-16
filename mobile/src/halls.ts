@@ -8,3 +8,9 @@ export const AREAS = ['A', 'D', 'C', 'B']; // the order of the site's legend
 // All the codes of a section in a phase (its rows of every area), or '' when none.
 export const sectionHalls = (rows: { phase: number; section: string; halls: string | null }[], phase: number, section: string) =>
   rows.filter((r) => r.phase === phase && r.section === section && r.halls).map((r) => r.halls).join(', ');
+
+// D50: a booth code typed with 1-digit numbers ("10.3A8-9") as the codes are stored ("10.3A08-09"),
+// so a search finds the booth either way. Same as the server (backend/utils/halls.js).
+export const padBoothNumbers = (text: string) => text
+  .replace(/([A-Za-z])(\d)(?!\d)/g, (_m, letter: string, digit: string) => `${letter}0${digit}`)
+  .replace(/-(\d)(?!\d)/g, (_m, digit: string) => `-0${digit}`);

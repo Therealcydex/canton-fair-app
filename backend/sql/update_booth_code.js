@@ -46,12 +46,20 @@ async function main() {
     return !!c && String(c.expr || '').includes("'/'");
   };
 
+  // D50: a code built before the numbers were padded ("10.3A8"): no "CONCAT('0'" in its expression.
+  const unpadded = async () => {
+    const c = await column('booth_code');
+    return !!c && !String(c.expr || '').toLowerCase().replace(/\s+/g, '').includes("concat('0'");
+  };
+
   // Whether each step is still needed.
   const needed = {
     'drop-old-unique': () => hasIndex('uq_booth_code'),
     'drop-old-code': oldCode,
     'letter-optional': async () => (await column('letter'))?.nullable === 'NO',
     'number-optional': async () => (await column('num_start'))?.nullable === 'NO',
+    'pad-drop-index': async () => (await hasIndex('ix_booths_code')) && (await unpadded()),
+    'pad-drop-code': unpadded,
     'add-code': async () => !(await column('booth_code')),
     'add-place-unique': async () => !(await hasIndex('uq_booth_place')),
     'add-code-index': async () => !(await hasIndex('ix_booths_code')),

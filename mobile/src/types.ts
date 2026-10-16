@@ -35,6 +35,7 @@ export interface Booth {
   supplier_name: string | null;
   visited: number;
   comment: string | null;
+  zone: string | null;        // D50: A (halls 1-8), B (9-13), C (14-16), D (17-21)
 }
 
 export interface Contact {

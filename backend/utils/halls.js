@@ -46,4 +46,10 @@ const splitByArea = (text) => {
   return [...byArea].map(([area, codes]) => ({ area, halls: codes.join(', ') }));
 };
 
-module.exports = { AREAS, areaOf, splitCodes, splitByArea };
+// D50: a booth code typed with 1-digit numbers ("10.3A8-9") as the codes are stored ("10.3A08-09"),
+// so a search finds the booth either way.
+const padBoothNumbers = (text) => String(text || '')
+  .replace(/([A-Za-z])(\d)(?!\d)/g, (m, letter, digit) => `${letter}0${digit}`)
+  .replace(/-(\d)(?!\d)/g, (m, digit) => `-0${digit}`);
+
+module.exports = { AREAS, areaOf, splitCodes, splitByArea, padBoothNumbers };

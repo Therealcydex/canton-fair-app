@@ -57,7 +57,7 @@ export default function BoothDetail() {
       <Link to="/booths">← Booths</Link>
       <Space className="my-2 w-100 justify-content-between" wrap>
         <h1 className="h4 m-0">
-          Booth {booth.booth_code}{' '}
+          Booth {booth.booth_code}{booth.zone && <Tag className="ms-2">Zone {booth.zone}</Tag>}{' '}
           {booth.visited ? <Tag color="green" className="ms-2">Visité</Tag> : <Tag color="orange" className="ms-2">À visiter</Tag>}
         </h1>
         <Space wrap>

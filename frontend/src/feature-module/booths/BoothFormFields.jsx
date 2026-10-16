@@ -17,11 +17,27 @@ const together = (other, message) => ({ getFieldValue }) => ({
     (empty(value) && !empty(getFieldValue(other)) ? Promise.reject(new Error(message)) : Promise.resolve()),
 });
 
-// The code the server will build ("11.3J26", "14.3I16-17", "9.1"), shown while typing.
+// The code the server will build, as the fair prints it: hall.floor + aisle letter + booth
+// number(s) on 2 digits (D32, D50): "1.1D22", "10.3A08-23", "9.1" (hall and floor only).
+const two = (n) => String(n).padStart(2, '0');
 const previewCode = ({ hall, floor, letter, num_start: start, num_end: end }) => {
   if (empty(hall) || empty(floor)) return '—';
   if (empty(letter) || empty(start)) return `${hall}.${floor}`;
-  return `${hall}.${floor}${letter.toUpperCase()}${start}${empty(end) || end === start ? '' : `-${end}`}`;
+  return `${hall}.${floor}${letter.toUpperCase()}${two(start)}${empty(end) || end === start ? '' : `-${two(end)}`}`;
+};
+
+// D50: the zone of a hall, as on the fair's plan (A = halls 1-8, B = 9-13, C = 14-16, D = 17-21).
+const zoneOf = (hall) => (hall >= 1 && hall <= 8 ? 'A' : hall <= 13 && hall >= 9 ? 'B'
+  : hall >= 14 && hall <= 16 ? 'C' : hall >= 17 && hall <= 21 ? 'D' : null);
+
+// "Zone A · hall 1, étage 1 · allée D · booth 22", read from the fields while typing.
+const describe = ({ hall, floor, letter, num_start: start, num_end: end }) => {
+  if (empty(hall) || empty(floor)) return '';
+  const parts = [zoneOf(hall) && `Zone ${zoneOf(hall)}`, `hall ${hall}, étage ${floor}`];
+  if (!empty(letter) && !empty(start)) {
+    parts.push(`allée ${letter.toUpperCase()}`, empty(end) || end === start ? `booth ${two(start)}` : `booths ${two(start)} à ${two(end)}`);
+  }
+  return parts.filter(Boolean).join(' · ');
 };
 
 export default function BoothFormFields({ lockSupplier }) {
@@ -63,19 +79,19 @@ export default function BoothFormFields({ lockSupplier }) {
           </Form.Item>
         </Col>
         <Col xs={12} sm={8}>
-          <Form.Item name="letter" label="Lettre" dependencies={['num_start']}
+          <Form.Item name="letter" label="Allée (lettre)" dependencies={['num_start']}
             rules={[{ pattern: /^[A-Za-z]$/, message: 'Une lettre de A à Z' }, together('num_start', 'Donnez aussi la lettre')]}>
             <Input maxLength={1} style={{ textTransform: 'uppercase' }} />
           </Form.Item>
         </Col>
         <Col xs={12} sm={8}>
-          <Form.Item name="num_start" label="N° de début" dependencies={['letter']}
+          <Form.Item name="num_start" label="N° du booth" dependencies={['letter']}
             rules={[together('letter', 'Donnez aussi le numéro')]}>
             <InputNumber min={1} max={32767} className="w-100" />
           </Form.Item>
         </Col>
         <Col xs={12} sm={8}>
-          <Form.Item name="num_end" label="N° de fin" extra="Vide = un seul numéro">
+          <Form.Item name="num_end" label="Jusqu'au n°" extra="Vide = un seul booth">
             <InputNumber min={1} max={32767} className="w-100" />
           </Form.Item>
         </Col>
@@ -83,7 +99,8 @@ export default function BoothFormFields({ lockSupplier }) {
       <Form.Item noStyle shouldUpdate>
         {({ getFieldsValue }) => (
           <div className="text-muted mb-3">Code du booth : <b>{previewCode(getFieldsValue())}</b>
-            {' '}(lettre et numéro vides = seulement le hall et l'étage, ex. 9.1)</div>
+            {describe(getFieldsValue()) && <> — {describe(getFieldsValue())}</>}
+            <div className="small">Comme sur le badge du salon : 1.1D22, 10.3A08-23 ; allée et numéro vides = seulement le hall et l'étage (9.1).</div></div>
         )}
       </Form.Item>
       <Form.Item name="category_path" label="Catégorie (salon de Canton)"

@@ -40,7 +40,7 @@ export default function FairPlanPage() {
   const groups = useMemo(() => {
     const byKey = new Map<string, { title: string; rows: PlanRow[] }>();
     for (const area of [...AREAS, '?', 'none']) {
-      byKey.set(area, { title: area === '?' ? 'Autres' : area === 'none' ? 'Sans hall' : `Area ${area}`, rows: [] });
+      byKey.set(area, { title: area === '?' ? 'Autres' : area === 'none' ? 'Sans hall' : `Zone ${area}`, rows: [] });
     }
     for (const r of (rows || []).filter((x) => x.phase === phase)) {
       const key = !r.halls ? 'none' : byKey.has(r.area || '') ? (r.area as string) : '?';

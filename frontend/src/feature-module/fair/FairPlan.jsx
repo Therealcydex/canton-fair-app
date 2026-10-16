@@ -12,7 +12,7 @@ import PageHeader from '../../components/PageHeader';
 // its codes in that area, in the plan's order (the API's); a section in two areas shows in both.
 // Sections without halls come last.
 const groupByArea = (rows) => {
-  const groups = AREAS.map((area) => ({ key: area, title: `Area ${area}`, rows: [] }));
+  const groups = AREAS.map((area) => ({ key: area, title: `Zone ${area}`, rows: [] }));
   const other = { key: '?', title: 'Autres', rows: [] };
   const empty = { key: 'none', title: 'Sans hall', rows: [] };
   rows.forEach((row) => {

@@ -57,8 +57,9 @@ CREATE TABLE IF NOT EXISTS contacts (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------- Booths ----------
--- D32: booth_code is built automatically as the fair prints it: hall.floor + letter + number(s)
+-- D32: booth_code is built automatically as the fair prints it: hall.floor + aisle letter + number(s)
 -- e.g. hall 11, floor 3, letter J, num 26  ->  11.3J26;  num 16-17 -> 14.3I16-17;
+-- D50: the numbers on at least 2 digits, as on the fair's badges: hall 10, floor 3, A, 8-23 -> 10.3A08-23;
 -- no letter and no number (only the hall and floor are known)  ->  9.1
 -- The phase is not in the code: the same stand holds another supplier at each phase.
 -- D31: RTRIM(letter): MariaDB 11.8 refuses a CHAR column in a generated column (its value depends on PAD_CHAR_TO_FULL_LENGTH).
@@ -75,7 +76,8 @@ CREATE TABLE IF NOT EXISTS booths (
     booth_code    VARCHAR(30) GENERATED ALWAYS AS (
                     CONCAT(hall, '.', floor,
                            IF(num_start IS NULL, '',     -- D35: not the bare CHAR column (MariaDB 11.8)
-                              CONCAT(RTRIM(letter), num_start, IF(num_end IS NULL, '', CONCAT('-', num_end)))))
+                              CONCAT(RTRIM(letter), IF(num_start < 10, CONCAT('0', num_start), num_start),
+                     IF(num_end IS NULL, '', CONCAT('-', IF(num_end < 10, CONCAT('0', num_end), num_end))))))
                   ) STORED,
     category_id   INT NULL,                              -- category + sub category (canton_fair_category)
     supplier_id   INT NULL,
@@ -181,12 +183,14 @@ CREATE TABLE IF NOT EXISTS product_shares (
 -- the query and "WHERE id = ?" reads one row instead of aggregating the whole table first.
 -- =========================================================
 
--- Booths with category names and supplier name
+-- Booths with category names, supplier name and zone of the fair (D50: A = halls 1-8, B = 9-13, C = 14-16, D = 17-21)
 CREATE OR REPLACE VIEW v_booths AS
 SELECT b.id, b.booth_code, b.phase, b.hall, b.floor, b.letter, b.num_start, b.num_end,
        b.category_id, c.category, c.section, c.sub_category,
        b.supplier_id, s.name AS supplier_name,
-       b.visited, b.comment
+       b.visited, b.comment,
+       CASE WHEN b.hall BETWEEN 1 AND 8 THEN 'A' WHEN b.hall BETWEEN 9 AND 13 THEN 'B'
+            WHEN b.hall BETWEEN 14 AND 16 THEN 'C' WHEN b.hall BETWEEN 17 AND 21 THEN 'D' END AS zone
 FROM booths b
 LEFT JOIN canton_fair_category c ON c.id = b.category_id
 LEFT JOIN suppliers s            ON s.id = b.supplier_id;

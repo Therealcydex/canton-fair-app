@@ -64,7 +64,9 @@ export default function BoothPage() {
         </div>
         <div className="mt-1 flex flex-wrap gap-1.5">
           <Badge className="bg-slate-100 text-slate-700">Phase {booth.phase}</Badge>
-          {booth.hall && <Badge className="bg-slate-100 text-slate-700">Hall {booth.hall}</Badge>}
+          {booth.zone && <Badge className="bg-slate-100 text-slate-700">Zone {booth.zone}</Badge>}
+          {booth.hall && <Badge className="bg-slate-100 text-slate-700">Hall {booth.hall} · étage {booth.floor}</Badge>}
+          {booth.letter && <Badge className="bg-slate-100 text-slate-700">Allée {booth.letter}</Badge>}
         </div>
         <p className="mt-2 text-sm text-slate-600">{booth.sub_category ? `${booth.category} › ${booth.sub_category}` : 'Sans catégorie'}</p>
         <p className="label mt-3">Fournisseur</p>

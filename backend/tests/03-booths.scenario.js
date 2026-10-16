@@ -83,6 +83,16 @@ module.exports = async (ctx) => {
   expect('clear only the letter', await api('PUT', `/booths/${b2.body.data.id}`, { token: A, body: { letter: null } }), 400);
   const cleared = expect('clear letter and number', await api('PUT', `/booths/${b2.body.data.id}`, { token: A, body: { letter: null, num_start: null } }), 200);
   check('code falls back to hall.floor', cleared.body.data.booth_code === '126.2');
+
+  // D50: numbers on 2 digits (10.3A08-23), the zone from the hall, and a search typed without the 0.
+  const padded = expect('booth with 1-digit numbers', await api('POST', '/booths', {
+    token: A, body: { phase: 2, hall: 21, floor: 4, letter: 'z', num_start: 8, num_end: 9, comment: `${PREFIX} padded` },
+  }), 200);
+  check('numbers padded to 2 digits', padded.body.data.booth_code === '21.4Z08-09');
+  const paddedGot = (await api('GET', `/booths/${padded.body.data.id}`, { token: A })).body.data;
+  check('zone D for hall 21', paddedGot.zone === 'D');
+  const found = expect('search typed without the 0', await api('GET', '/booths?q=21.4Z8', { token: A }), 200);
+  check('search finds 21.4Z08-09', found.body.data.some((b) => b.id === padded.body.data.id));
   expect('unknown booth', await api('GET', '/booths/999999', { token: A }), 404);
   expect('delete booth', await api('DELETE', `/booths/${b3.body.data.id}`, { token: A }), 200);
   expect('delete it again', await api('DELETE', `/booths/${b3.body.data.id}`, { token: A }), 404);

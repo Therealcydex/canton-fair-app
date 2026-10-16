@@ -49,6 +49,7 @@ export default function BoothList({ filters, supplierId, planning, hideSupplier,
       title: 'Booth', dataIndex: 'booth_code',
       render: (v, b) => <Link to={`/booths/${b.id}`}><strong>{v}</strong></Link>,
     },
+    { title: 'Zone', dataIndex: 'zone', width: 70, render: (v) => v || '—' },
     !hideSupplier && {
       title: 'Fournisseur', dataIndex: 'supplier_name',
       render: (v, b) => (b.supplier_id ? <Link to={`/fournisseurs/${b.supplier_id}`}>{v}</Link> : '—'),

@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const { fail, handle, toId, clean, likeContains } = require('../utils/http');
 const { validate } = require('../utils/validate');
+const { padBoothNumbers } = require('../utils/halls');
 const { loadBooth } = require('../utils/scope');
 
 // The limits of the CHECK constraints and column types of schema v2, checked here first so the
@@ -17,8 +18,10 @@ const BOOTH_FIELDS = {
 };
 
 // D32: "11.3J26", "14.3I16-17" or "9.1": the same text as the generated column booth_code.
+// The same code as the generated column booth_code (D32, D50: numbers on 2 digits, 10.3A08-23).
+const two = (n) => String(n).padStart(2, '0');
 const boothCode = (b) =>
-  `${b.hall}.${b.floor}${b.letter === null ? '' : `${b.letter}${b.num_start}${b.num_end === null ? '' : `-${b.num_end}`}`}`;
+  `${b.hall}.${b.floor}${b.letter === null ? '' : `${b.letter}${two(b.num_start)}${b.num_end === null ? '' : `-${two(b.num_end)}`}`}`;
 
 // Validates a booth body. supplier_id and category_id need the database.
 // Returns { values } or { status, message }.
@@ -119,8 +122,9 @@ exports.list = handle('Booth list', async (req, res) => {
   }
   const q = clean(req.query.q);
   if (q) {
-    where += ' AND (v.booth_code LIKE ? OR v.supplier_name LIKE ?)';
-    params.push(likeContains(q), likeContains(q));
+    // D50: "10.3A8" finds the booth 10.3A08 (numbers stored on 2 digits).
+    where += ' AND (v.booth_code LIKE ? OR v.booth_code LIKE ? OR v.supplier_name LIKE ?)';
+    params.push(likeContains(q), likeContains(padBoothNumbers(q)), likeContains(q));
   }
   const [rows] = await db.query(
     `SELECT v.* FROM v_booths v WHERE ${where}
