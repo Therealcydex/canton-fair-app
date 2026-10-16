@@ -420,6 +420,72 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
   text-decoration: none;
 }
 
+/* Booth page (feature-module/booths): filter bar, counter and table, as the Stitch "Booths" screen. */
+.booth-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: var(--sc-panel);
+  border: 1px solid var(--sc-border);
+  border-radius: 6px;
+}
+
+.booth-filters .ant-select-prefix .sc-label {
+  margin-right: 4px;
+}
+
+.booth-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #fff;
+  border: 1px solid var(--sc-border);
+  border-radius: 4px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.booth-code {
+  font-family: var(--sc-font-heading);
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.booth-code .anticon {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.booth-status {
+  cursor: pointer;
+}
+
+.booth-table .ant-table-tbody > tr:nth-child(even) > td {
+  background: var(--sc-surface);
+}
+
+.booth-table .ant-table-tbody > tr:hover > td {
+  background: #f2f5fc;
+}
+
+.booth-table .ant-table-pagination.ant-pagination {
+  margin: 0 !important;
+  padding: 12px 16px;
+  background: var(--sc-panel);
+  border: 1px solid var(--sc-border);
+  border-top: 0;
+}
+
+.booth-table .ant-pagination-total-text {
+  margin-right: auto;
+  color: var(--sc-muted);
+}
+
 /* Stacked bar of the shares per company. */
 .share-bar {
   display: flex;

@@ -126,8 +126,10 @@ exports.list = handle('Booth list', async (req, res) => {
     where += ' AND (v.booth_code LIKE ? OR v.booth_code LIKE ? OR v.supplier_name LIKE ?)';
     params.push(likeContains(q), likeContains(padBoothNumbers(q)), likeContains(q));
   }
+  // nbr_products: the products found at the booth (D43), shown in the booth table (D49).
   const [rows] = await db.query(
-    `SELECT v.* FROM v_booths v WHERE ${where}
+    `SELECT v.*, (SELECT COUNT(*) FROM products p WHERE p.booth_id = v.id) AS nbr_products
+     FROM v_booths v WHERE ${where}
      ORDER BY v.phase, v.hall, v.floor, v.letter, v.num_start LIMIT 1000`,
     params
   );

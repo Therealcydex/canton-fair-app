@@ -23,6 +23,10 @@ module.exports = async (ctx) => {
   const byBooth = expect('filter by booth', await api('GET', `/products?booth_id=${b1.id}`, { token: A }), 200);
   check('only the products of that booth', byBooth.body.data.length === 1 && byBooth.body.data[0].id === id);
   expect('invalid booth filter', await api('GET', '/products?booth_id=x', { token: A }), 400);
+  // D49: the booth list counts the products found at each booth.
+  const booths = expect('booth list', await api('GET', '/booths?hall=125', { token: A }), 200).body.data;
+  const count = (bid) => booths.find((b) => b.id === bid)?.nbr_products;
+  check('booth list counts the products of each booth', Number(count(b1.id)) === 1 && Number(count(b2.id)) === 0);
 
   expect('edit keeps the booth', await api('PUT', `/products/${id}`, { token: A, body: { price: '2.50' } }), 200);
   check('booth kept', (await api('GET', `/products/${id}`, { token: A })).body.data.booth_id === b1.id);
