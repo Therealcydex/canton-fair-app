@@ -1,12 +1,25 @@
 import { Col, Form, Input, Rate, Row, Select } from 'antd';
 import { useList } from '../../utils/lists';
 import { CANTON_FAIR_URL } from '../../utils/fairPlan';
+import { CardScan } from '../contacts/ContactFormFields';
+import { QrPicker } from './WechatQr';
 
 // Fields of the supplier form; the server checks the same rules (name required, 1-5 rating…).
-export default function SupplierFormFields() {
+// `withContact` (new supplier, D52): the business card scan and the first contact, as on the fair
+// floor: the company and the website go to the supplier, the person to the contact.
+export default function SupplierFormFields({ withContact = false }) {
   const provinces = useList('provinces');
+  const form = Form.useFormInstance();
   return (
     <>
+      {withContact && (
+        <CardScan prefix="contact_" onRead={(card, now) => {
+          const fill = {};
+          if (card.company && !now.name) fill.name = card.company;
+          if (card.website && !now.website) fill.website = card.website;
+          form.setFieldsValue(fill);
+        }} />
+      )}
       <Form.Item name="name" label="Nom" rules={[{ required: true, whitespace: true, message: 'Le nom est obligatoire' }]}>
         <Input maxLength={200} />
       </Form.Item>
@@ -37,6 +50,29 @@ export default function SupplierFormFields() {
       <Form.Item name="address" label="Adresse"><Input.TextArea rows={2} /></Form.Item>
       <Form.Item name="rating" label="Note"><Rate allowClear /></Form.Item>
       <Form.Item name="notes" label="Notes"><Input.TextArea rows={3} /></Form.Item>
+      {withContact && (
+        <>
+          <h3 className="h6 mt-2">Contact <span className="fw-normal small text-secondary">(facultatif)</span></h3>
+          <Form.Item name="contact_name" label="Nom du contact"><Input maxLength={150} /></Form.Item>
+          <Row gutter={12}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="contact_phone" label="Téléphone mobile"><Input maxLength={50} inputMode="tel" /></Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="contact_email" label="E-mail" rules={[{ type: 'email', message: 'Adresse e-mail invalide' }]}>
+                <Input maxLength={150} inputMode="email" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item name="contact_wechat_qr" label="QR code WeChat" className="mb-0"><QrPicker /></Form.Item>
+        </>
+      )}
     </>
   );
 }
+
+// The contact typed in a new supplier's form, or null when it is empty.
+export const newSupplierContact = (v) => {
+  const contact = { name: v.contact_name || null, phone: v.contact_phone || null, email: v.contact_email || null };
+  return contact.name || contact.phone || contact.email || v.contact_wechat_qr ? { ...contact, wechat_qr: v.contact_wechat_qr || null } : null;
+};

@@ -1,4 +1,4 @@
-// D38: the decisions on a product, as the mobile app shows them (mobile/src/decision.ts).
+// D38: the decisions on a product.
 // The server owns the rule (only the admin decides); the browser only displays it.
 export const STATUS = {
   A_ETUDIER: { label: 'À étudier', color: 'default' },

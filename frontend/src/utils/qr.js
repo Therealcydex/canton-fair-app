@@ -2,7 +2,6 @@
 // - "/uploads/wechat/<file>": a photo of the QR code (older), shown as an image;
 // - "http(s)://...": the content read by a scanner, from which a QR code is drawn;
 // - any other text: an older typed WeChat id, or a QR that holds no link: shown as text.
-// Same rules as the mobile app (mobile/src/qr.ts).
 import { useEffect, useState } from 'react';
 import jsQR from 'jsqr';
 import QRCode from 'qrcode';
@@ -10,6 +9,21 @@ import { fileUrl } from '../config/config';
 
 export const isQrPhoto = (value) => typeof value === 'string' && value.startsWith('/uploads/');
 export const isQrLink = (value) => typeof value === 'string' && /^https?:\/\//i.test(value);
+// WeChat QR codes point to wechat.com or weixin.qq.com; anything else gets a warning.
+export const isWechatLink = (value) => {
+  if (!isQrLink(value)) return false;
+  try {
+    return /(^|\.)(wechat\.com|weixin\.qq\.com)$/i.test(new URL(value).hostname);
+  } catch {
+    return false;
+  }
+};
+
+// Reads a QR code from image pixels (a camera frame or a picture). Returns its text, or null.
+export function decodePixels(data, width, height) {
+  const code = jsQR(data, width, height, { inversionAttempts: 'attemptBoth' });
+  return code && code.data ? code.data : null;
+}
 
 // The image to show for a value: the photo, a QR code drawn from the link, or null (text).
 export function useQrImage(value) {
@@ -48,8 +62,8 @@ export async function decodeQrFromFile(file) {
       canvas.height = h;
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
       ctx.drawImage(img, 0, 0, w, h);
-      const code = jsQR(ctx.getImageData(0, 0, w, h).data, w, h, { inversionAttempts: 'attemptBoth' });
-      if (code && code.data) return code.data;
+      const found = decodePixels(ctx.getImageData(0, 0, w, h).data, w, h);
+      if (found) return found;
     }
     return null;
   } catch {

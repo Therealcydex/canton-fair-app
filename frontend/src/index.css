@@ -1051,3 +1051,345 @@ code {
   margin: 0 auto 8px;
   background: #f5f5f5;
 }
+
+/* ---- Phone (D52): the web app is also the app used on the fair floor ---- */
+
+/* Bottom tab bar on small screens: the fair-floor screens one tap away, above the iPhone's home bar. */
+.app-tabbar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 999; /* under the antd dialogs (1000), so their buttons stay visible */
+  display: flex;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: #fff;
+  border-top: 1px solid var(--sc-border);
+}
+
+.app-tab {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 56px;
+  padding: 8px 2px 6px;
+  border: 0;
+  background: none;
+  color: var(--sc-muted);
+  font-size: 11px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.app-tab-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.app-tab.active {
+  color: var(--sc-primary);
+  font-weight: 600;
+}
+
+.app-topbar-sm {
+  padding-top: env(safe-area-inset-top);
+  height: calc(52px + env(safe-area-inset-top));
+}
+
+@media (max-width: 991.98px) {
+  .app-content {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 575.98px) {
+  /* The fixed widths of the filter bars give way to the screen's width. */
+  .sc-filters > .ant-input-affix-wrapper,
+  .sc-filters > .ant-input-search,
+  .sc-filters > .ant-select,
+  .sc-filters > .ant-cascader {
+    flex: 1 1 100%;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .page-header > .d-flex {
+    width: 100%;
+  }
+
+  .ant-modal {
+    max-width: calc(100vw - 16px);
+    margin: 8px auto;
+    top: 8px;
+  }
+}
+
+/* Live QR code scanner, full screen above everything (antd modals included). */
+.qr-scanner {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+  color: #fff;
+}
+
+.qr-scanner-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: max(12px, env(safe-area-inset-top)) 12px 12px;
+}
+
+.qr-scanner-close {
+  border: 0;
+  background: none;
+  color: #fff;
+  font-size: 20px;
+  padding: 4px 8px;
+}
+
+.qr-scanner-live {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.qr-scanner-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.qr-scanner-frame {
+  position: relative;
+  width: 256px;
+  height: 256px;
+  border: 4px solid rgba(255, 255, 255, 0.85);
+  border-radius: 16px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+}
+
+.qr-scanner-hint {
+  position: relative;
+  margin: 0;
+  font-size: 14px;
+}
+
+.qr-scanner-actions {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  max-width: 380px;
+}
+
+.qr-scanner-photo,
+.card-scan {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.qr-scanner-result {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  overflow-y: auto;
+  background: var(--sc-surface);
+  color: var(--sc-text);
+}
+
+.qr-scanner-result > * {
+  width: 100%;
+  max-width: 380px;
+}
+
+.qr-scanner-preview {
+  width: 224px !important;
+  height: 224px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 8px;
+}
+
+.qr-scanner-text {
+  margin: 0;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid var(--sc-border);
+  border-radius: 8px;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+/* "À visiter" on a phone: one card per booth, with a big round ✓. */
+.booth-check-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid var(--sc-border);
+  border-radius: 8px;
+}
+
+.booth-check-row.is-visited {
+  opacity: 0.65;
+}
+
+.booth-check-link {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.booth-check-code {
+  flex: none;
+  width: 104px;
+  font-size: 16px;
+}
+
+.booth-check-btn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: 2px solid #cbd5e1;
+  border-radius: 50%;
+  background: #fff;
+  color: #cbd5e1;
+  font-size: 22px;
+}
+
+.booth-check-row.is-visited .booth-check-btn {
+  border-color: var(--sc-success);
+  background: var(--sc-success);
+  color: #fff;
+}
+
+.booth-check-btn:disabled {
+  opacity: 0.5;
+}
+
+/* Evening review (D38). */
+.review {
+  max-width: 720px;
+}
+
+.review-undo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 6px 12px;
+  background: var(--sc-topbar);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 13px;
+}
+
+.review-undo .ant-btn-link {
+  color: #fcd34d;
+  font-weight: 600;
+}
+
+.review-photos {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+}
+
+.review-photos .ant-image {
+  flex: none;
+  scroll-snap-align: start;
+}
+
+.review-photo {
+  width: 256px !important;
+  height: 224px !important;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.review-nophoto {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 96px;
+  background: var(--sc-panel);
+  border-radius: 8px;
+  color: var(--sc-muted);
+  font-size: 13px;
+}
+
+.review-decisions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.review-decision {
+  min-height: 52px;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: 600;
+}
+
+.review-decision:disabled {
+  opacity: 0.5;
+}
+
+.review-decision.decision-RETENU { background: var(--sc-success); }
+.review-decision.decision-ECHANTILLON { background: var(--sc-accent); }
+.review-decision.decision-A_COMMANDER { background: #722ed1; }
+.review-decision.decision-REJETE { background: var(--sc-error); }
+
+.review-row {
+  display: flex;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid var(--sc-border);
+  border-radius: 8px;
+}
+
+.review-thumb {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  background: var(--sc-panel);
+  border-radius: 8px;
+}
+
+@media print {
+  .app-tabbar {
+    display: none !important;
+  }
+}

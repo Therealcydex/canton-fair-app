@@ -21,3 +21,6 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# business-card reader, copied from node_modules by scripts/copy-ocr.cjs
+/public/ocr

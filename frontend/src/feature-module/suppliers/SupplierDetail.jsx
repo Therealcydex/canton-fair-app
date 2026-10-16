@@ -11,7 +11,12 @@ import BoothList from '../booths/BoothList';
 import ProductList, { NewProductModal } from '../products/ProductList';
 
 // antd's Rate gives 0 when cleared and a cleared Select gives undefined; the API expects null.
-export const supplierPayload = (values) => ({ ...values, rating: values.rating || null, province_id: values.province_id ?? null });
+// The contact fields of a new supplier's form (contact_…) are sent apart, to the contact route.
+export const supplierPayload = (values) => ({
+  ...Object.fromEntries(Object.entries(values).filter(([key]) => !key.startsWith('contact_'))),
+  rating: values.rating || null,
+  province_id: values.province_id ?? null,
+});
 
 export default function SupplierDetail() {
   const { id } = useParams();

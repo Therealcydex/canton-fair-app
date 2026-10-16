@@ -36,12 +36,13 @@ acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 | BNF05 | Hashed passwords | À valider | API |
 | BNF06 | Schema changes as scripts | À valider | |
 | D1–D51 | Decisions in `sourcing-spec.md` §5 (several replaced by v2) | À valider | Web home page (D40): API, navigateur (figures, phases, companies); web and mobile look from Stitch (D49): web build and tests, mobile lint and build, web login seen in the browser; booth table count of products (`nbr_products`): API; hover side bar and booth table: build, to check in the browser; the other pages to check in the browser and on a phone |
+| D52 | One app: the web app on the phone, `mobile/` removed | À valider | Web build and tests; the dev server serves the new pages, the card reader's files and the manifest; the API calls of the review page and the checklist answer (local database). The checks marked "mobile" above were made on the former phone app: to be done again on the web app at phone width and on an iPhone (below) |
 
 ## Not checked by hand yet
 
 - The companies screen and editing a supplier, contact or product through the web forms.
 - Photo upload from the web product page (the mobile one was checked).
-- The Android app on a real phone (needs Node 22 to generate the Android project).
+- D52 on an iPhone (`npm run start:phone`, then installed from Safari once online): bottom tab bar, "À visiter" checklist (tap, undo), live QR scanner in the new contact / new supplier / contact edit forms, business card in the new contact and new supplier forms, "Revue du soir" as admin and as buyer, the installed app opening on "À visiter".
 
 ## Migration scripts (run in this order)
 
