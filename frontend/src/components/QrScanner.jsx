@@ -130,7 +130,7 @@ export default function QrScanner({ onSave, onClose, saveLabel = 'Enregistrer' }
           <div className="qr-scanner-actions">
             {cameraProblem && <Alert type="warning" showIcon message={cameraProblem} />}
             {error && <Alert type="error" showIcon message={error} />}
-            <label className="ant-btn ant-btn-default ant-btn-lg w-100 qr-scanner-photo">
+            <label className="sc-file-btn">
               {cameraProblem ? 'Choisir une photo du QR code' : 'Prendre une photo du QR à la place'}
               <input type="file" accept="image/*" capture="environment" hidden
                 onChange={(e) => { readPhoto(e.target.files?.[0]); e.target.value = ''; }} />

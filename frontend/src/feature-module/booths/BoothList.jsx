@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { Alert, App, Button, Empty, Popconfirm, Spin, Table, Tag, Tooltip } from 'antd';
@@ -74,16 +74,20 @@ export default function BoothList({ filters, supplierId, planning, checklist, hi
   const categories = useList('canton-categories');
 
   const query = JSON.stringify({ ...filters, supplier_id: supplierId });
+  // Only the answer to the latest request is shown: when the filters change quickly (the page
+  // switches to the phone checklist right after its first render), an older answer can come last.
+  const latest = useRef(0);
   const load = useCallback(async () => {
+    const request = ++latest.current;
     setLoading(true);
     setLoadError(null);
     try {
       const { data } = await axios.get(`${API_BASE_URL}/booths`, { params: JSON.parse(query) });
-      setRows(data.data);
+      if (request === latest.current) setRows(data.data);
     } catch (err) {
-      setLoadError(apiError(err, 'Erreur lors du chargement des booths'));
+      if (request === latest.current) setLoadError(apiError(err, 'Erreur lors du chargement des booths'));
     } finally {
-      setLoading(false);
+      if (request === latest.current) setLoading(false);
     }
   }, [query]);
 

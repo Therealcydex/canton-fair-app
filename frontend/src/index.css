@@ -1094,6 +1094,7 @@ code {
 }
 
 .app-topbar-sm {
+  z-index: 999; /* under the antd dialogs (1000) */
   padding-top: env(safe-area-inset-top);
   height: calc(52px + env(safe-area-inset-top));
 }
@@ -1115,12 +1116,18 @@ code {
     max-width: none !important;
   }
 
+  .sc-filters > .sc-counter {
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+
   .page-header > .d-flex {
     width: 100%;
   }
 
+  /* 100%, not 100vw: the width left by a scrollbar, where the browser draws one. */
   .ant-modal {
-    max-width: calc(100vw - 16px);
+    max-width: calc(100% - 16px) !important;
     margin: 8px auto;
     top: 8px;
   }
@@ -1195,13 +1202,39 @@ code {
   max-width: 380px;
 }
 
-.qr-scanner-photo,
-.card-scan {
-  display: inline-flex !important;
+/* A file picker (camera on a phone) that looks like a large antd button. */
+.sc-file-btn {
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 6px 16px;
+  background: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  color: var(--sc-text);
+  font-size: 16px;
   cursor: pointer;
+}
+
+.sc-file-btn:hover {
+  border-color: var(--sc-accent);
+  color: var(--sc-accent);
+}
+
+.sc-file-btn.card-scan {
+  border-color: var(--sc-primary);
+  color: var(--sc-primary);
+  font-weight: 500;
+}
+
+.sc-file-btn.is-busy {
+  pointer-events: none;
+  color: var(--sc-muted);
+  border-color: var(--sc-border);
 }
 
 .qr-scanner-result {

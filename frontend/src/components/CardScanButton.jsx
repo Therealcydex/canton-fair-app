@@ -36,7 +36,8 @@ export default function CardScanButton({ onRead }) {
   const busy = progress !== null;
   return (
     <div className="mb-3 d-grid gap-2">
-      <label className={`ant-btn ant-btn-default ant-btn-lg w-100 card-scan ${busy ? 'ant-btn-disabled' : ''}`}>
+      {/* A label around the file input (it opens the camera on a phone), styled as a large button. */}
+      <label className={`sc-file-btn card-scan ${busy ? 'is-busy' : ''}`}>
         <IdcardOutlined />
         {busy ? `Lecture de la carte… ${Math.round(progress * 100)} %` : 'Scanner une carte de visite'}
         <input type="file" accept="image/*" capture="environment" hidden disabled={busy}
