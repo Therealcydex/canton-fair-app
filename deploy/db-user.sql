@@ -2,7 +2,8 @@
 -- or change an ERP table of Smart360_copy, even through a bug. Run once as the database admin on
 -- the server (sudo mariadb), after replacing <password> with a long random password, then put the
 -- same values in /opt/sourcing/backend/.env (DB_USER=sourcing_app, DB_PASSWORD=..., DB_HOST=127.0.0.1).
--- Schema changes (npm run db:setup, db:update-booth-code) keep using an admin account.
+-- Schema changes (npm run db:setup, db:update-…, db:add-fair-plan) keep using an admin account.
+-- On another database than Smart360_copy, replace that name everywhere below (deploy/DATABASE.md).
 
 CREATE USER IF NOT EXISTS 'sourcing_app'@'localhost' IDENTIFIED BY '<password>';
 CREATE USER IF NOT EXISTS 'sourcing_app'@'127.0.0.1' IDENTIFIED BY '<password>';
@@ -16,6 +17,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON Smart360_copy.booths         TO 'sourcin
 GRANT SELECT, INSERT, UPDATE, DELETE ON Smart360_copy.products       TO 'sourcing_app'@'localhost', 'sourcing_app'@'127.0.0.1';
 GRANT SELECT, INSERT, UPDATE, DELETE ON Smart360_copy.product_images TO 'sourcing_app'@'localhost', 'sourcing_app'@'127.0.0.1';
 GRANT SELECT, INSERT, UPDATE, DELETE ON Smart360_copy.product_shares TO 'sourcing_app'@'localhost', 'sourcing_app'@'127.0.0.1';
+-- The hall plan (D42/D48): read by everyone, written by the admin's correction route.
+GRANT SELECT, INSERT, UPDATE, DELETE ON Smart360_copy.section_halls  TO 'sourcing_app'@'localhost', 'sourcing_app'@'127.0.0.1';
 
 -- Read only: the reference lists and the views.
 GRANT SELECT ON Smart360_copy.china_province       TO 'sourcing_app'@'localhost', 'sourcing_app'@'127.0.0.1';

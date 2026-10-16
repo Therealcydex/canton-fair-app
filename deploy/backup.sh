@@ -16,7 +16,7 @@ source <(grep -E '^DB_(HOST|PORT|USER|PASSWORD|NAME)=' "$APP/backend/.env")
 set +a
 
 # The app's tables and views (docs/sourcing-status.md); the ERP's tables are left out.
-TABLES="companies users suppliers contacts booths products product_images product_shares china_province canton_fair_category shipping_types"
+TABLES="companies users suppliers contacts booths products product_images product_shares section_halls china_province canton_fair_category shipping_types"
 
 # The password goes through a temporary option file, never on the command line (visible in ps).
 OPTS="$(mktemp)"

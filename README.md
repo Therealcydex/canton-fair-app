@@ -1,63 +1,93 @@
 # Sourcing
 
-Canton Fair sourcing app for the buyers of Tarek's group: suppliers (Chinese province) and
-contacts, booths to visit (booth code, Canton Fair category, visited flag), products with price,
-MOQ, shipping type and photos, shared with Tarek's companies. Self sign-up validated by the
-admin. Built on the Smart360 stack (`guide-nouveau-projet-smart360.md`), on Tarek's schema v2.
+Canton Fair sourcing app for the buyers of Tarek's group: suppliers and their contacts (WeChat QR
+codes, business cards), booths to visit (written as on the fair's badges, `10.3A08-23`), products
+with price, MOQ, shipping type, photos and the booth where they were found, the boss's decision on
+each product (evening review), the official hall plan of the fair, and sharing with Tarek's
+companies. There is no sign-up: the administrator creates the accounts.
 
 | Folder | What | Stack |
 |---|---|---|
-| `backend/` | REST API (`/api/...`) and product photos (`/uploads/...`) | Node 20, Express 5, mysql2, JWT |
-| `frontend/` | Web app (all features, administration) | React 18 (Create React App), Ant Design, Bootstrap |
-| `mobile/` | App for the fair floor | Vite, React, TypeScript, Tailwind, Capacitor 8 |
+| `backend/` | REST API (`/api/...`) and photos (`/uploads/...`) | Node 20, Express 5, mysql2, JWT |
+| `frontend/` | Web app (everything, administration) | React 18 (Create React App), Ant Design, Bootstrap |
+| `mobile/` | App for the fair floor (iPhone home-screen app) | Vite, React, TypeScript, Tailwind |
+| `deploy/` | Going online, database guide, backups | nginx, PM2 |
 | `docs/` | Requirements, decisions (D1…), status | |
 
-Read `docs/sourcing-spec.md` first: the decisions D1–D33 and the open questions on schema v2
-are waiting for the Product Owner's validation.
+## Quick start (your PC)
 
-## Run it locally
+You need **Node 20** and **MySQL 8 or MariaDB 10.4+** (XAMPP is fine).
 
-Needs Node 20 and MySQL 8 or MariaDB 10.4+ (XAMPP works).
+**1. Backend** (port 3000)
 
 ```bash
-# 1. Backend — port 3000
 cd backend
 npm install
-cp .env.example .env            # fill in JWT_SECRET (long random) and SEED_ADMIN_PASSWORD
-npm run db:setup                # creates the database, the lists, the v2 tables and the admin
-npm run db:demo                 # optional, backend running: demo companies, users, suppliers…
-npm run dev
-
-# 2. Web app — port 3001
-cd frontend
-npm install
-PORT=3001 npm start             # PowerShell: $env:PORT=3001; npm start
-
-# 3. Mobile app in the browser — port 5173 (see mobile/README.md for Android)
-cd mobile
-npm install
+cp .env.example .env      # then edit .env: database, JWT_SECRET, first admin
+npm run db:setup          # creates the database, the lists, the tables and the admin
+npm run db:add-fair-plan  # the official hall plan of the 140th fair
 npm run dev
 ```
 
-Log in with `SEED_ADMIN_USERNAME` / `SEED_ADMIN_PASSWORD` (the admin) and create Tarek's
-companies. Buyers sign up from the login page ("Créer un compte"); the admin activates them in
-Administration › Utilisateurs › En attente de validation.
+In `.env`: `DB_HOST` / `DB_NAME` / `DB_USER` / `DB_PASSWORD` for your database, `JWT_SECRET` a
+long random string, `SEED_ADMIN_USERNAME` / `SEED_ADMIN_PASSWORD` the first administrator. The
+file stays on your PC: it is never committed.
+
+**2. Web app** (port 3001), in a second terminal
+
+```bash
+cd frontend
+npm install
+PORT=3001 npm start       # PowerShell: $env:PORT=3001; npm start
+```
+
+Open http://localhost:3001 and log in with the administrator.
+
+**3. Mobile app** (port 5173), in a third terminal
+
+```bash
+cd mobile
+npm install
+cp .env.example .env      # VITE_API_BASE_URL: the backend address seen from the phone
+npm run dev               # in a browser: http://localhost:5173
+npm run dev:phone         # on a phone on the same Wi-Fi, with the camera: https://<PC address>:5173
+```
+
+`mobile/README.md` explains the phone test (certificate, Windows firewall).
+
+**4. First steps in the app** (administrator)
+1. *Administration › Sociétés*: create Tarek's companies.
+2. *Administration › Utilisateurs*: create an account for each buyer (role Acheteur) and for the
+   boss (role Administrateur: he makes the decisions of the evening review).
+3. Everyone can then record suppliers, booths and products, on the web or the phone.
+
+## Database
+
+The app adds its own lowercase tables next to the ERP's tables and never touches the ERP.
+To install it on the real database, or to bring over the data of a copy, follow
+**[deploy/DATABASE.md](deploy/DATABASE.md)**. When a version changes the schema, its `npm run db:…`
+script is listed in `docs/sourcing-status.md` ("Migration scripts").
 
 ## Tests
 
 ```bash
-cd backend && npm run test:api                   # backend running, local database only; 254 checks
-cd backend && npm run test:api -- products       # one scenario file
+cd backend && npm run test:api                  # backend running, development database only
+cd backend && npm run test:api -- products      # one scenario file
 cd frontend && CI=true npm test -- --watchAll=false
 cd mobile && npm run lint && npm run build
 ```
 
 `test:api` replays, for every rule, the request that must be refused (401, 403, 400, 409…) and
-the legitimate one, against the running backend. Its data is named `TEST…`; it is deleted at
-the end and the row counts are checked. Run it on a development database, never production.
+the one that must work. Its data is named `TEST…` and is deleted at the end. It refuses to run
+on a remote database: never run it against production.
 
-## Deploy
+## Going online
 
-`deploy/README.md`: one https address on the database server (`https://76-13-55-161.sslip.io`),
-the web app at `/`, the iPhone app at `/m/` (Safari › Add to Home Screen), the API at `/api/`
-behind nginx, nightly backups, and the checks before the fair (China, security).
+`deploy/README.md`: one https address on the server (`https://76-13-55-161.sslip.io`), the web
+app at `/`, the iPhone app at `/m/` (Safari › Share › Add to Home Screen), the API at `/api/`
+behind nginx, nightly backups, and the checks before the fair (access from China, security).
+
+## Before working on the code
+
+Read `CLAUDE.md` (conventions, commands, rules) and `docs/sourcing-spec.md` (requirements and
+decisions, still to be validated by the Product Owner).

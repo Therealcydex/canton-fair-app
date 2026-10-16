@@ -46,7 +46,8 @@ Ports 80 and 443 must be open to the internet (80 is needed by Let's Encrypt).
 
 As the database admin on the server: replace `<password>` in `db-user.sql` with a long random
 password, then `sudo mariadb < db-user.sql`. The app can then read and write only its own
-tables, never the ERP's.
+tables, never the ERP's. To create the app's tables on the real database, or to bring over the
+data of `Smart360_copy`, follow [DATABASE.md](DATABASE.md).
 
 ## 4. Settings of the backend (once)
 
