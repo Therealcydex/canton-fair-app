@@ -53,7 +53,7 @@ export default function Booths({ planning = false }) {
           </>
         )} />
 
-      <div className="booth-filters">
+      <div className="sc-filters">
         <Input prefix={<SearchOutlined />} placeholder="Rechercher code booth, fournisseur…" allowClear style={{ width: 280 }}
           value={search} onChange={(e) => { setSearch(e.target.value); if (!e.target.value) set('q')(undefined); }}
           onPressEnter={() => set('q')(search.trim() || undefined)} />
@@ -69,7 +69,7 @@ export default function Booths({ planning = false }) {
         <Cascader placeholder="Catégorie" allowClear showSearch style={{ width: 240 }} options={options}
           value={filters.category_path} onChange={(path) => setFilters((f) => ({ ...f, category_path: path, category_id: path?.[2] }))} />
         <Button type="link" icon={<ReloadOutlined />} className="fw-semibold px-1" onClick={reset}>Réinitialiser</Button>
-        <span className="booth-counter ms-lg-auto">
+        <span className="sc-counter ms-lg-auto">
           <span className="share-dot rounded-circle" style={{ background: 'var(--sc-accent)' }} />
           <strong>{plural(rows.length - visited, 'booth')} à visiter</strong>
           {!planning && <> · {plural(visited, 'visité')} <span className="sc-label">({rows.length} au total)</span></>}

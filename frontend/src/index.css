@@ -420,8 +420,8 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
   text-decoration: none;
 }
 
-/* Booth page (feature-module/booths): filter bar, counter and table, as the Stitch "Booths" screen. */
-.booth-filters {
+/* List pages (booths, contacts): filter bar, counter and striped table, as the Stitch screens. */
+.sc-filters {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -433,11 +433,11 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
   border-radius: 6px;
 }
 
-.booth-filters .ant-select-prefix .sc-label {
+.sc-filters .ant-select-prefix .sc-label {
   margin-right: 4px;
 }
 
-.booth-counter {
+.sc-counter {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -465,15 +465,15 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
   cursor: pointer;
 }
 
-.booth-table .ant-table-tbody > tr:nth-child(even) > td {
+.sc-table .ant-table-tbody > tr:nth-child(even) > td {
   background: var(--sc-surface);
 }
 
-.booth-table .ant-table-tbody > tr:hover > td {
+.sc-table .ant-table-tbody > tr:hover > td {
   background: #f2f5fc;
 }
 
-.booth-table .ant-table-pagination.ant-pagination {
+.sc-table .ant-table-pagination.ant-pagination {
   margin: 0 !important;
   padding: 12px 16px;
   background: var(--sc-panel);
@@ -481,8 +481,112 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
   border-top: 0;
 }
 
-.booth-table .ant-pagination-total-text {
+.sc-table .ant-pagination-total-text {
   margin-right: auto;
+  color: var(--sc-muted);
+}
+
+/* Form dialog with the dark header of the Stitch forms (FormModal className="sc-modal-dark"). */
+.sc-modal-dark .ant-modal-content {
+  padding: 0;
+  overflow: hidden;
+}
+
+.sc-modal-dark .ant-modal-header {
+  margin: 0;
+  padding: 18px 24px;
+  background: var(--sc-topbar);
+}
+
+.sc-modal-dark .ant-modal-title {
+  color: #fff;
+  font-family: var(--sc-font-heading);
+  font-size: 18px;
+}
+
+.sc-modal-dark .ant-modal-close {
+  top: 16px;
+  color: #fff;
+}
+
+.sc-modal-dark .ant-modal-close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.sc-modal-dark .ant-modal-body {
+  padding: 20px 24px 8px;
+}
+
+.sc-modal-dark .ant-modal-footer {
+  margin: 0;
+  padding: 14px 24px;
+  background: var(--sc-panel);
+  border-top: 1px solid var(--sc-border);
+}
+
+.sc-modal-dark .ant-form-item-label > label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sc-modal-dark .ant-form-item-label > label span {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* QR code drop zone of the new contact form (QrPicker). */
+.qr-drop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  padding: 14px;
+  background: var(--sc-panel);
+  border: 1px solid var(--sc-border);
+  border-radius: 6px;
+}
+
+.qr-drop-thumb {
+  position: relative;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid var(--sc-border);
+  border-radius: 4px;
+}
+
+.qr-drop-remove {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 3px;
+  background: var(--sc-error, #ba1a1a);
+  color: #fff;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.qr-drop-zone {
+  flex: 1 1 260px;
+}
+
+.qr-drop-zone.ant-upload-wrapper .ant-upload-drag {
+  background: #fff;
+}
+
+.qr-drop-zone.ant-upload-wrapper .ant-upload-drag .ant-upload-btn {
+  padding: 14px 16px;
+}
+
+.qr-drop-read {
+  flex-basis: 100%;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--sc-muted);
 }
 

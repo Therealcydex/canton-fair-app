@@ -137,7 +137,7 @@ export default function BoothList({ filters, supplierId, planning, hideSupplier,
         </div>
       )}
       {loadError && <Alert type="error" message={loadError} showIcon className="mb-3" />}
-      <Table rowKey="id" columns={columns} dataSource={rows} loading={loading} size="middle" className="booth-table"
+      <Table rowKey="id" columns={columns} dataSource={rows} loading={loading} size="middle" className="sc-table"
         scroll={{ x: 'max-content' }}
         pagination={{
           pageSize, showSizeChanger: true, pageSizeOptions: [20, 50, 100], onShowSizeChange: (_, size) => setPageSize(size),

@@ -39,18 +39,32 @@ export function QrPicker({ value, onChange }) {
     else onChange?.(content);
   };
 
+  // D49: the drop zone of the Stitch "Nouveau contact" form; the picture is read here, never uploaded.
   return (
-    <Space direction="vertical" size={4}>
-      <Space align="center" wrap>
-        {value && <QrThumb value={value} size={120} />}
-        <Upload accept={ACCEPTED} showUploadList={false} disabled={busy}
-          beforeUpload={(file) => { read(file); return false; }}>
-          <Button size="small" loading={busy}>{value ? 'Lire un autre QR (image)' : 'Lire un QR (image)'}</Button>
-        </Upload>
-        {value && <Button size="small" type="link" danger onClick={() => onChange?.(null)}>Retirer</Button>}
-      </Space>
-      {isQrLink(value) && <a href={value} target="_blank" rel="noreferrer" className="small text-break">{value}</a>}
-    </Space>
+    <div className="qr-drop">
+      {value && (
+        <div className="qr-drop-thumb">
+          <QrThumb value={value} size={104} />
+          <button type="button" className="qr-drop-remove" aria-label="Retirer le QR code" onClick={() => onChange?.(null)}>×</button>
+        </div>
+      )}
+      <Upload.Dragger accept={ACCEPTED} showUploadList={false} disabled={busy} className="qr-drop-zone"
+        beforeUpload={(file) => { read(file); return false; }}>
+        <div className="text-start">
+          <div className="fw-semibold text-body">
+            {busy ? 'Lecture du QR code…' : <>Glissez-déposez la capture WeChat <span className="fw-normal text-secondary">ou</span> <span className="text-primary">parcourir les fichiers</span></>}
+          </div>
+          <div className="small text-secondary">Photo ou capture d'écran du QR code (PNG, JPG, WebP, {MAX_MB} Mo au plus), lue dans le navigateur.</div>
+        </div>
+      </Upload.Dragger>
+      {value && (
+        <div className="qr-drop-read">
+          <span className="share-dot rounded-circle" style={{ background: 'var(--sc-accent)' }} />
+          QR code lu{isQrLink(value) && <> : <a href={value} target="_blank" rel="noreferrer" className="text-break">{value}</a></>}
+          <Button size="small" type="link" danger onClick={() => onChange?.(null)}>Retirer</Button>
+        </div>
+      )}
+    </div>
   );
 }
 
