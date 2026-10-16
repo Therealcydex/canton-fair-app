@@ -1,5 +1,10 @@
-import { Container, Nav, Navbar, NavDropdown } from 'react-bootstrap';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Nav, Offcanvas } from 'react-bootstrap';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import {
+  ApartmentOutlined, BankOutlined, ContactsOutlined, EnvironmentOutlined, FlagOutlined, HomeOutlined,
+  InboxOutlined, LogoutOutlined, MenuOutlined, ShopOutlined, TeamOutlined,
+} from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
 import { isAdmin } from '../utils/access';
 import { companyLabel } from '../utils/lists';
@@ -7,73 +12,83 @@ import Logo from './Logo';
 
 // Menu entries; `show` hides an entry the user cannot use (the server refuses anyway).
 const MENU = [
-  { to: '/', label: 'Accueil', end: true },
-  { to: '/fournisseurs', label: 'Fournisseurs' },
-  { to: '/contacts', label: 'Contacts' },
-  { to: '/a-visiter', label: 'À visiter' },
-  { to: '/booths', label: 'Booths' },
-  { to: '/produits', label: 'Produits' },
-  { to: '/plan-du-salon', label: 'Plan du salon' }, // D42
+  { to: '/', label: 'Accueil', icon: <HomeOutlined />, end: true },
+  { to: '/fournisseurs', label: 'Fournisseurs', icon: <BankOutlined /> },
+  { to: '/contacts', label: 'Contacts', icon: <ContactsOutlined /> },
+  { to: '/a-visiter', label: 'À visiter', icon: <FlagOutlined /> },
+  { to: '/booths', label: 'Booths', icon: <ShopOutlined /> },
+  { to: '/produits', label: 'Produits', icon: <InboxOutlined /> },
+  { to: '/plan-du-salon', label: 'Plan du salon', icon: <EnvironmentOutlined /> }, // D42
 ];
 const ADMIN_MENU = [
-  { to: '/admin/utilisateurs', label: 'Utilisateurs', show: isAdmin },
-  { to: '/admin/societes', label: 'Sociétés', show: isAdmin },
+  { to: '/admin/utilisateurs', label: 'Utilisateurs', icon: <TeamOutlined />, show: isAdmin },
+  { to: '/admin/societes', label: 'Sociétés', icon: <ApartmentOutlined />, show: isAdmin },
 ];
 
 const initials = (name) => (name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
 
-// Top bar, page and footer from the Stitch screens (D49).
+// Side bar, page and footer (D49): fixed on large screens, a drawer opened from the top bar on small ones.
 export default function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const [open, setOpen] = useState(false);
   const adminItems = ADMIN_MENU.filter((m) => m.show(user));
   const company = user.company_name ? companyLabel({ name: user.company_name, branch: user.company_branch }) : null;
+  const close = () => setOpen(false);
 
-  const userTitle = (
-    <span className="app-user">
-      <span className="app-avatar">{initials(user.name)}</span>
-      <span className="lh-sm text-start">
-        <span className="d-block text-white">{user.name}</span>
-        {company && <span className="d-block small">{company}</span>}
-      </span>
-    </span>
+  const link = (m) => (
+    <Nav.Link key={m.to} as={NavLink} to={m.to} end={m.end} onClick={close}>
+      <span className="app-side-icon">{m.icon}</span>{m.label}
+    </Nav.Link>
+  );
+
+  const sidebar = (
+    <div className="app-side">
+      <NavLink to="/" className="app-brand" onClick={close}><Logo />Sourcing</NavLink>
+      <Nav className="flex-column flex-nowrap app-side-nav">
+        {MENU.map(link)}
+        {adminItems.length > 0 && (
+          <>
+            <div className="app-side-section">Administration</div>
+            {adminItems.map(link)}
+          </>
+        )}
+      </Nav>
+      <div className="app-side-user">
+        <span className="app-avatar">{initials(user.name)}</span>
+        <span className="flex-grow-1 lh-sm overflow-hidden">
+          <span className="d-block text-white text-truncate">{user.name}</span>
+          {company && <span className="d-block small text-truncate">{company}</span>}
+        </span>
+        <button type="button" className="app-side-logout" title="Se déconnecter" aria-label="Se déconnecter"
+          onClick={() => { logout(); navigate('/login'); }}>
+          <LogoutOutlined />
+        </button>
+      </div>
+    </div>
   );
 
   return (
     <>
-      <Navbar variant="dark" expand="lg" collapseOnSelect className="app-topbar">
-        <Container fluid>
-          <Navbar.Brand as={NavLink} to="/" className="app-brand"><Logo />Sourcing</Navbar.Brand>
-          <Navbar.Toggle aria-controls="main-nav" />
-          <Navbar.Collapse id="main-nav">
-            <Nav className="me-auto">
-              {MENU.map((m) => (
-                <Nav.Link key={m.to} as={NavLink} to={m.to} end={m.end} eventKey={m.to}>{m.label}</Nav.Link>
-              ))}
-              {adminItems.length > 0 && (
-                <NavDropdown title="Administration" id="admin-menu" active={pathname.startsWith('/admin/')}>
-                  {adminItems.map((m) => (
-                    <NavDropdown.Item key={m.to} as={NavLink} to={m.to} eventKey={m.to}>{m.label}</NavDropdown.Item>
-                  ))}
-                </NavDropdown>
-              )}
-            </Nav>
-            <Nav>
-              <NavDropdown align="end" title={userTitle} id="user-menu">
-                <NavDropdown.Item onClick={() => { logout(); navigate('/login'); }}>Se déconnecter</NavDropdown.Item>
-              </NavDropdown>
-            </Nav>
-          </Navbar.Collapse>
-        </Container>
-      </Navbar>
-      <Container fluid className="app-main py-4 px-3 px-md-4">
-        <Outlet />
-      </Container>
-      <footer className="app-footer d-flex flex-wrap justify-content-between gap-2 px-3 px-md-4 py-2">
-        <span>Sourcing · Foire de Canton, Guangzhou (Pazhou)</span>
-        <span>Données partagées par le groupe</span>
-      </footer>
+      <aside className="app-sidebar d-none d-lg-flex">{sidebar}</aside>
+      <header className="app-topbar-sm d-lg-none">
+        <button type="button" className="app-menu-btn" aria-label="Ouvrir le menu" onClick={() => setOpen(true)}>
+          <MenuOutlined />
+        </button>
+        <NavLink to="/" className="app-brand"><Logo size={26} />Sourcing</NavLink>
+      </header>
+      <Offcanvas show={open} onHide={close} className="app-offcanvas d-lg-none">
+        {sidebar}
+      </Offcanvas>
+      <div className="app-content">
+        <main className="app-main py-4 px-3 px-md-4">
+          <Outlet />
+        </main>
+        <footer className="app-footer d-flex flex-wrap justify-content-between gap-2 px-3 px-md-4 py-2">
+          <span>Sourcing · Foire de Canton, Guangzhou (Pazhou)</span>
+          <span>Données partagées par le groupe</span>
+        </footer>
+      </div>
     </>
   );
 }
