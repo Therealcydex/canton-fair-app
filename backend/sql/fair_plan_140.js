@@ -1,0 +1,72 @@
+// D48: the hall plan of the 140th Canton Fair, as listed on the official plan
+// https://365.cantonfair.org.cn/en-US/exhibition-hall-map?phase=first|second|third (read on
+// 2026-10-15): [phase, area, section, codes], in the order of each area's legend, a section listed
+// in two areas once per area. Loaded by add_fair_plan_from_site.js (npm run db:add-fair-plan).
+// Not loaded: International Pavilion and "Traditional Chinese Specialties" (not sections of
+// canton_fair_category). Rural Vitalization (phase 3) is not on the plan.
+const O = '(Outdoor Open Area)';
+
+module.exports = [
+  // Phase 1
+  [1, 'A', 'New Materials and Chemical Products', '1.1'],
+  [1, 'A', 'Household Electrical Appliances', '1.2, 2.1, 2.2, 3.1, 3.2, 4.1, 4.2, 5.1, 5.2, 1.1Y, 2.1Y, 3.1Y, 4.1Y, 5.1Y'],
+  [1, 'A', 'General Machinery and Mechanical Basic Parts', '6.1, 7.1, 8.1, 1.1Y, 2.1Y, 3.1Y, 6.0, 8.0'],
+  [1, 'A', 'New Energy Vehicles and Smart Mobility', '8.1'],
+  [1, 'A', 'Construction Machinery', '4.0'],
+  [1, 'A', 'Agricultural Machinery', `5.0${O}, 8.0`],
+  [1, 'D', 'Power Machinery and Electric Power', '17.1, 18.1'],
+  [1, 'D', 'Processing Machinery Equipment', '18.1, 19.1, 20.1'],
+  [1, 'D', 'Industrial Automation and Intelligent Manufacturing', '20.1'],
+  [1, 'D', 'Consumer Electronics and Information Products', '17.2, 18.2, 19.2, 20.2'],
+  [1, 'D', 'Service Robots', 'Friendship Hall(21.2)'],
+  [1, 'C', 'Motorcycles', '14.1, 15.1, 15.2, 16.2'],
+  [1, 'C', 'New Energy Resources', '14.2, 15.2'],
+  [1, 'C', 'Bicycles', '16.2'],
+  [1, 'C', 'Electronic and Electrical Products', '14.3, 15.3, 16.3'],
+  [1, 'C', 'Lighting Equipment', '14.4, 15.4, 16.4'],
+  [1, 'B', 'Hardware', '9.1, 10.1, 11.1, 13.1'],
+  [1, 'B', 'Tools', '9.2, 10.2, 11.2, 12.1, 12.2, 13.1, 13.2'],
+  [1, 'B', 'Vehicle Spare Parts', '9.2, 9.3, 10.3, 11.3'],
+  [1, 'B', 'Agricultural Machinery', `9.0${O}`],
+  [1, 'B', 'Construction Machinery', `9.0${O}, 12.0${O}`],
+  [1, 'B', 'Vehicles', `13.0${O}`],
+  // Phase 2
+  [2, 'A', 'Festival Products', '1.1, 6.1, 6.0'],
+  [2, 'A', 'General Ceramics', '2.1, 3.1, 4.1, 5.1, 5.1Y'],
+  [2, 'A', 'Gardening Products', '6.1, 7.1, 8.1, 8.0'],
+  [2, 'A', 'Kitchenware and Tableware', '1.2, 2.2, 3.2, 4.2, 5.2, 1.1Y, 2.1Y, 3.1Y, 4.1Y'],
+  [2, 'A', 'Weaving, Rattan and Iron Products', '4.0, 8.0'],
+  [2, 'D', 'Home Decorations', '17.1, 18.1, 19.1, 20.1'],
+  [2, 'D', 'Clocks, Watches and Optical Instruments', '20.1'],
+  [2, 'D', 'Gifts and Premiums', '17.2, 18.2, 19.2, 20.2'],
+  [2, 'D', 'Fashion Jewelry', 'Friendship Hall(21.2)'],
+  [2, 'C', 'Glass Artware', '14.1, 14.2, 15.1, 15.2'],
+  [2, 'C', 'Household Items', '14.3, 14.4, 15.2, 15.3, 15.4, 16.2, 16.3, 16.4'],
+  [2, 'B', 'Sanitary and Bathroom Equipment', '9.1, 10.1, 11.1'],
+  [2, 'B', 'Building and Decorative Materials', '11.2, 12.1, 12.2, 13.1, 13.2'],
+  [2, 'B', 'Art Ceramics', '9.2'],
+  [2, 'B', 'Furniture', '9.3, 10.2, 10.3, 11.3'],
+  [2, 'B', 'Prefabricated House and Courtyard Facilities', `9.0${O}, 12.0${O}, 13.0${O}`],
+  // Phase 3
+  [3, 'A', "Kids' Wear", '1.1, 1.1Y'],
+  [3, 'A', "Men and Women's Clothing", '1.1, 2.1, 3.1, 4.1, 5.1, 2.1Y'],
+  [3, 'A', 'Sports and Casual Wear', '6.1, 7.1, 1.1Y'],
+  [3, 'A', 'Underwear', '8.1, 3.1Y'],
+  [3, 'A', 'Shoes', '1.2, 2.2, 3.2, 4.2, 5.2, 3.1Y'],
+  [3, 'A', 'Furs, Leather, Downs and Related Products', '5.2'],
+  [3, 'A', 'Carpets and Tapestries', '5.2, 4.1Y'],
+  [3, 'A', 'Fashion Accessories and Fittings', '4.0, 8.0, 5.1Y'],
+  [3, 'D', 'Toys', '17.1, 18.1, 19.1'],
+  [3, 'D', 'Children, Baby and Maternity Products', '20.1'],
+  [3, 'D', 'Cases and Bags', '17.2, 18.2, 19.2, 20.2'],
+  [3, 'D', 'Intelligent Healthcare', 'Friendship Hall(21.2)'],
+  [3, 'C', 'Home Textiles', '14.1, 14.2, 14.3, 15.1, 15.2, 15.3, 16.2, 16.3'],
+  [3, 'C', 'Textile Raw Materials and Fabrics', '14.4, 15.4, 16.3, 16.4'],
+  [3, 'B', 'Pet Products and Food', '9.1'],
+  [3, 'B', 'Toiletries', '9.1'],
+  [3, 'B', 'Personal Care Products', '10.1, 11.1'],
+  [3, 'B', 'Sports, Travel and Recreation Products', `11.1, 12.1, 13.1, 9.0${O}, 12.0${O}, 13.0${O}`],
+  [3, 'B', 'Medicines, Health Products and Medical Devices', '9.2, 10.2'],
+  [3, 'B', 'Food', '10.2, 11.2, 12.2, 13.2'],
+  [3, 'B', 'Office Supplies', '9.3, 10.3, 11.3'],
+];

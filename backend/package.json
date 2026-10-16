@@ -1,0 +1,39 @@
+{
+  "name": "sourcing-backend",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "db:setup": "node sql/run_schema_setup.js",
+    "test:api": "node tests/run.js",
+    "db:demo": "node scripts/seed-demo.js",
+    "db:drop-v1": "node sql/drop_v1_tables.js",
+    "db:update-booth-code": "node sql/update_booth_code.js",
+    "db:update-product-decision": "node sql/update_product_decision.js",
+    "db:add-canton-sections": "node sql/add_canton_sections.js",
+    "db:update-fair-plan": "node sql/update_fair_plan.js",
+    "db:update-product-booth": "node sql/update_product_booth.js",
+    "db:add-fair-plan": "node sql/add_fair_plan_from_site.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.4.0",
+    "mysql2": "^3.24.6"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  },
+  "nodemonConfig": {
+    "ignore": [
+      "tests/*",
+      "uploads/*",
+      "scripts/*"
+    ]
+  }
+}

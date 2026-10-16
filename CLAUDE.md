@@ -2,72 +2,111 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Status
+## What this is
 
-This project has not been scaffolded yet. The only source of truth is
-`guide-nouveau-projet-smart360.md`. Read it before creating files: it sets the stack, the layout,
-and the conventions. This is a new app for Espace La Caverne (Bomexport) and must match the
-Smart360 ERP (the `esapcecaverne` repository). The guide says to copy these files from that
-repository rather than writing new code:
+**Sourcing** is a standalone app for the buyers of Tarek's group at the Canton Fair. Buyers keep
+suppliers and contacts, plan the booths to visit and mark them visited, record products (price,
+MOQ, shipping type, photos) and share products with Tarek's companies. The data is shared by the
+whole group. It has its own tables and its own login; there is no sign-up, the admin creates the accounts (D46). It
+follows the Smart360 code conventions in `guide-nouveau-projet-smart360.md`, but none of the
+Smart360 data: no `LISTE_DES_SALARIES`, no `Boutique`, no UPPERCASE table names.
 
-- `backend/middleware/auth.js` provides `signToken`, `requireAuth`, `requireLevel`, `signGrant` and `verifyGrant`. Copy it as it is.
-- `backend/config/db.js` is the mysql2 promise pool.
-- `backend/config/ventesEnLigneParams.js` is the cached settings-table pattern.
-- `backend/sql/create_*.sql` and `run_*_setup.js` are the migration scripts and their runners.
-- `frontend/src/config/config.js` holds `API_BASE_URL` for each environment.
-- `mobile/src/config/api.ts` provides `authFetch` and `ensureOk`.
+- `docs/sourcing-spec.md` holds the actors, requirements (BF01–BF20, BNF01–BNF06), decisions (D1–D51, several replaced by schema v2) and open questions. The decisions are not yet validated by the Product Owner. Read it before working on a feature, and add a decision there when you make one.
+- `docs/sourcing-status.md` tracks the state of each requirement, what was checked, and the migration scripts in order. Update it when a requirement changes.
+- Sprints 0–6 were built on schema v1; branch `feat/sourcing-schema-v2` moves everything to schema v2 (sign-up was added, then removed by D46). What remains: the PO's validation, the Android build (Node 22), and the hand checks listed in the status file.
 
-When the project is scaffolded, update this file with the real commands and structure.
+## Commands
 
-## Stack (fixed: do not add frameworks, ORMs, NestJS or Next.js without the team's agreement)
+Backend (`backend/`, Node 20):
+- `npm run dev` runs the server with nodemon on port 3000. `npm start` runs it without reloading.
+- `npm run db:setup` creates the database if it is missing and runs, in order, `sql/china_provinces.sql`, `sql/canton_fair_categories.sql` (only into an empty table), `sql/canton_fair_sections_140.sql` (the sections it lacks, D41) and `sql/create_sourcing_schema.sql`. It then seeds the admin (`role = 'ADMIN'`) from `SEED_ADMIN_USERNAME` and `SEED_ADMIN_PASSWORD`. It is safe to run twice.
+- `npm run db:update-booth-code` (D32) , `npm run db:update-product-decision` (D38) `npm run db:add-canton-sections` (D41) `npm run db:update-fair-plan` (D42) `npm run db:update-product-booth` (D43) and `npm run db:add-fair-plan` (D48, the 140th fair's hall plan from `sql/fair_plan_140.js`; a section an admin corrected is kept) bring a database set up before them up to date; each step runs only if still needed.
+- `npm run db:drop-v1 -- --yes` drops the schema v1 tables, once, before `db:setup` (it refuses tables that are not v1). `npm run db:demo` loads demo data through the API.
+- `backend/.env` points to the remote `Smart360_copy` (MariaDB 11.8); the local values are in a comment there. The API scenarios refuse to run on a remote database.
+- Copy `.env.example` to `.env` and fill in the values. `JWT_SECRET` deliberately has no default.
+- `npm run test:api` runs the API scenarios in `tests/*.scenario.js` against the running backend; `npm run test:api -- booths` runs only the files whose name contains "booths". Add scenarios there for every new rule.
+- The local database is XAMPP MariaDB 10.4 on port 3306 (`root`, no password). Its client is `/c/xampp/mysql/bin/mysql.exe`. The target is MySQL 8, so keep SQL portable to both.
+- `ecosystem.config.js` runs it under PM2 in production, as a single instance. Production: `deploy/README.md` (nginx, https at `76-13-55-161.sslip.io`, `deploy/deploy.sh` from the PC, `HOST=127.0.0.1`, `TRUST_PROXY=1`, database user `sourcing_app`, nightly backup).
 
-- **backend/**: Node 20, Express 5, mysql2 (promise pool, raw SQL), jsonwebtoken (12 h), dotenv, and MariaDB 11. Run `npm run dev` (nodemon) or `npm start`. PM2 runs it in production.
-- **frontend/**: React 18 (Create React App), Bootstrap 5.3, react-bootstrap, Ant Design 5, and axios with a token interceptor.
-- **mobile/**: Vite 4, React 18, TypeScript, Tailwind 3 and Capacitor 8 (Android).
-  - Run against a local API with `VITE_API_BASE_URL=http://localhost:3000/api npm run dev`.
-  - Build for Android with `npm run build && npx cap sync android && npx cap open android`.
-- **docs/**: `<module>-spec.md` holds requirements (BF/BNF), decisions (D1…) and the changelog. `<module>-status.md` tracks progress (Réalisé / Partiel / À valider). Keep both up to date.
+Frontend (`frontend/`, Create React App, React 18.3):
+- `PORT=3001 npm start` runs the dev server (the backend uses 3000).
+- `npm run build` builds for production; set `REACT_APP_API_BASE_URL` for a production API.
+- `CI=true npm test -- --watchAll=false` runs the tests once. Add `-t "<test name>"` to run a single test.
 
-There is no automated test suite in the stack. Test each rule twice, against the API and then
-in the UI:
+Mobile (`mobile/`): Vite 4, React 18, TypeScript, Tailwind 3 and Capacitor 8. See `mobile/README.md`.
+- `npm run dev` serves it on port 5173; the API address comes from `VITE_API_BASE_URL` (`.env`).
+- `npm run dev:phone` serves it over https (local certificate) and proxies /api and /uploads to the backend on port 3000: use it to test on a phone, since the QR scanner's camera needs https (D34).
+- `contacts.wechat_qr` (D34): a scanned link (`http(s)://`, the apps draw the QR code from it), an older photo path (`/uploads/wechat/`), or older text. Share the logic of `mobile/src/qr.ts` and `frontend/src/utils/qr.js`.
+- The production build is the iPhone home-screen app (D36): `public/manifest.webmanifest`, `public/sw.js` (never caches `/api` or `/uploads`), icons from `node scripts/make-icons.cjs`; it is built with relative paths and served at `/m/`.
+- Business cards (D37): `src/ocr.ts` (tesseract.js, loaded on the first card), `src/cardParser.ts` (fields from the text), `components/CardScanButton.tsx`. The reader's files are copied to `public/ocr/` (not committed) by `scripts/copy-ocr.cjs`, which runs before `dev`, `dev:phone` and `build`.
+- `npm run lint` and `npm run build` (which runs `tsc`) must pass.
+- The Capacitor CLI (`npx cap ...`, `npm run android:sync`) needs Node 22; the rest runs on Node 20.
 
-1. Send the request that must be refused and check its status: 401 without a token, 403 for another shop, 409 for a broken rule.
-2. Send the legitimate request and check that it still succeeds.
+## Backend structure
 
-## Backend rules (non-negotiable)
+Each module has `routes/<module>Routes.js` and `controllers/<Module>Controller.js`. Reuse these
+shared helpers instead of rewriting them:
+- `utils/http.js`: `fail`, `handle` (wraps a controller so any throw becomes a clean 500), `toId`, `clean`, `likeContains` (escapes LIKE wildcards).
+- `utils/validate.js`: `validate(body, FIELDS, existing)`, which checks every field, missing or not. On an update, `existing` fills the fields the client did not send. DECIMAL values stay strings.
+- `utils/scope.js`: `loadSupplier`, `loadBooth`, `loadProduct`, `loadCompany` find a record by id (400 for a bad id, 404 when missing).
+- `utils/access.js`: `isAdmin`, `ROLES`.
+- `utils/upload.js`: photo upload (product photos; older WeChat QR photos in `uploads/wechat/`, D33). It checks the file content against JPEG/PNG/WebP signatures, saves under random names and deletes files. Delete the files when you delete their rows (D28).
+- `middleware/auth.js`: `requireAuth` (reloads the user on every request, refuses `is_active = 0`), `requireAdmin`. `middleware/loginLimiter.js` limits failed logins.
 
-- **Load dotenv first.** `require('dotenv').config()` is the first line of `index.js`, because `db.js` reads `process.env` when it is required.
-- **Secrets**: `.env` is never committed. `JWT_SECRET` deliberately has no default.
-- **Development database**: work against `Smart360_copy`, never production. Record row counts before testing and confirm afterwards that the test data is deleted.
-- **Authentication**: every route file calls `router.use(requireAuth)`. Identity comes only from `req.user`, never from `req.query` or `req.body`. The author of an action is `req.user.NomAbr`.
-- **Shop scoping**:
-  - Reads filter by `req.user.Boutique` unless the caller is head office. In Smart360, head office means `Level >= 4` or `Departement === 'INFORMATIQUE'`; confirm this rule for the new project.
-  - A request for a single record from another shop returns 403.
+## Data model (schema v2) and access rule
+
+Tarek's schema v2 (`backend/sql/create_sourcing_schema.sql`, corrections D22-D30 in the spec):
+- `companies` (name, branch) are Tarek's companies. A user may belong to one (`users.company_id`, SET NULL on delete).
+- `suppliers` have a `province_id` (`china_province`), `contacts`, `booths` (supplier optional) and `products` (supplier optional).
+- `booths`: phase 1-3, hall, floor 1-4, letter and numbers (optional, together); `booth_code` is a generated column in the fair's notation, numbers on 2 digits (`1.1D22`, `10.3A08-23`, `9.1`, D32/D50), and `v_booths.zone` gives the zone from the hall (A 1-8, B 9-13, C 14-16, D 17-21), and a booth is unique per phase (the apps say "booth", never "stand", D44); `category_id` points to `canton_fair_category` (read-only list, per phase); `visited` is the "to visit" flag.
+- `products`: `price DECIMAL(12,2)`, `shipping_type` (FK to `shipping_types`, FOB by default), `product_images`, `product_shares` (`product_id`, `company_id`). D38: `status` (`A_ETUDIER` until the admin decides `RETENU`, `ECHANTILLON`, `A_COMMANDER` or `REJETE`), `decision_note`, `decided_by/at`, `created_by/at`. Only the admin decides (`PUT /api/products/:id/decision`); `GET /api/products/review` is the evening review queue (mobile "Revue" tab). D43: `booth_id`, the booth where it was found (a booth of its supplier).
+- Views `v_booths`, `v_suppliers` (booth count, % visited), `v_products` (shipping name, shared with): keep them free of GROUP BY (D23).
+- D42/D48: `section_halls` holds the hall plan like the official one (365.cantonfair.org.cn/en-US/exhibition-hall-map): one row per section and area (A = halls 1-8, B = 9-13, C = 14-16, D = 17-21), its codes as the site writes them and its rank in the area. `GET /api/fair-plan` returns it in the plan's order; `PUT /api/fair-plan` (admin) takes all the codes of a section and the server splits them by area (`utils/halls.js`). The apps group the rows by area (`frontend/src/utils/fairPlan.js`, `mobile/src/halls.ts`); `suppliers.cantonfair_url` only takes a cantonfair.org.cn address.
+- Reference lists are served by `GET /api/lists/provinces|shipping-types|canton-categories`.
+- `GET /api/contacts` (filters `q`, `supplier_id`, `has_qr`) lists every contact with its supplier, and `GET /api/contacts/export` gives the same list as CSV; contacts are still written through `/api/suppliers/:id/contacts`.
+
+Access rule: there is **no per-company isolation** any more. Every active user reads and writes every supplier, contact, booth and product, and shares products with companies. `role = 'ADMIN'` also manages companies and users: it creates every account and activates or deactivates it (`requireAdmin`). Everyone else is `ACHETEUR`; `level` is free text. There is no sign-up (D46).
+
+The tables are lowercase and live next to the ERP's UPPERCASE tables in `Smart360_copy`: never touch an UPPERCASE table. The pool keeps decimals as strings (`decimalNumbers: false`), so never round prices through a JavaScript float.
+
+## Backend rules (from the guide, non-negotiable)
+
+- **Load dotenv first.** `require('dotenv').config()` is the first line of `index.js`, because `config/db.js` reads `process.env` when it is required.
+- **Authentication**: every route file calls `router.use(requireAuth)`, except the public `POST /api/login` (the only public route since sign-up was removed, D46). Identity comes only from `req.user` (the signed token), never from `req.query` or `req.body`.
+- **Passwords**: hash them with `bcryptjs`. They never go into the token or into a response.
 - **SQL**: queries always use `?` placeholders. Multi-table writes run in a transaction (`getConnection`, `beginTransaction`, `commit` or `rollback`, `release`).
-- **Route order**: declare fixed paths such as `/export` and `/stats` before `/:id`.
+- **Route order**: declare fixed paths such as `/export` before `/:id`.
 - **Responses**: success returns `{ success: true, data }`. A refusal returns `{ success: false, message }`, with the message in French. Status codes:
   - 200 for success, creation included
   - 400 for invalid input
   - 401 for a missing or expired token
-  - 403 when the caller is not allowed
+  - 403 for a buyer on an admin route, or an inactive account at login
+  - 404 for a missing record
   - 409 when a business rule refuses the request
   - 500 for unexpected errors, with no SQL or stack trace in the message
-- **Business rules**: enforce them on the server and validate unconditionally. The web and mobile UIs only display them: they disable the control, explain why, and show the server's message.
-- **Configurable values**: store them in a `PARAMETRES_<MODULE>` table (`PARAM`, `VALEUR`, `DESCRIPTION`). Keep code `DEFAULTS` and a 60 s cache. When a value is invalid, fall back to the default and log a `console.warn`.
-- **Schema changes**: never alter the schema by hand. Each change gets two files in `backend/sql/`:
-  - `create_<table>.sql`, using `CREATE TABLE IF NOT EXISTS` and `INSERT IGNORE` seeds
-  - `run_<name>_setup.js`, which loads `.env` itself
-- **Database conventions**:
-  - Tables use legacy UPPERCASE names (`COMMANDES`, `CUSTOMER`, `LISTE_DES_SALARIES`, `PASS_BOUTIQUE`…). Reuse `LISTE_DES_SALARIES` for users.
-  - Discounts and VAT are stored as fractions (0.2) and travel between UI and API as percentages. Convert them in one function.
+- **Business rules**: enforce them on the server and validate unconditionally. The UIs only display them: they disable the control, explain why, and show the server's message.
+- **Schema changes**: never alter the schema by hand. Add a script in `backend/sql/` with a runner that loads `.env` itself, following `run_schema_setup.js`.
 
 ## Client rules
 
-- **Web**: the only API URL lives in `API_BASE_URL` from `src/config/config.js`. Register the axios interceptor once, in `AuthContext.jsx`; it reads `localStorage.authToken`. Declare routes in `src/Router/router.jsx` and put each module in `src/feature-module/<module>/`.
+- **Web**:
+  - The only API URL is `API_BASE_URL` in `src/config/config.js`.
+  - Register the axios token interceptor once, in `src/context/AuthContext.jsx` (Sprint 1). It reads `localStorage.authToken`.
+  - Declare routes in `src/Router/router.jsx` and put each module in `src/feature-module/<module>/`.
+  - Use Bootstrap, react-bootstrap and Ant Design only; don't add another UI library.
+  - Load the reference lists with `useList()` from `src/utils/lists.js` (cached once); show a company with `companyLabel()` (name and branch).
 - **Mobile**: every call goes through `authFetch` followed by `ensureOk`, because `fetch` does not reject on 4xx. Never re-implement business rules in the mobile app.
+
+## Testing
+
+For each rule, test two requests, first against the API (`npm run test:api`) and then in the UI:
+1. The request that must be refused: 401 without a token, 403 for a buyer on an admin route, 400 or 409 for a broken rule.
+2. The legitimate request, which must still succeed.
+
+The scenarios name their data `TEST…`. `tests/lib.js` `cleanup()` deletes it, including product photo files, and the runner checks that the row counts are back to their starting values. Run them on a development database only.
 
 ## Git workflow
 
 - Work on branches named `feat/<module>-<sujet>`, never directly on `main`.
 - Make one commit per validated task, with a message that says what changed and why.
-- Merge through a pull request.
+- Merge through a pull request. The remote is `origin` (github.com/Therealcydex/canton-fair-app).
