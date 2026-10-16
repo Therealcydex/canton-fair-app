@@ -1,12 +1,32 @@
 import { Col, Form, Input, Row, Select } from 'antd';
+import CardScanButton from '../../components/CardScanButton';
+
+// "Scanner une carte de visite" (D37, D52): fills the empty fields of the form around it, under
+// the field names `prefix + name|phone|email|wechat_qr` (a WeChat id is kept like a QR code that
+// holds no link, D34). Returns the fields found, for a form that also uses the company.
+export function CardScan({ prefix = '', onRead }) {
+  const form = Form.useFormInstance();
+  return (
+    <CardScanButton onRead={(card) => {
+      const now = form.getFieldsValue();
+      const fill = {};
+      [['name', card.name], ['phone', card.phone], ['email', card.email], ['wechat_qr', card.wechat]].forEach(([key, value]) => {
+        if (value && !now[prefix + key]) fill[prefix + key] = value;
+      });
+      form.setFieldsValue(fill);
+      onRead?.(card, now);
+    }} />
+  );
+}
 
 // Fields of the contact form, used by the supplier page and the contacts page. The server checks
 // the same rules (at least a name, a phone or an e-mail; a valid e-mail) and explains a refusal.
-// `suppliers` (optional) adds the supplier choice, for a new contact on the contacts page.
+// `suppliers` (optional) adds the supplier choice and the business card scan, for a new contact.
 // D49: laid out like the Stitch "Nouveau contact" form.
 export default function ContactFormFields({ suppliers }) {
   return (
     <>
+      {suppliers && <CardScan />}
       {suppliers && (
         <Form.Item name="supplier_id" label="Fournisseur rattaché" rules={[{ required: true, message: 'Choisissez le fournisseur' }]}>
           <Select showSearch optionFilterProp="label" placeholder="Sélectionner un fournisseur…"

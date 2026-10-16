@@ -36,12 +36,13 @@ acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 | BNF05 | Hashed passwords | À valider | API |
 | BNF06 | Schema changes as scripts | À valider | |
 | D1–D51 | Decisions in `sourcing-spec.md` §5 (several replaced by v2) | À valider | Web home page (D40): API, navigateur (figures, phases, companies); web and mobile look from Stitch (D49): web build and tests, mobile lint and build, web login seen in the browser; booth table count of products (`nbr_products`): API; hover side bar and booth table: build, to check in the browser; the other pages to check in the browser and on a phone |
+| D52 | One app: the web app on the phone, `mobile/` removed | À valider | Web build and tests. Navigateur at 390 px (local database): tab bar; "À visiter" checklist (✓ saved, undo, visited booths listed after a reload); "Revue du soir" as admin (decide, next product, undo, counts); new supplier from a business card (6 fields in 5 s, supplier + contact + WeChat id saved); QR scanner opens over the new-contact form and closes; dialogs fit the screen; at 1280 px the booth table is unchanged. Still to do on an iPhone (below) |
 
 ## Not checked by hand yet
 
 - The companies screen and editing a supplier, contact or product through the web forms.
 - Photo upload from the web product page (the mobile one was checked).
-- The Android app on a real phone (needs Node 22 to generate the Android project).
+- D52 on an iPhone (`npm run start:phone`, then installed from Safari once online): bottom tab bar, "À visiter" checklist (tap, undo), live QR scanner in the new contact / new supplier / contact edit forms, business card in the new contact and new supplier forms, "Revue du soir" as admin and as buyer, the installed app opening on "À visiter".
 
 ## Migration scripts (run in this order)
 

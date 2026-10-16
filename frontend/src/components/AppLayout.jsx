@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Nav, Offcanvas } from 'react-bootstrap';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
-  ApartmentOutlined, BankOutlined, ContactsOutlined, EnvironmentOutlined, FlagOutlined, HomeOutlined,
+  ApartmentOutlined, AuditOutlined, BankOutlined, ContactsOutlined, EnvironmentOutlined, FlagOutlined, HomeOutlined,
   InboxOutlined, LogoutOutlined, MenuOutlined, ShopOutlined, TeamOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
@@ -18,7 +18,15 @@ const MENU = [
   { to: '/a-visiter', label: 'À visiter', icon: <FlagOutlined /> },
   { to: '/booths', label: 'Booths', icon: <ShopOutlined /> },
   { to: '/produits', label: 'Produits', icon: <InboxOutlined /> },
+  { to: '/revue', label: 'Revue du soir', icon: <AuditOutlined /> }, // D38
   { to: '/plan-du-salon', label: 'Plan du salon', icon: <EnvironmentOutlined /> }, // D42
+];
+// D52: on a phone, the screens used on the fair floor stay one tap away at the bottom.
+const TABS = [
+  { to: '/a-visiter', label: 'À visiter', icon: <FlagOutlined /> },
+  { to: '/fournisseurs', label: 'Fournisseurs', icon: <BankOutlined /> },
+  { to: '/produits', label: 'Produits', icon: <InboxOutlined /> },
+  { to: '/revue', label: 'Revue', icon: <AuditOutlined /> },
 ];
 const ADMIN_MENU = [
   { to: '/admin/utilisateurs', label: 'Utilisateurs', icon: <TeamOutlined />, show: isAdmin },
@@ -92,6 +100,16 @@ export default function AppLayout() {
           <span>Données partagées par le groupe</span>
         </footer>
       </div>
+      <nav className="app-tabbar d-lg-none" aria-label="Accès rapide">
+        {TABS.map((t) => (
+          <NavLink key={t.to} to={t.to} className="app-tab">
+            <span className="app-tab-icon">{t.icon}</span>{t.label}
+          </NavLink>
+        ))}
+        <button type="button" className="app-tab" onClick={() => setOpen(true)}>
+          <span className="app-tab-icon"><MenuOutlined /></span>Menu
+        </button>
+      </nav>
     </>
   );
 }

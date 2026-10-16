@@ -5,8 +5,8 @@ Debian 13):
 
 | Address | What |
 |---|---|
-| `https://76-13-55-161.sslip.io/` | Web app (office) |
-| `https://76-13-55-161.sslip.io/m/` | Mobile app, installed on the iPhone (QR scanner, camera) |
+| `https://76-13-55-161.sslip.io/` | The app, on computers and installed on the iPhone (QR scanner, camera) |
+| `https://76-13-55-161.sslip.io/m/` | Old address of the former phone app: opens the app |
 | `https://76-13-55-161.sslip.io/api/` | Backend (Node, PM2), only reachable through nginx |
 
 `76-13-55-161.sslip.io` is a free name that always points to 76.13.55.161 (sslip.io), so a real
@@ -76,7 +76,7 @@ From the PC, at the root of the project:
 SSH_TARGET=<user>@76.13.55.161 bash deploy/deploy.sh
 ```
 
-It builds the web and mobile apps, sends them with the backend code, installs the backend's
+It builds the web app, sends it with the backend code, installs the backend's
 packages and restarts it. `.env` and the photos on the server are never touched.
 
 ## 6. Check from China
@@ -89,7 +89,7 @@ Singapore before the fair.
 
 ## 7. Install on the iPhone
 
-On the iPhone, in **Safari** (not Chrome): open `https://76-13-55-161.sslip.io/m/`, log in, then
+On the iPhone, in **Safari** (not Chrome): open `https://76-13-55-161.sslip.io/`, log in, then
 Share › **Add to Home Screen** › Add. The app opens full screen from its icon; allow the camera the
 first time the QR scanner opens.
 

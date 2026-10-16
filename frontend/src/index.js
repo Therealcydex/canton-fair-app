@@ -19,6 +19,14 @@ root.render(
   </React.StrictMode>
 );
 
+// The installed app (iPhone home screen, D52) keeps its own files with public/sw.js. Only in the
+// production build: in development it would serve stale files.
+if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register(`${process.env.PUBLIC_URL}/sw.js`).catch(() => {});
+  });
+}
+
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))
 // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals

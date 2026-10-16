@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Button, Cascader, Col, Input, Row, Select } from 'antd';
+import { Button, Cascader, Col, Grid, Input, Row, Select } from 'antd';
 import { BuildOutlined, DownloadOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { ZONE_HALLS } from '../../utils/fairPlan';
 import { categoryOptions, useList } from '../../utils/lists';
@@ -26,6 +26,8 @@ const exportCsv = (rows) => {
 // the Stitch "Booths" screen (filter bar, counter, table, distribution by zone).
 export default function Booths({ planning = false }) {
   const categories = useList('canton-categories');
+  const screens = Grid.useBreakpoint();
+  const checklist = planning && screens.md === false; // a phone's width
   const [filters, setFilters] = useState({});
   const [search, setSearch] = useState('');
   const [rows, setRows] = useState([]);
@@ -70,11 +72,13 @@ export default function Booths({ planning = false }) {
         <span className="sc-counter ms-lg-auto">
           <span className="share-dot rounded-circle" style={{ background: 'var(--sc-accent)' }} />
           <strong>{plural(rows.length - visited, 'booth')} à visiter</strong>
-          {!planning && <> · {plural(visited, 'visité')} <span className="sc-label">({rows.length} au total)</span></>}
+          {(!planning || checklist) && <> · {plural(visited, 'visité')} <span className="sc-label">({rows.length} au total)</span></>}
         </span>
       </div>
 
-      <BoothList filters={{ ...filters, category_path: undefined, visited: planning ? 0 : filters.visited }} planning={planning}
+      {/* D52: on a phone, "À visiter" is a checklist that keeps the visited booths (to undo a tap). */}
+      <BoothList filters={{ ...filters, category_path: undefined, visited: checklist ? undefined : planning ? 0 : filters.visited }}
+        planning={planning} checklist={checklist}
         createOpen={creating} onCreateOpenChange={setCreating} onLoaded={setRows} />
 
       <Row gutter={[16, 16]} className="mt-3">

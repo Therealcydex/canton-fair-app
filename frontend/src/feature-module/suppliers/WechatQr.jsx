@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { App, Button, Image, Popconfirm, Space, Upload } from 'antd';
+import { CameraOutlined } from '@ant-design/icons';
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
+import QrScanner from '../../components/QrScanner';
 import { decodeQrFromFile, isQrLink, isQrPhoto, useQrImage } from '../../utils/qr';
 
 const ACCEPTED = 'image/*';
@@ -26,6 +28,7 @@ export function QrThumb({ value, size = 56 }) {
 export function QrPicker({ value, onChange }) {
   const { message } = App.useApp();
   const [busy, setBusy] = useState(false);
+  const [scanning, setScanning] = useState(false);
 
   const read = async (file) => {
     if (file.size > MAX_MB * 1024 * 1024) {
@@ -40,8 +43,12 @@ export function QrPicker({ value, onChange }) {
   };
 
   // D49: the drop zone of the Stitch "Nouveau contact" form; the picture is read here, never uploaded.
+  // D52: "Scanner le QR WeChat" reads it live with the camera (phone).
   return (
     <div className="qr-drop">
+      <Button icon={<CameraOutlined />} size="large" block className="mb-2" onClick={() => setScanning(true)}>
+        {value ? 'Scanner un autre QR WeChat' : 'Scanner le QR WeChat'}
+      </Button>
       {value && (
         <div className="qr-drop-thumb">
           <QrThumb value={value} size={104} />
@@ -64,6 +71,10 @@ export function QrPicker({ value, onChange }) {
           <Button size="small" type="link" danger onClick={() => onChange?.(null)}>Retirer</Button>
         </div>
       )}
+      {scanning && (
+        <QrScanner saveLabel="Utiliser ce QR code" onClose={() => setScanning(false)}
+          onSave={async (content) => { onChange?.(content); setScanning(false); }} />
+      )}
     </div>
   );
 }
@@ -74,6 +85,7 @@ export function QrPicker({ value, onChange }) {
 export default function WechatQr({ supplierId, contact, onChanged, size = 56 }) {
   const { message } = App.useApp();
   const [busy, setBusy] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const url = `${API_BASE_URL}/suppliers/${supplierId}/contacts/${contact.id}/wechat-qr`;
   const value = contact.wechat_qr;
 
@@ -109,6 +121,9 @@ export default function WechatQr({ supplierId, contact, onChanged, size = 56 }) 
     <Space direction="vertical" size={4}>
       <Space align="center" wrap>
         {value && <QrThumb value={value} size={size} />}
+        <Button size="small" icon={<CameraOutlined />} disabled={busy} onClick={() => setScanning(true)}>
+          {value ? 'Scanner un autre QR' : 'Scanner le QR'}
+        </Button>
         <Upload accept={ACCEPTED} showUploadList={false} disabled={busy}
           beforeUpload={(file) => { read(file); return false; }}>
           <Button size="small" loading={busy}>{value ? 'Lire un autre QR (image)' : 'Lire un QR (image)'}</Button>
@@ -121,6 +136,19 @@ export default function WechatQr({ supplierId, contact, onChanged, size = 56 }) 
         )}
       </Space>
       {isQrLink(value) && <a href={value} target="_blank" rel="noreferrer" className="small text-break">{value}</a>}
+      {scanning && (
+        <QrScanner onClose={() => setScanning(false)}
+          onSave={async (content) => {
+            try {
+              await axios.put(url, { content });
+            } catch (err) {
+              throw new Error(apiError(err, "Erreur lors de l'enregistrement du QR code"));
+            }
+            setScanning(false);
+            message.success('QR code WeChat enregistré');
+            await onChanged();
+          }} />
+      )}
     </Space>
   );
 }

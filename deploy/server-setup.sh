@@ -28,7 +28,7 @@ command -v pm2 >/dev/null || npm install -g pm2@5
 
 echo "== user and folders"
 id sourcing >/dev/null 2>&1 || useradd --system --create-home --home-dir /home/sourcing --shell /usr/sbin/nologin sourcing
-mkdir -p "$APP"/backend/uploads "$APP"/web "$APP"/m "$APP"/backups
+mkdir -p "$APP"/backend/uploads "$APP"/web "$APP"/backups
 chown -R sourcing:sourcing "$APP"
 chmod 750 "$APP"/backups
 
@@ -37,7 +37,7 @@ sed "s/__HOST__/$HOST/g" "$HERE/nginx-sourcing.conf" > /etc/nginx/sites-availabl
 ln -sf /etc/nginx/sites-available/sourcing /etc/nginx/sites-enabled/sourcing
 # nginx (www-data) reads the built files and the photos.
 usermod -aG sourcing www-data
-chmod 750 "$APP" "$APP"/backend "$APP"/backend/uploads "$APP"/web "$APP"/m
+chmod 750 "$APP" "$APP"/backend "$APP"/backend/uploads "$APP"/web
 nginx -t
 systemctl reload nginx
 

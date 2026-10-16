@@ -5,7 +5,7 @@ import { Alert, App, Button, Input, Rate, Select, Space, Table, Tag } from 'antd
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import FormModal from '../../components/FormModal';
-import SupplierFormFields from './SupplierFormFields';
+import SupplierFormFields, { newSupplierContact } from './SupplierFormFields';
 import { supplierPayload } from './SupplierDetail';
 import { useList } from '../../utils/lists';
 import { EditOutlined, PlusOutlined } from '@ant-design/icons';
@@ -36,6 +36,27 @@ export default function Suppliers() {
   }, [filters]);
 
   useEffect(() => { load(); }, [load]);
+
+  // The supplier, then its contact and the contact's WeChat QR code when the form has them (D52).
+  // Once the supplier is saved, a refused contact does not undo it: the message says what is
+  // missing, and the supplier page opens to finish it.
+  const createSupplier = async (values) => {
+    const res = await axios.post(`${API_BASE_URL}/suppliers`, supplierPayload(values));
+    const id = res.data.data.id;
+    const contact = newSupplierContact(values);
+    if (contact) {
+      try {
+        const { wechat_qr: wechatQr, ...fields } = contact;
+        const created = await axios.post(`${API_BASE_URL}/suppliers/${id}/contacts`, fields);
+        if (wechatQr) {
+          await axios.put(`${API_BASE_URL}/suppliers/${id}/contacts/${created.data.data.id}/wechat-qr`, { content: wechatQr });
+        }
+      } catch (err) {
+        message.warning(`Fournisseur enregistré, mais pas tout le contact : ${apiError(err, 'erreur')}`);
+      }
+    }
+    return id;
+  };
 
   // "Guangdong 广东", as the buyers read the province on the fair's documents.
   const provinceLabel = (id) => {
@@ -102,13 +123,13 @@ export default function Suppliers() {
 
       <FormModal open={creating} title="Nouveau fournisseur" width={640}
         onCancel={() => setCreating(false)}
-        onSubmit={(values) => axios.post(`${API_BASE_URL}/suppliers`, supplierPayload(values))}
-        onSaved={(res) => {
+        onSubmit={createSupplier}
+        onSaved={(id) => {
           setCreating(false);
           message.success('Fournisseur créé');
-          navigate(`/fournisseurs/${res.data.data.id}`);
+          navigate(`/fournisseurs/${id}`);
         }}>
-        <SupplierFormFields />
+        <SupplierFormFields withContact />
       </FormModal>
     </>
   );

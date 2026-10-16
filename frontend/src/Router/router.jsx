@@ -15,6 +15,7 @@ import BoothDetail from '../feature-module/booths/BoothDetail';
 import Products from '../feature-module/products/Products';
 import ProductDetail from '../feature-module/products/ProductDetail';
 import FairPlan from '../feature-module/fair/FairPlan';
+import Review from '../feature-module/review/Review';
 
 // The old booth addresses ("/stands/12", before booths were called booths) still open the page.
 function OldBoothLink() {
@@ -43,6 +44,11 @@ export default function AppRouter() {
             <Route path="/produits" element={<Products />} />
             <Route path="/produits/:id" element={<ProductDetail />} />
             <Route path="/plan-du-salon" element={<FairPlan />} />
+            <Route path="/revue" element={<Review />} />
+            {/* The addresses of the former phone app (D52) open the same pages. */}
+            <Route path="/plan" element={<Navigate to="/plan-du-salon" replace />} />
+            <Route path="/fournisseurs/nouveau" element={<Navigate to="/fournisseurs" replace />} />
+            <Route path="/produits/nouveau" element={<Navigate to="/produits" replace />} />
             <Route element={<RequireAccess allow={isAdmin} />}>
               <Route path="/admin/utilisateurs" element={<Users />} />
               <Route path="/admin/societes" element={<Companies />} />

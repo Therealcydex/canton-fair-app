@@ -9,8 +9,7 @@ companies. There is no sign-up: the administrator creates the accounts.
 | Folder | What | Stack |
 |---|---|---|
 | `backend/` | REST API (`/api/...`) and photos (`/uploads/...`) | Node 20, Express 5, mysql2, JWT |
-| `frontend/` | Web app (everything, administration) | React 18 (Create React App), Ant Design, Bootstrap |
-| `mobile/` | App for the fair floor (iPhone home-screen app) | Vite, React, TypeScript, Tailwind |
+| `frontend/` | The app, on a computer and on the phone (installed on the iPhone home screen): WeChat QR scanner, business cards, evening review, administration | React 18 (Create React App), Ant Design, Bootstrap |
 | `deploy/` | Going online, database guide, backups | nginx, PM2 |
 | `docs/` | Requirements, decisions (D1…), status | |
 
@@ -43,17 +42,18 @@ PORT=3001 npm start       # PowerShell: $env:PORT=3001; npm start
 
 Open http://localhost:3001 and log in with the administrator.
 
-**3. Mobile app** (port 5173), in a third terminal
+**3. On a phone** (same Wi-Fi as the PC)
+
+The same app adapts to the phone's screen (tab bar at the bottom, "À visiter" as a checklist). The
+camera (WeChat QR scanner) only opens on https, so use instead of `npm start`:
 
 ```bash
-cd mobile
-npm install
-cp .env.example .env      # VITE_API_BASE_URL: the backend address seen from the phone
-npm run dev               # in a browser: http://localhost:5173
-npm run dev:phone         # on a phone on the same Wi-Fi, with the camera: https://<PC address>:5173
+cd frontend
+npm run start:phone       # https on port 3001, /api passed to the backend on port 3000
 ```
 
-`mobile/README.md` explains the phone test (certificate, Windows firewall).
+Open `https://<PC address>:3001` on the phone (PC address: `ipconfig`, Wi-Fi IPv4), accept the
+certificate warning once, and allow port 3001 in the Windows firewall if the page does not open.
 
 **4. First steps in the app** (administrator)
 1. *Administration › Sociétés*: create Tarek's companies.
@@ -86,7 +86,7 @@ over the data of a copy, follow **[deploy/DATABASE.md](deploy/DATABASE.md)**.
 cd backend && npm run test:api                  # backend running, development database only
 cd backend && npm run test:api -- products      # one scenario file
 cd frontend && CI=true npm test -- --watchAll=false
-cd mobile && npm run lint && npm run build
+cd frontend && CI=true npm run build
 ```
 
 `test:api` replays, for every rule, the request that must be refused (401, 403, 400, 409…) and
@@ -95,8 +95,8 @@ on a remote database: never run it against production.
 
 ## Going online
 
-`deploy/README.md`: one https address on the server (`https://76-13-55-161.sslip.io`), the web
-app at `/`, the iPhone app at `/m/` (Safari › Share › Add to Home Screen), the API at `/api/`
+`deploy/README.md`: one https address on the server (`https://76-13-55-161.sslip.io`), the app
+at `/` (on the iPhone: Safari › Share › Add to Home Screen), the API at `/api/`
 behind nginx, nightly backups, and the checks before the fair (access from China, security).
 
 ## Before working on the code

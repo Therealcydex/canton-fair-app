@@ -11,9 +11,9 @@ whole group. It has its own tables and its own login; there is no sign-up, the a
 follows the Smart360 code conventions in `guide-nouveau-projet-smart360.md`, but none of the
 Smart360 data: no `LISTE_DES_SALARIES`, no `Boutique`, no UPPERCASE table names.
 
-- `docs/sourcing-spec.md` holds the actors, requirements (BF01–BF20, BNF01–BNF06), decisions (D1–D51, several replaced by schema v2) and open questions. The decisions are not yet validated by the Product Owner. Read it before working on a feature, and add a decision there when you make one.
+- `docs/sourcing-spec.md` holds the actors, requirements (BF01–BF20, BNF01–BNF06), decisions (D1–D52, several replaced by schema v2) and open questions. The decisions are not yet validated by the Product Owner. Read it before working on a feature, and add a decision there when you make one.
 - `docs/sourcing-status.md` tracks the state of each requirement, what was checked, and the migration scripts in order. Update it when a requirement changes.
-- Sprints 0–6 were built on schema v1; branch `feat/sourcing-schema-v2` moves everything to schema v2 (sign-up was added, then removed by D46). What remains: the PO's validation, the Android build (Node 22), and the hand checks listed in the status file.
+- Sprints 0–6 were built on schema v1; branch `feat/sourcing-schema-v2` moves everything to schema v2 (sign-up was added, then removed by D46). What remains: the PO's validation and the hand checks listed in the status file.
 
 ## Commands
 
@@ -28,19 +28,14 @@ Backend (`backend/`, Node 20):
 - The local database is XAMPP MariaDB 10.4 on port 3306 (`root`, no password). Its client is `/c/xampp/mysql/bin/mysql.exe`. The target is MySQL 8, so keep SQL portable to both.
 - `ecosystem.config.js` runs it under PM2 in production, as a single instance. Production: `deploy/README.md` (nginx, https at `76-13-55-161.sslip.io`, `deploy/deploy.sh` from the PC, `HOST=127.0.0.1`, `TRUST_PROXY=1`, database user `sourcing_app`, nightly backup).
 
-Frontend (`frontend/`, Create React App, React 18.3):
+Frontend (`frontend/`, Create React App, React 18.3). It is the only client (D52): it adapts to the phone and is installed on the iPhone home screen; the former `mobile/` app was merged into it.
 - `PORT=3001 npm start` runs the dev server (the backend uses 3000).
+- `npm run start:phone` runs it over https on port 3001 (local certificate) with `/api` and `/uploads` passed to the backend on port 3000 (`"proxy"` in package.json): use it on a phone, since the QR scanner's camera needs https (D34).
 - `npm run build` builds for production; set `REACT_APP_API_BASE_URL` for a production API.
 - `CI=true npm test -- --watchAll=false` runs the tests once. Add `-t "<test name>"` to run a single test.
-
-Mobile (`mobile/`): Vite 4, React 18, TypeScript, Tailwind 3 and Capacitor 8. See `mobile/README.md`.
-- `npm run dev` serves it on port 5173; the API address comes from `VITE_API_BASE_URL` (`.env`).
-- `npm run dev:phone` serves it over https (local certificate) and proxies /api and /uploads to the backend on port 3000: use it to test on a phone, since the QR scanner's camera needs https (D34).
-- `contacts.wechat_qr` (D34): a scanned link (`http(s)://`, the apps draw the QR code from it), an older photo path (`/uploads/wechat/`), or older text. Share the logic of `mobile/src/qr.ts` and `frontend/src/utils/qr.js`.
-- The production build is the iPhone home-screen app (D36): `public/manifest.webmanifest`, `public/sw.js` (never caches `/api` or `/uploads`), icons from `node scripts/make-icons.cjs`; it is built with relative paths and served at `/m/`.
-- Business cards (D37): `src/ocr.ts` (tesseract.js, loaded on the first card), `src/cardParser.ts` (fields from the text), `components/CardScanButton.tsx`. The reader's files are copied to `public/ocr/` (not committed) by `scripts/copy-ocr.cjs`, which runs before `dev`, `dev:phone` and `build`.
-- `npm run lint` and `npm run build` (which runs `tsc`) must pass.
-- The Capacitor CLI (`npx cap ...`, `npm run android:sync`) needs Node 22; the rest runs on Node 20.
+- `contacts.wechat_qr` (D34): a scanned link (`http(s)://`, the app draws the QR code from it), an older photo path (`/uploads/wechat/`), or older text: `src/utils/qr.js`. Live scanner: `components/QrScanner.jsx`.
+- Business cards (D37): `src/utils/ocr.js` (tesseract.js, loaded on the first card), `src/utils/cardParser.js` (fields from the text), `components/CardScanButton.jsx`. The reader's files are copied to `public/ocr/` (not committed) by `scripts/copy-ocr.cjs`, which runs before `start`, `start:phone` and `build`.
+- Installed app (D36/D52): `public/manifest.json`, `public/sw.js` (registered in production only, never caches `/api` or `/uploads`), icons from `node scripts/make-icons.cjs`. On small screens `AppLayout` adds a bottom tab bar; "À visiter" becomes a checklist (`BoothList` `checklist`).
 
 ## Backend structure
 
@@ -59,9 +54,9 @@ Tarek's schema v2 (`backend/sql/create_sourcing_schema.sql`, corrections D22-D30
 - `companies` (name, branch) are Tarek's companies. A user may belong to one (`users.company_id`, SET NULL on delete).
 - `suppliers` have a `province_id` (`china_province`), `contacts`, `booths` (supplier optional) and `products` (supplier optional).
 - `booths`: phase 1-3, hall, floor 1-4, letter and numbers (optional, together); `booth_code` is a generated column in the fair's notation, numbers on 2 digits (`1.1D22`, `10.3A08-23`, `9.1`, D32/D50), and `v_booths.zone` gives the zone from the hall (A 1-8, B 9-13, C 14-16, D 17-21), and a booth is unique per phase (the apps say "booth", never "stand", D44); `category_id` points to `canton_fair_category` (read-only list, per phase); `visited` is the "to visit" flag.
-- `products`: `price DECIMAL(12,2)`, `shipping_type` (FK to `shipping_types`, FOB by default), `product_images`, `product_shares` (`product_id`, `company_id`). D38: `status` (`A_ETUDIER` until the admin decides `RETENU`, `ECHANTILLON`, `A_COMMANDER` or `REJETE`), `decision_note`, `decided_by/at`, `created_by/at`. Only the admin decides (`PUT /api/products/:id/decision`); `GET /api/products/review` is the evening review queue (mobile "Revue" tab). D43: `booth_id`, the booth where it was found (a booth of its supplier).
+- `products`: `price DECIMAL(12,2)`, `shipping_type` (FK to `shipping_types`, FOB by default), `product_images`, `product_shares` (`product_id`, `company_id`). D38: `status` (`A_ETUDIER` until the admin decides `RETENU`, `ECHANTILLON`, `A_COMMANDER` or `REJETE`), `decision_note`, `decided_by/at`, `created_by/at`. Only the admin decides (`PUT /api/products/:id/decision`); `GET /api/products/review` is the evening review queue (web page "Revue du soir", `/revue`). D43: `booth_id`, the booth where it was found (a booth of its supplier).
 - Views `v_booths`, `v_suppliers` (booth count, % visited), `v_products` (shipping name, shared with): keep them free of GROUP BY (D23).
-- D42/D48: `section_halls` holds the hall plan like the official one (365.cantonfair.org.cn/en-US/exhibition-hall-map): one row per section and area (A = halls 1-8, B = 9-13, C = 14-16, D = 17-21), its codes as the site writes them and its rank in the area. `GET /api/fair-plan` returns it in the plan's order; `PUT /api/fair-plan` (admin) takes all the codes of a section and the server splits them by area (`utils/halls.js`). The apps group the rows by area (`frontend/src/utils/fairPlan.js`, `mobile/src/halls.ts`); `suppliers.cantonfair_url` only takes a cantonfair.org.cn address.
+- D42/D48: `section_halls` holds the hall plan like the official one (365.cantonfair.org.cn/en-US/exhibition-hall-map): one row per section and area (A = halls 1-8, B = 9-13, C = 14-16, D = 17-21), its codes as the site writes them and its rank in the area. `GET /api/fair-plan` returns it in the plan's order; `PUT /api/fair-plan` (admin) takes all the codes of a section and the server splits them by area (`utils/halls.js`). The app groups the rows by area (`frontend/src/utils/fairPlan.js`); `suppliers.cantonfair_url` only takes a cantonfair.org.cn address.
 - Reference lists are served by `GET /api/lists/provinces|shipping-types|canton-categories`.
 - `GET /api/contacts` (filters `q`, `supplier_id`, `has_qr`) lists every contact with its supplier, and `GET /api/contacts/export` gives the same list as CSV; contacts are still written through `/api/suppliers/:id/contacts`.
 
@@ -95,7 +90,7 @@ The tables are lowercase and live next to the ERP's UPPERCASE tables in `Smart36
   - Declare routes in `src/Router/router.jsx` and put each module in `src/feature-module/<module>/`.
   - Use Bootstrap, react-bootstrap and Ant Design only; don't add another UI library.
   - Load the reference lists with `useList()` from `src/utils/lists.js` (cached once); show a company with `companyLabel()` (name and branch).
-- **Mobile**: every call goes through `authFetch` followed by `ensureOk`, because `fetch` does not reject on 4xx. Never re-implement business rules in the mobile app.
+  - Every screen must work at a phone's width (375 px) as well as on a computer: there is no separate phone app (D52).
 
 ## Testing
 
