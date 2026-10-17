@@ -11,7 +11,7 @@ import { apiError } from '../../utils/apiError';
 import { STATUS } from '../../utils/decision';
 import { ZONE_HALLS } from '../../utils/fairPlan';
 import { boothLabel, formatPrice } from '../../utils/format';
-import { categoryPath, useList } from '../../utils/lists';
+import { categoryLabel, categoryPath, useList } from '../../utils/lists';
 import FormModal from '../../components/FormModal';
 import { NewProductModal } from '../products/ProductList';
 import { QrThumb } from '../suppliers/WechatQr';
@@ -171,12 +171,11 @@ export default function BoothDetail() {
               ))}
             </div>
             <div className="sc-label mb-1">Catégorie</div>
-            <p className="mb-3">{booth.sub_category ? [booth.category, booth.section, booth.sub_category !== booth.section && booth.sub_category].filter(Boolean).join(' › ') : '—'}</p>
+            <p className="mb-3">{categoryLabel(booth) || '—'}</p>
             <div className="sc-label mb-1">Commentaire de visite</div>
             <div className="booth-comment flex-grow-1">{booth.comment ? `« ${booth.comment} »` : <span className="text-secondary">Aucun commentaire.</span>}</div>
-            <div className="d-flex justify-content-between align-items-center mt-3">
+            <div className="mt-3">
               <span className="sc-label">{booth.zone ? `Zone ${booth.zone} · halls ${ZONE_HALLS[booth.zone]}` : `Hall ${booth.hall}`}</span>
-              <Link to="/plan-du-salon" className="fw-semibold">Plan du salon <ArrowRightOutlined /></Link>
             </div>
           </section>
         </Col>

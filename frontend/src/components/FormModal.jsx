@@ -47,7 +47,7 @@ export default function FormModal({ open, title, initialValues, onSubmit, onSave
       onCancel={onCancel} onOk={submit} okText="Enregistrer" okButtonProps={{ icon: <CheckOutlined /> }}
       cancelText="Annuler" confirmLoading={saving} width={width} className={className} forceRender>
       {error && <Alert type="error" message={error} showIcon className="mb-3" />}
-      <Form form={form} layout="vertical" requiredMark={false}>
+      <Form form={form} layout="vertical">
         {children}
       </Form>
     </Modal>

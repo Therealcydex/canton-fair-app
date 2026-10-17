@@ -10,11 +10,11 @@ acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 |---|---|---|---|
 | BF01 | Login, inactive users refused | À valider | API, navigateur (web, mobile) |
 | BF02 | Companies with a branch (admin) | À valider | API |
-| BF03 | Users (admin): create, edit, activate, delete | À valider | API, navigateur (web) |
+| BF03 | Users (admin): create, edit, activate, delete; level 1-5 (D56) | À valider | API, navigateur (web) |
 | BF04 | Suppliers, province from the list, booths and % visited | À valider | API, navigateur (web, mobile); D40 web pages: search by phone, sorting, supplier page tabs (contacts with QR, stands visited / total updated by the switch, products) in the browser on the local database |
 | BF05 | Contacts and their WeChat QR code (D33, D34: scanned) | À valider | API (scanned content: refusals, save, replaces a photo, has_qr, CSV), téléphone (scanner tested on a phone over https by the user, 2026-10-15); web picture reading not checked by hand yet |
 | BF06 | Category tree | Remplacé | Canton Fair list, read only: API, navigateur |
-| BF07 | Booths, booth code, Canton category of the phase | À valider | API, navigateur (web: refused overlap, creation, edit) |
+| BF07 | Booths, booth code, Canton category of the phase; hall 1-18, floor 0-4 (D56) | À valider | API, navigateur (web: refused overlap, creation, edit) |
 | BF08 | "To visit" list | À valider | API, navigateur (web, mobile); mobile one-tap "visited" (D39): tap, undo, refused save put back, reload, "Masquer visités", in the browser on the local database |
 | BF09 | Visit log | Remplacé | "Visited" flag: API, navigateur (web, mobile) |
 | BF10 | Products, price, shipping type | À valider | API, navigateur (web: refused price shown, mobile) |
@@ -58,4 +58,5 @@ acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 | `backend/sql/update_fair_plan.sql` | `npm run db:update-fair-plan` | D42: `suppliers.cantonfair_url`, table `section_halls`, `v_suppliers` refreshed; D48: `area`, `position` and the key (phase, section, area). Each step runs only if still needed. Done on the remote `Smart360_copy` on 2026-10-15 |
 | `backend/sql/update_product_booth.sql` | `npm run db:update-product-booth` | D43, after D38: `products.booth_id` and `v_products` with the booth code. Each step runs only if still needed. Done on the remote `Smart360_copy` on 2026-10-15 |
 | `backend/sql/fair_plan_140.js` | `npm run db:add-fair-plan` | D48, after `db:update-fair-plan` (which adds `area` and `position`): the official 140th plan, 57 sections in 59 rows; a section an admin corrected is kept. Done on the remote `Smart360_copy` on 2026-10-15 |
+| `backend/sql/update_level_floor.js` | `npm run db:update-level-floor` | D56: booths take floor 0 (`chk_booths_floor` 0-4), `users.level` converted (Acheteur 2, Chef des achats 4, Administrateur 5) to TINYINT 1-5 (`chk_users_level`). Each step only if needed; it stops if a level is left that it cannot convert. Run on the local `sourcing_db` on 2026-10-17; **still to run on `Smart360_copy`** |
 | `backend/sql/update_product_decision.sql` | `npm run db:update-product-decision` | D38, once, on a database set up before it: decision status, note, who decided and when, who recorded the product and when; `v_products` refreshed. Each step runs only if still needed. Done on the remote `Smart360_copy` on 2026-10-15 |

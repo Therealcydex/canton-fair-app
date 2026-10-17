@@ -20,8 +20,8 @@ const DEMO_PASSWORD = 'demo-sourcing-2026';
 const COMPANY = 'Groupe démo';
 const COMPANY_B = 'Société B (démo)';
 const BUYERS = [
-  { name: 'Amine (acheteur)', username: 'acheteur.a', level: 'Acheteur', company: 'tunis' },
-  { name: 'Karim (acheteur)', username: 'acheteur.b', level: 'Chef des achats', company: 'other' },
+  { name: 'Amine (acheteur)', username: 'acheteur.a', level: 2, company: 'tunis' },
+  { name: 'Karim (acheteur)', username: 'acheteur.b', level: 4, company: 'other' },
 ];
 
 async function call(method, url, token, body) {
@@ -268,7 +268,7 @@ async function load(admin) {
     const created = await call('POST', '/users', admin, { name: b.name, username: b.username, password: DEMO_PASSWORD, level: b.level, company_id: companyIds[b.company] });
     userIds.push(created.data.id);
   }
-  await call('POST', '/users', admin, { name: 'Sarra (acheteuse)', username: 'sarra.demo', password: DEMO_PASSWORD, level: 'Acheteur', company_id: companyIds.sfax, is_active: false });
+  await call('POST', '/users', admin, { name: 'Sarra (acheteuse)', username: 'sarra.demo', password: DEMO_PASSWORD, level: 2, company_id: companyIds.sfax, is_active: false });
   const tokens = [];
   for (const b of BUYERS) tokens.push(await login(b.username, DEMO_PASSWORD));
 

@@ -34,8 +34,10 @@ async function validateUser(body, existing) {
     return refuse(400, "Nom d'utilisateur : 3 à 50 caractères (lettres, chiffres, . _ -)");
   }
 
-  const level = clean(pick('level'));
-  if (level && level.length > 50) return refuse(400, 'Le niveau dépasse 50 caractères');
+  // D56: the level is a number from 1 to 5, or none.
+  const levelRaw = clean(pick('level'));
+  if (levelRaw && !/^[1-5]$/.test(levelRaw)) return refuse(400, 'Le niveau va de 1 à 5');
+  const level = levelRaw ? Number(levelRaw) : null;
 
   const role = (clean(pick('role')) || BUYER_ROLE).toUpperCase();
   if (!ROLES.includes(role)) return refuse(400, `Rôle : ${ROLES.join(' ou ')}`);

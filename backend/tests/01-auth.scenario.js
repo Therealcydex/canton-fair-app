@@ -26,9 +26,11 @@ module.exports = async (ctx) => {
   expect('sign-up companies route removed', await api('GET', '/signup/companies'), 404);
   const created = expect('admin creates an inactive account', await api('POST', '/users', {
     token: adminToken,
-    body: { name: `${PREFIX} Nouveau`, username: `${PREFIX}_new1`, password, level: 'Acheteur', company_id: companies.A, is_active: false },
+    body: { name: `${PREFIX} Nouveau`, username: `${PREFIX}_new1`, password, level: 2, company_id: companies.A, is_active: false },
   }), 200);
   const newId = created.body.data?.id;
+  const newUser = (await api('GET', '/users?pending=1', { token: adminToken })).body.data.find((u) => u.id === newId);
+  check('the level is stored as a number (D56)', newUser?.level === 2);
   expect('inactive account cannot log in', await api('POST', '/login', { body: { username: `${PREFIX}_new1`, password } }), 403);
   expect('buyer lists inactive accounts', await api('GET', '/users?pending=1', { token: tokens.buyerA }), 403);
   expect('buyer activates an account', await api('PUT', `/users/${newId}`, { token: tokens.buyerA, body: { is_active: 1 } }), 403);
@@ -43,6 +45,12 @@ module.exports = async (ctx) => {
   expect('buyer lists users', await api('GET', '/users', { token: tokens.buyerA }), 403);
   expect('buyer creates a user', await api('POST', '/users', { token: tokens.buyerA, body: { name: 'X', username: `${PREFIX}_x1`, password } }), 403);
   expect('unknown role', await api('POST', '/users', { token: adminToken, body: { name: 'X', username: `${PREFIX}_x1`, password, role: 'CHEF' } }), 400);
+  // D56: the level goes from 1 to 5, or none.
+  expect('level 6', await api('POST', '/users', { token: adminToken, body: { name: 'X', username: `${PREFIX}_x1`, password, level: 6 } }), 400);
+  expect('level 0', await api('POST', '/users', { token: adminToken, body: { name: 'X', username: `${PREFIX}_x1`, password, level: 0 } }), 400);
+  expect('level as a job title', await api('POST', '/users', { token: adminToken, body: { name: 'X', username: `${PREFIX}_x1`, password, level: 'Acheteur' } }), 400);
+  expect('level changed to 5', await api('PUT', `/users/${newId}`, { token: adminToken, body: { level: '5' } }), 200);
+  expect('level cleared', await api('PUT', `/users/${newId}`, { token: adminToken, body: { level: null } }), 200);
   expect('short password', await api('POST', '/users', { token: adminToken, body: { name: 'X', username: `${PREFIX}_x1`, password: 'court' } }), 400);
   expect('duplicate username', await api('POST', '/users', { token: adminToken, body: { name: 'X', username: `${PREFIX}_buyerB`, password } }), 409);
   expect('unknown company', await api('POST', '/users', { token: adminToken, body: { name: 'X', username: `${PREFIX}_x1`, password, company_id: 999999 } }), 400);

@@ -70,7 +70,7 @@ async function main() {
     const hash = await bcrypt.hash(password, 10);
     await conn.query(
       `INSERT INTO users (name, username, password_hash, level, role, is_active, company_id)
-       VALUES ('Administrateur', ?, ?, 'Administrateur', 'ADMIN', 1, NULL)`,
+       VALUES ('Administrateur', ?, ?, 5, 'ADMIN', 1, NULL)`,
       [username, hash]
     );
     console.log(`Admin user "${username}" created`);

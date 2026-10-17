@@ -1,4 +1,4 @@
-import { categoryIdOf, categoryOptions, categoryPath } from './lists';
+import { categoryIdOf, categoryLabel, categoryOptions, categoryParent, categoryPath } from './lists';
 
 const P3 = 'Phase 3 (Oct.31 - Nov.4)';
 const rows = [
@@ -18,4 +18,12 @@ test('a section without sub-categories is the last level of the menu', () => {
   expect(categoryIdOf(['Health & Recreation', 3])).toBe(3);
   expect(categoryIdOf(['Health & Recreation', 'Food', 2])).toBe(2);
   expect(categoryIdOf(undefined)).toBeNull();
+});
+
+test('a bare section is not repeated in the labels', () => {
+  expect(categoryLabel(rows[0])).toBe('Health & Recreation › Food › Bakery food');
+  expect(categoryLabel(rows[2])).toBe('Health & Recreation › Rural Vitalization');
+  expect(categoryLabel({ sub_category: null })).toBe('');
+  expect(categoryParent(rows[0])).toBe('Health & Recreation › Food');
+  expect(categoryParent(rows[2])).toBe('Health & Recreation');
 });

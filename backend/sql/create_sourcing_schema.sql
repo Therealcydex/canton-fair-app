@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS users (
     name           VARCHAR(150) NOT NULL,
     username       VARCHAR(50)  NOT NULL,                          -- D22: login
     password_hash  VARCHAR(255) NOT NULL,                          -- D22: bcrypt
-    level          VARCHAR(50),
+    level          TINYINT NULL,                                   -- D56: 1 to 5, or none
+    CONSTRAINT chk_users_level CHECK (level BETWEEN 1 AND 5),
     role           VARCHAR(50),                                    -- 'ADMIN' or 'ACHETEUR'
     is_active      TINYINT(1) NOT NULL DEFAULT 1,                  -- 0 = sign-up waiting for the admin
     company_id     INT,
@@ -68,8 +69,9 @@ CREATE TABLE IF NOT EXISTS contacts (
 CREATE TABLE IF NOT EXISTS booths (
     id            INT AUTO_INCREMENT PRIMARY KEY,
     phase         TINYINT  NOT NULL CHECK (phase BETWEEN 1 AND 3),
-    hall          TINYINT  NOT NULL,
-    floor         TINYINT  NOT NULL CHECK (floor BETWEEN 1 AND 4),
+    hall          TINYINT  NOT NULL,                     -- D56: 1-18, checked by the API
+    floor         TINYINT  NOT NULL,
+    CONSTRAINT chk_booths_floor CHECK (floor BETWEEN 0 AND 4),  -- D56: floor 0 (ground level)
     letter        CHAR(1)  NULL CHECK (letter BETWEEN 'A' AND 'Z'),  -- NULL with num_start: only hall.floor known
     num_start     SMALLINT NULL,
     num_end       SMALLINT NULL,                         -- NULL if single booth

@@ -59,6 +59,14 @@ export const categoryPath = (rows, id) => {
   return isBareSection(rows, r) ? [r.category, r.id] : [r.category, r.section, r.id];
 };
 
+// A category row, or a booth with its category, as "Category › Section › Sub-category"; a bare
+// section is not repeated: "Health & Recreation › Rural Vitalization" (D54). '' without category.
+export const categoryLabel = (r) => (r?.sub_category
+  ? [r.category, r.section, r.sub_category !== r.section && r.sub_category].filter(Boolean).join(' › ') : '');
+
+// What sits above the sub-category, for a tooltip over it: the category alone for a bare section.
+export const categoryParent = (r) => (r.sub_category === r.section ? r.category : `${r.category} › ${r.section}`);
+
 // Cascader path -> the category row id: always its last value.
 export const categoryIdOf = (path) => (path?.length ? path[path.length - 1] : null);
 

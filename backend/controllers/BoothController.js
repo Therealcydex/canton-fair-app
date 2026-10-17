@@ -5,11 +5,11 @@ const { padBoothNumbers } = require('../utils/halls');
 const { loadBooth } = require('../utils/scope');
 
 // The limits of the CHECK constraints and column types of schema v2, checked here first so the
-// user gets a French message instead of a database error.
+// user gets a French message instead of a database error. D56: halls 1-18, floors 0-4.
 const BOOTH_FIELDS = {
   phase: { label: 'Phase', type: 'int', required: true, min: 1, maxValue: 3 },
-  hall: { label: 'Hall', type: 'int', required: true, min: 1, maxValue: 127 },
-  floor: { label: 'Étage', type: 'int', required: true, min: 1, maxValue: 4 },
+  hall: { label: 'Hall', type: 'int', required: true, min: 1, maxValue: 18 },
+  floor: { label: 'Étage', type: 'int', required: true, min: 0, maxValue: 4 },
   letter: { label: 'Lettre', type: 'string', max: 1, upper: true },
   num_start: { label: 'Numéro de début', type: 'int', min: 1, maxValue: 32767 },
   num_end: { label: 'Numéro de fin', type: 'int', min: 1, maxValue: 32767 },
@@ -111,8 +111,8 @@ exports.list = handle('Booth list', async (req, res) => {
   let where = '1=1';
   for (const key of ['supplier_id', 'phase', 'hall', 'floor', 'category_id']) {
     if (req.query[key] !== undefined && req.query[key] !== '') {
-      const n = toId(req.query[key]);
-      if (!n) return fail(res, 400, `Filtre ${key} invalide`);
+      const n = key === 'floor' && req.query.floor === '0' ? 0 : toId(req.query[key]); // D56: floor 0
+      if (n === null) return fail(res, 400, `Filtre ${key} invalide`);
       where += ` AND v.${key} = ?`;
       params.push(n);
     }

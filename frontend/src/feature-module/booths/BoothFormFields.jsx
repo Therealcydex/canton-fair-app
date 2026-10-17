@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { Cascader, Col, Form, Input, InputNumber, Row, Select, Switch } from 'antd';
+import { App, Button, Cascader, Col, Form, Input, InputNumber, Row, Select, Switch } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
 import { API_BASE_URL } from '../../config/config';
+import { apiError } from '../../utils/apiError';
 import { categoryIdOf, categoryOptions, useList } from '../../utils/lists';
 import { hallsOf, useFairPlan } from '../../utils/fairPlan';
 
-// Fields of the booth form. The server checks the same rules (phase 1-3, floor 1-4, letter A-Z,
+// Fields of the booth form. The server checks the same rules (phase 1-3, hall 1-18, floor 0-4 (D56), letter A-Z,
 // letter and number together (D32), a category of the booth's phase) and refuses a booth that
 // overlaps another one (D26).
 
@@ -40,8 +42,54 @@ const describe = ({ hall, floor, letter, num_start: start, num_end: end }) => {
   return parts.filter(Boolean).join(' · ');
 };
 
-export default function BoothFormFields({ lockSupplier }) {
+// The booth's supplier: pick one, or type a name that is not in the list and create it there.
+function SupplierSelect({ value, onChange, disabled }) {
+  const { message } = App.useApp();
   const [suppliers, setSuppliers] = useState([]);
+  const [search, setSearch] = useState('');
+  const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    axios.get(`${API_BASE_URL}/suppliers`).then((r) => setSuppliers(r.data.data)).catch(() => {});
+  }, []);
+
+  const name = search.trim();
+  const known = suppliers.some((s) => s.name.toLowerCase() === name.toLowerCase());
+  const create = async () => {
+    setAdding(true);
+    try {
+      const res = await axios.post(`${API_BASE_URL}/suppliers`, { name });
+      const created = res.data.data;
+      setSuppliers((list) => [...list, created]);
+      setSearch('');
+      onChange(created.id);
+      message.success(`Fournisseur « ${created.name} » créé`);
+    } catch (err) {
+      message.error(apiError(err, 'Erreur lors de la création du fournisseur'));
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  return (
+    <Select showSearch allowClear optionFilterProp="label" disabled={disabled} placeholder="Choisir ou créer un fournisseur"
+      value={value} onChange={onChange} searchValue={search} onSearch={setSearch}
+      options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+      popupRender={(menu) => (
+        <>
+          {menu}
+          {name && !known && (
+            <Button type="link" icon={<PlusOutlined />} loading={adding} onClick={create} className="w-100 text-start">
+              Créer le fournisseur « {name} »
+            </Button>
+          )}
+        </>
+      )} />
+  );
+}
+
+// `withSupplier` (D57): the supplier is chosen when the booth is edited, not when it is added.
+export default function BoothFormFields({ lockSupplier, withSupplier = true }) {
   const categories = useList('canton-categories');
   const phase = Form.useWatch('phase');
   const categoryPath = Form.useWatch('category_path');
@@ -50,19 +98,16 @@ export default function BoothFormFields({ lockSupplier }) {
   const section = categories.find((r) => r.id === categoryIdOf(categoryPath))?.section;
   const sectionHalls = section ? hallsOf(plan, phase, section) : null;
 
-  useEffect(() => {
-    axios.get(`${API_BASE_URL}/suppliers`).then((r) => setSuppliers(r.data.data)).catch(() => {});
-  }, []);
-
   // The Canton Fair categories are per phase: only those of the chosen phase are offered.
   const options = useMemo(() => categoryOptions(categories, phase), [categories, phase]);
 
   return (
     <>
-      <Form.Item name="supplier_id" label="Fournisseur">
-        <Select showSearch allowClear optionFilterProp="label" disabled={lockSupplier} placeholder="Aucun"
-          options={suppliers.map((s) => ({ value: s.id, label: s.name }))} />
-      </Form.Item>
+      {withSupplier && (
+        <Form.Item name="supplier_id" label="Fournisseur">
+          <SupplierSelect disabled={lockSupplier} />
+        </Form.Item>
+      )}
       <Row gutter={12}>
         <Col xs={12} sm={8}>
           <Form.Item name="phase" label="Phase" rules={[{ required: true, message: 'Phase obligatoire' }]}>
@@ -71,12 +116,12 @@ export default function BoothFormFields({ lockSupplier }) {
         </Col>
         <Col xs={12} sm={8}>
           <Form.Item name="hall" label="Hall" rules={[{ required: true, message: 'Hall obligatoire' }]}>
-            <InputNumber min={1} max={127} className="w-100" />
+            <InputNumber min={1} max={18} className="w-100" />
           </Form.Item>
         </Col>
         <Col xs={12} sm={8}>
           <Form.Item name="floor" label="Étage" rules={[{ required: true, message: 'Étage obligatoire' }]}>
-            <Select options={[1, 2, 3, 4].map((n) => ({ value: n, label: String(n) }))} />
+            <Select options={[0, 1, 2, 3, 4].map((n) => ({ value: n, label: String(n) }))} />
           </Form.Item>
         </Col>
         <Col xs={12} sm={8}>

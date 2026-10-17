@@ -7,7 +7,7 @@ import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import FormModal from '../../components/FormModal';
 import BoothFormFields, { boothPayload } from './BoothFormFields';
-import { categoryPath, useList } from '../../utils/lists';
+import { categoryParent, categoryPath, useList } from '../../utils/lists';
 import { boothLabel } from '../../utils/format';
 
 const two = (n) => String(n).padStart(2, '0'); // D50: booth numbers on 2 digits, as on the badges
@@ -152,7 +152,7 @@ export default function BoothList({ filters, supplierId, planning, checklist, hi
         <>
           {b.supplier_id ? <Link to={`/fournisseurs/${b.supplier_id}`} className="text-body">{v}</Link> : '—'}
           {b.sub_category && (
-            <Tooltip title={`${b.category} › ${b.section}`}>
+            <Tooltip title={categoryParent(b)}>
               <div className="small text-secondary">{b.sub_category}</div>
             </Tooltip>
           )}
@@ -222,15 +222,16 @@ export default function BoothList({ filters, supplierId, planning, checklist, hi
       </FormModal>
 
       <FormModal open={creating} title="Nouveau booth" width={640}
-        initialValues={{ supplier_id: supplierId, visited: false, floor: 1 }}
+        initialValues={{ visited: false, floor: 1 }}
         onCancel={() => setCreating(false)}
-        onSubmit={(values) => axios.post(`${API_BASE_URL}/booths`, boothPayload(values))}
+        // D57: no supplier field when adding; from a supplier's page the booth is that supplier's.
+        onSubmit={(values) => axios.post(`${API_BASE_URL}/booths`, boothPayload({ ...values, supplier_id: supplierId }))}
         onSaved={(res) => {
           setCreating(false);
           message.success(`Booth ${boothLabel(res.data.data.phase, res.data.data.booth_code)} créé`);
           if (supplierId) changed(); else navigate(`/booths/${res.data.data.id}`);
         }}>
-        <BoothFormFields lockSupplier={!!supplierId} />
+        <BoothFormFields withSupplier={false} />
       </FormModal>
     </>
   );
