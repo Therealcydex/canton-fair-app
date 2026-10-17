@@ -1428,18 +1428,26 @@ code {
 }
 
 /* D60: on a touch screen antd shows the clear (×) of a select once it has a value, but at 12 px,
-   too small for a finger. Make it bigger there, in place of the arrow. */
+   too small for a finger. There it becomes a 28 px target with a 20 px icon, in place of the
+   arrow. "html body" outranks antd's own rules, which are added after this file. */
 @media (hover: none) {
-  .ant-select .ant-select-clear,
-  .ant-cascader .ant-select-clear {
+  html body .ant-select .ant-select-clear {
     opacity: 1;
-    font-size: 16px;
-    width: 18px;
-    height: 18px;
-    margin-top: -9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin-top: -14px;
+    inset-inline-end: 4px;
+    font-size: 20px;
   }
-  .ant-select-allow-clear:has(.ant-select-clear) .ant-select-arrow {
+  html body .ant-select-allow-clear:has(.ant-select-clear) .ant-select-arrow {
     opacity: 0;
+  }
+  /* Room for the bigger ×, so it does not cover the end of the chosen value. */
+  html body .ant-select-allow-clear:has(.ant-select-clear) .ant-select-selector {
+    padding-inline-end: 36px;
   }
 }
 
