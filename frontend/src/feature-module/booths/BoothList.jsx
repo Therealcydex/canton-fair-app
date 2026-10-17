@@ -6,8 +6,10 @@ import { CheckOutlined, LinkOutlined, PlusOutlined } from '@ant-design/icons';
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import FormModal from '../../components/FormModal';
-import BoothFormFields, { boothPayload } from './BoothFormFields';
-import { categoryPath, useList } from '../../utils/lists';
+import BoothFormFields, { boothInitialValues, boothPayload, shareIds } from './BoothFormFields';
+import { useAuth } from '../../context/AuthContext';
+import { isAdmin, isViewer } from '../../utils/access';
+import { companyLabel, useList } from '../../utils/lists';
 import { boothLabel } from '../../utils/format';
 
 const two = (n) => String(n).padStart(2, '0'); // D50: booth numbers on 2 digits, as on the badges
@@ -73,6 +75,13 @@ export default function BoothList({ filters, supplierId, planning, checklist, hi
   const [editing, setEditing] = useState(null); // the booth being edited
   const [pageSize, setPageSize] = useState(20);
   const categories = useList('canton-categories');
+  const { user } = useAuth();
+  const viewer = isViewer(user); // D62: read-only, only its shared booths
+  const admin = isAdmin(user);
+  const [companies, setCompanies] = useState([]);
+  useEffect(() => {
+    if (admin) axios.get(`${API_BASE_URL}/companies`).then((r) => setCompanies(r.data.data)).catch(() => {});
+  }, [admin]);
 
   const query = JSON.stringify({ ...filters, supplier_id: supplierId });
   // Only the answer to the latest request is shown: when the filters change quickly (the page
@@ -150,7 +159,7 @@ export default function BoothList({ filters, supplierId, planning, checklist, hi
       title: 'Fournisseur rattaché', dataIndex: 'supplier_name',
       render: (v, b) => (
         <>
-          {b.supplier_id ? <Link to={`/fournisseurs/${b.supplier_id}`} className="text-body">{v}</Link> : '—'}
+          {b.supplier_id ? (viewer ? v : <Link to={`/fournisseurs/${b.supplier_id}`} className="text-body">{v}</Link>) : '—'}
           {b.sub_category && (
             <Tooltip title={`${b.category} › ${b.section}`}>
               <div className="small text-secondary">{b.sub_category}</div>
@@ -166,7 +175,21 @@ export default function BoothList({ filters, supplierId, planning, checklist, hi
         return <Tag color={n ? 'blue' : 'default'} className="m-0">{n} produit{n > 1 ? 's' : ''}</Tag>;
       },
     },
-    {
+    admin && {
+      title: 'Partagé avec', key: 'shares',
+      render: (_, b) => {
+        const ids = shareIds(b);
+        if (!ids.length) return <span className="text-secondary small">Non partagé</span>;
+        return ids.map((id) => {
+          const c = companies.find((x) => x.id === id);
+          return <Tag key={id} color="purple" className="mb-1">{c ? companyLabel(c) : `Société ${id}`}</Tag>;
+        });
+      },
+    },
+    viewer ? {
+      title: 'Statut', dataIndex: 'visited',
+      render: (v) => <Tag color={v ? 'default' : 'orange'} className="m-0">{v ? 'Visité' : 'À visiter'}</Tag>,
+    } : {
       title: 'Statut', dataIndex: 'visited',
       render: (v, b) => (
         <Tooltip title={v ? 'Cliquer pour remettre à visiter' : 'Cliquer pour marquer visité'}>
@@ -178,7 +201,7 @@ export default function BoothList({ filters, supplierId, planning, checklist, hi
       ),
     },
     { title: 'Commentaire', dataIndex: 'comment', ellipsis: true, render: (v) => v || '—' },
-    {
+    !viewer && {
       title: 'Actions', key: 'actions', align: 'right',
       render: (_, b) => (
         <span className="text-nowrap">
@@ -195,7 +218,7 @@ export default function BoothList({ filters, supplierId, planning, checklist, hi
 
   return (
     <>
-      {createOpen === undefined && (
+      {createOpen === undefined && !viewer && (
         <div className="d-flex justify-content-end mb-2">
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>Nouveau booth</Button>
         </div>
@@ -214,7 +237,7 @@ export default function BoothList({ filters, supplierId, planning, checklist, hi
       )}
 
       <FormModal open={!!editing} title={editing ? `Modifier le booth ${boothLabel(editing.phase, editing.booth_code)}` : ''} width={640}
-        initialValues={editing && { ...editing, visited: !!editing.visited, category_path: categoryPath(categories, editing.category_id) }}
+        initialValues={boothInitialValues(editing, categories)}
         onCancel={() => setEditing(null)}
         onSubmit={(values) => axios.put(`${API_BASE_URL}/booths/${editing.id}`, boothPayload(values))}
         onSaved={() => { setEditing(null); message.success('Booth modifié'); changed(); }}>

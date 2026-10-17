@@ -5,6 +5,8 @@ import { ZONE_HALLS } from '../../utils/fairPlan';
 import { categoryIdOf, categoryOptions, useList } from '../../utils/lists';
 import BoothList, { boothNumber } from './BoothList';
 import PageHeader from '../../components/PageHeader';
+import { useAuth } from '../../context/AuthContext';
+import { isViewer } from '../../utils/access';
 import { boothLabel } from '../../utils/format';
 
 const ZONES = Object.entries(ZONE_HALLS).map(([zone, halls]) => ({ zone, halls }));
@@ -33,6 +35,8 @@ export default function Booths({ planning = false }) {
   const [search, setSearch] = useState('');
   const [rows, setRows] = useState([]);
   const [creating, setCreating] = useState(false);
+  const { user } = useAuth();
+  const viewer = isViewer(user); // D62: the booths shared with its company, read-only
   const options = useMemo(() => categoryOptions(categories, filters.phase), [categories, filters.phase]);
   const set = (key) => (value) => setFilters((f) => ({ ...f, [key]: value ?? undefined }));
   const reset = () => { setFilters({}); setSearch(''); };
@@ -50,7 +54,7 @@ export default function Booths({ planning = false }) {
         actions={(
           <>
             <Button icon={<DownloadOutlined />} disabled={!rows.length} onClick={() => exportCsv(rows)}>Exporter la liste</Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>Nouveau booth</Button>
+            {!viewer && <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>Nouveau booth</Button>}
           </>
         )} />
 

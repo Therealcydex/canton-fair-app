@@ -9,7 +9,7 @@ const { deleteImages } = require('../utils/upload');
 const BASE = `http://localhost:${process.env.PORT || 3000}/api`;
 const PREFIX = 'TEST';
 const TABLES = [
-  'companies', 'users', 'suppliers', 'contacts', 'booths', 'products', 'product_images', 'product_shares', 'section_halls',
+  'companies', 'users', 'suppliers', 'contacts', 'booths', 'products', 'product_images', 'product_shares', 'booth_shares', 'section_halls',
 ];
 
 let failures = 0;

@@ -12,6 +12,7 @@ import PageHeader from '../../components/PageHeader';
 const ROLES = [
   { value: 'ACHETEUR', label: 'Acheteur' },
   { value: 'ADMIN', label: 'Administrateur' },
+  { value: 'LECTEUR', label: 'Lecteur (société)' }, // D62: reads the booths shared with its company
 ];
 const roleLabel = (v) => ROLES.find((r) => r.value === v)?.label || v;
 const userCompany = (u) => (u.company_id ? companyLabel({ name: u.company_name, branch: u.company_branch }) : '');

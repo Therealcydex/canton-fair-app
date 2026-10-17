@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Alert, App, Button, Col, Image, Input, Popconfirm, Row, Select, Spin, Tag, Upload } from 'antd';
+import { Alert, App, Button, Col, Image, Input, Popconfirm, Row, Spin, Tag, Upload } from 'antd';
 import {
   BankOutlined, CheckCircleOutlined, DeleteOutlined, EditOutlined, EnvironmentOutlined, FileTextOutlined, HistoryOutlined,
-  InboxOutlined, PictureOutlined, PlusOutlined, ShareAltOutlined, SolutionOutlined,
+  InboxOutlined, PictureOutlined, PlusOutlined, SolutionOutlined,
 } from '@ant-design/icons';
 import { API_BASE_URL, fileUrl } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import { boothLabel, formatPrice } from '../../utils/format';
-import { companyLabel } from '../../utils/lists';
 import { useAuth } from '../../context/AuthContext';
 import { isAdmin } from '../../utils/access';
 import { STATUS, formatDateTime } from '../../utils/decision';
@@ -79,17 +78,15 @@ function DecisionPanel({ product, onDecide }) {
 }
 
 // A product (BF10-BF14), laid out like the Stitch "Fiche Produit" screen (D49): photos, commercial
-// information, decision (D38), who recorded and decided it, and the companies it is shared with.
+// information, decision (D38), who recorded and decided it. D62: products are no longer shared.
 export default function ProductDetail() {
   const { id } = useParams();
   const { message } = App.useApp();
   const navigate = useNavigate();
   const [product, setProduct] = useState(null);
-  const [companies, setCompanies] = useState([]);
   const [loadError, setLoadError] = useState(null);
   const [editing, setEditing] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [sharing, setSharing] = useState(false);
   const [photo, setPhoto] = useState(0); // the photo shown large
 
   const load = useCallback(async () => {
@@ -103,9 +100,6 @@ export default function ProductDetail() {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => {
-    axios.get(`${API_BASE_URL}/companies`).then((r) => setCompanies(r.data.data)).catch(() => {});
-  }, []);
 
   const call = async (request, success, fallback) => {
     try {
@@ -138,13 +132,6 @@ export default function ProductDetail() {
     setUploading(true);
     await call(() => axios.post(`${API_BASE_URL}/products/${id}/images`, form), 'Photos ajoutées', "Erreur lors de l'envoi des photos");
     setUploading(false);
-  };
-
-  // The multi-select sends the whole list; the server replaces it in one transaction.
-  const setShares = async (companyIds) => {
-    setSharing(true);
-    await call(() => axios.put(`${API_BASE_URL}/products/${id}/shares`, { company_ids: companyIds }), 'Partage enregistré', 'Erreur lors du partage');
-    setSharing(false);
   };
 
   const decide = (status, note) => call(
@@ -291,23 +278,6 @@ export default function ProductDetail() {
             </ul>
           </Panel>
 
-          <Panel icon={<ShareAltOutlined />} title="Partage avec les sociétés du groupe">
-            <p className="small text-secondary mb-2">Les sociétés du groupe à qui ce produit est destiné.</p>
-            <div className="d-flex flex-wrap gap-2 mb-3">
-              {product.shares.length === 0 && <span className="small text-secondary">Aucune société pour l'instant.</span>}
-              {product.shares.map((sh) => (
-                <Tag key={sh.company_id} className="m-0 py-1 px-2">
-                  <span className="share-dot rounded-circle" style={{ background: 'var(--sc-primary)' }} />
-                  {companyLabel({ name: sh.company_name, branch: sh.company_branch })}
-                </Tag>
-              ))}
-            </div>
-            <div className="sc-label mb-1">Modifier les partages</div>
-            <Select mode="multiple" allowClear placeholder="Aucune société" style={{ width: '100%' }}
-              loading={sharing} disabled={sharing} optionFilterProp="label"
-              value={product.shares.map((sh) => sh.company_id)} onChange={setShares}
-              options={companies.map((c) => ({ value: c.id, label: companyLabel(c) }))} />
-          </Panel>
         </Col>
       </Row>
 

@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 const { fail } = require('../utils/http');
-const { isAdmin } = require('../utils/access');
+const { isAdmin, isViewer } = require('../utils/access');
 
 // No default secret: without JWT_SECRET every protected route refuses the request.
 const secret = () => process.env.JWT_SECRET;
@@ -49,4 +49,10 @@ const requireAdmin = (req, res, next) => {
   return fail(res, 403, "Action réservée à l'administrateur");
 };
 
-module.exports = { signToken, requireAuth, requireAdmin };
+// D62: 403 for a viewer (LECTEUR), who only reads the booths shared with its company.
+const refuseViewer = (req, res, next) => {
+  if (!isViewer(req.user)) return next();
+  return fail(res, 403, 'Accès en lecture seule');
+};
+
+module.exports = { signToken, requireAuth, requireAdmin, refuseViewer };

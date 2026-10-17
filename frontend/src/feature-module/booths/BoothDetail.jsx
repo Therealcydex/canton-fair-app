@@ -11,11 +11,13 @@ import { apiError } from '../../utils/apiError';
 import { STATUS } from '../../utils/decision';
 import { ZONE_HALLS } from '../../utils/fairPlan';
 import { boothLabel, formatPrice } from '../../utils/format';
-import { categoryPath, useList } from '../../utils/lists';
+import { useList } from '../../utils/lists';
 import FormModal from '../../components/FormModal';
 import { NewProductModal } from '../products/ProductList';
 import { QrThumb } from '../suppliers/WechatQr';
-import BoothFormFields, { boothPayload } from './BoothFormFields';
+import BoothFormFields, { boothInitialValues, boothPayload } from './BoothFormFields';
+import { useAuth } from '../../context/AuthContext';
+import { isViewer } from '../../utils/access';
 import { boothNumber } from './BoothList';
 
 const plural = (n, word) => `${n} ${word}${n > 1 ? 's' : ''}`;
@@ -23,8 +25,12 @@ const initials = (name) => (name || '?').split(/\s+/).filter(Boolean).slice(0, 2
 
 // A booth (BF07, BF08), laid out like the Stitch "Fiche Booth" screen (D49): where it is, its
 // supplier with the contacts and their WeChat QR codes, and the products found there (D43).
+// D62: a viewer (LECTEUR) reads a booth shared with its company: no change, no link to the
+// supplier and product pages, and no decision (the server sends the booth with its products).
 export default function BoothDetail() {
   const { id } = useParams();
+  const { user } = useAuth();
+  const viewer = isViewer(user);
   const { message } = App.useApp();
   const navigate = useNavigate();
   const categories = useList('canton-categories');
@@ -41,6 +47,11 @@ export default function BoothDetail() {
       const { data } = await axios.get(`${API_BASE_URL}/booths/${id}`);
       const b = data.data;
       setBooth(b);
+      if (b.products) { // a viewer's booth comes with its products and supplier
+        setProducts(b.products);
+        setSupplier(b.supplier);
+        return;
+      }
       const [prods, sup] = await Promise.all([
         axios.get(`${API_BASE_URL}/products`, { params: { booth_id: b.id } }),
         b.supplier_id ? axios.get(`${API_BASE_URL}/suppliers/${b.supplier_id}`) : null,
@@ -98,7 +109,7 @@ export default function BoothDetail() {
       title: 'Désignation du produit', dataIndex: 'name',
       render: (v, p) => (
         <>
-          <Link to={`/produits/${p.id}`} className="fw-semibold text-body">{v}</Link>
+          {viewer ? <span className="fw-semibold">{v}</span> : <Link to={`/produits/${p.id}`} className="fw-semibold text-body">{v}</Link>}
           {p.description && <div className="small text-secondary text-truncate" style={{ maxWidth: 360 }}>{p.description}</div>}
         </>
       ),
@@ -109,17 +120,17 @@ export default function BoothDetail() {
       render: (v, p) => <strong className="text-nowrap">{formatPrice(v)}{v != null && p.unit ? ` / ${p.unit}` : ''}</strong>,
     },
     { title: 'Incoterm', dataIndex: 'shipping_type', align: 'center', render: (v) => (v ? <Tag className="m-0">{v}</Tag> : '—') },
-    {
+    !viewer && {
       title: 'Décision', dataIndex: 'status', align: 'center',
       render: (v) => <Tag color={STATUS[v]?.color} className="m-0">{STATUS[v]?.label || v}</Tag>,
     },
-    {
+    !viewer && {
       title: 'Actions', key: 'actions', align: 'right',
       render: (_, p) => (
         <Link to={`/produits/${p.id}`}><Button size="small" className="fw-semibold">Voir la fiche produit <ExportOutlined /></Button></Link>
       ),
     },
-  ];
+  ].filter(Boolean);
 
   return (
     <>
@@ -142,6 +153,7 @@ export default function BoothDetail() {
             </div>
           </div>
         </div>
+        {viewer ? <Tag color="purple" className="m-0 align-self-center">Lecture seule</Tag> : (
         <div className="d-flex flex-wrap gap-2">
           {booth.visited
             ? <Button icon={<UndoOutlined />} onClick={() => setVisited(false)}>Remettre à visiter</Button>
@@ -152,6 +164,7 @@ export default function BoothDetail() {
             <Button type="primary" danger icon={<DeleteOutlined />}>Supprimer</Button>
           </Popconfirm>
         </div>
+        )}
       </div>
 
       <Row gutter={[16, 16]} className="mb-3">
@@ -190,9 +203,11 @@ export default function BoothDetail() {
                     <div className="sc-label">Fournisseur rattaché</div>
                     <h2>{booth.supplier_name}</h2>
                   </div>
-                  <Link to={`/fournisseurs/${booth.supplier_id}`}>
-                    <Button type="primary">Voir la fiche fournisseur <ArrowRightOutlined /></Button>
-                  </Link>
+                  {!viewer && (
+                    <Link to={`/fournisseurs/${booth.supplier_id}`}>
+                      <Button type="primary">Voir la fiche fournisseur <ArrowRightOutlined /></Button>
+                    </Link>
+                  )}
                 </div>
                 <div className="d-flex justify-content-between mb-2">
                   <span className="sc-label">Contacts du fournisseur</span>
@@ -219,15 +234,17 @@ export default function BoothDetail() {
                     </div>
                   ))}
                 </div>
-                <div className="d-flex justify-content-end mt-3">
-                  <Link to={`/contacts?supplier_id=${booth.supplier_id}`} className="fw-semibold">Gérer les contacts <ArrowRightOutlined /></Link>
-                </div>
+                {!viewer && (
+                  <div className="d-flex justify-content-end mt-3">
+                    <Link to={`/contacts?supplier_id=${booth.supplier_id}`} className="fw-semibold">Gérer les contacts <ArrowRightOutlined /></Link>
+                  </div>
+                )}
               </>
             ) : (
               <div className="text-center text-secondary my-auto py-4">
                 <BankOutlined className="fs-3 mb-2" />
                 <p className="mb-2">Ce booth n'a pas encore de fournisseur.</p>
-                <Button icon={<EditOutlined />} onClick={() => setEditing(true)}>Choisir le fournisseur</Button>
+                {!viewer && <Button icon={<EditOutlined />} onClick={() => setEditing(true)}>Choisir le fournisseur</Button>}
               </div>
             )}
           </section>
@@ -241,7 +258,7 @@ export default function BoothDetail() {
             <h2 className="h5 m-0">Produits de ce booth</h2>
             <div className="small text-secondary">Produits trouvés au booth {boothLabel(booth.phase, booth.booth_code)}</div>
           </div>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreatingProduct(true)}>Nouveau produit</Button>
+          {!viewer && <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreatingProduct(true)}>Nouveau produit</Button>}
         </div>
         <Table rowKey="id" columns={productColumns} dataSource={products || []} loading={!products} size="middle"
           pagination={false} scroll={{ x: 'max-content' }} className="sc-table"
@@ -249,14 +266,18 @@ export default function BoothDetail() {
           footer={products?.length ? () => (
             <span className="text-secondary">
               Total : {plural(products.length, 'produit')} rattaché{products.length > 1 ? 's' : ''} au booth {boothLabel(booth.phase, booth.booth_code)}
-              <span className="mx-2">·</span>
-              Retenus : {retained} ({Math.round((retained / products.length) * 100)} %)
+              {!viewer && (
+                <>
+                  <span className="mx-2">·</span>
+                  Retenus : {retained} ({Math.round((retained / products.length) * 100)} %)
+                </>
+              )}
             </span>
           ) : undefined} />
       </section>
 
       <FormModal open={editing} title={`Modifier le booth ${boothLabel(booth.phase, booth.booth_code)}`} width={640}
-        initialValues={{ ...booth, visited: !!booth.visited, category_path: categoryPath(categories, booth.category_id) }}
+        initialValues={boothInitialValues(booth, categories)}
         onCancel={() => setEditing(false)}
         onSubmit={(values) => axios.put(`${API_BASE_URL}/booths/${id}`, boothPayload(values))}
         onSaved={() => { setEditing(false); message.success('Booth modifié'); load(); }}>

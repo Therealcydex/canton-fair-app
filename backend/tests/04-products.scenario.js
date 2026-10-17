@@ -70,28 +70,12 @@ module.exports = async (ctx) => {
   check('its file is deleted', !fs.existsSync(fileOf(img1.image_url)));
   expect('delete it again', await api('DELETE', `/products/${id}/images/${img1.id}`, { token: A }), 404);
 
-  // Sharing with Tarek's companies (BF13-BF14)
-  expect('share without company', await api('POST', `/products/${id}/shares`, { token: A, body: {} }), 400);
-  expect('share with unknown company', await api('POST', `/products/${id}/shares`, { token: A, body: { company_id: 999999 } }), 404);
-  expect('share with company B', await api('POST', `/products/${id}/shares`, { token: A, body: { company_id: companies.B } }), 200);
-  const twice = expect('share twice', await api('POST', `/products/${id}/shares`, { token: A, body: { company_id: companies.B } }), 200);
-  check('shared once', twice.body.data.length === 1);
-  const mineB = expect('company B: shared with my company', await api('GET', '/products?mine=1', { token: B }), 200);
-  check('B sees it', mineB.body.data.some((p) => p.id === id && p.shared_with === `${PREFIX} Société B`));
-  const mineA = await api('GET', '/products?mine=1', { token: A });
-  check('A does not (not shared with A)', !mineA.body.data.some((p) => p.id === id));
-
-  expect('set shares: not a list', await api('PUT', `/products/${id}/shares`, { token: A, body: { company_ids: 3 } }), 400);
-  expect('set shares: invalid id', await api('PUT', `/products/${id}/shares`, { token: A, body: { company_ids: ['x'] } }), 400);
-  expect('set shares: unknown company', await api('PUT', `/products/${id}/shares`, { token: A, body: { company_ids: [companies.A, 999999] } }), 404);
-  const unchanged = await api('GET', `/products/${id}`, { token: A });
-  check('a refused list changes nothing', unchanged.body.data.shares.length === 1);
-  const set = expect('set shares A and B', await api('PUT', `/products/${id}/shares`, { token: A, body: { company_ids: [companies.A, companies.B, companies.A] } }), 200);
-  check('two companies', set.body.data.length === 2);
-  const filtered = expect('filter shared_with A', await api('GET', `/products?shared_with=${companies.A}`, { token: B }), 200);
-  check('filter finds it', filtered.body.data.some((p) => p.id === id));
-  expect('unshare B', await api('DELETE', `/products/${id}/shares/${companies.B}`, { token: B }), 200);
-  expect('unshare B again', await api('DELETE', `/products/${id}/shares/${companies.B}`, { token: B }), 404);
+  // D62: products are no longer shared (booths are): the share routes and filters are gone.
+  expect('product share route removed', await api('POST', `/products/${id}/shares`, { token: A, body: { company_id: companies.B } }), 404);
+  expect('product share list route removed', await api('PUT', `/products/${id}/shares`, { token: A, body: { company_ids: [] } }), 404);
+  expect('bulk product share route removed', await api('POST', '/products/shares', { token: A, body: {} }), 404);
+  const detail = expect('product detail', await api('GET', `/products/${id}`, { token: A }), 200);
+  check('no shares in the product', detail.body.data.shares === undefined && detail.body.data.shared_with === undefined);
 
   // Deleting the supplier deletes its products and their photo files (D28).
   expect('delete supplier with a product', await api('DELETE', `/suppliers/${supplier}`, { token: A }), 200);

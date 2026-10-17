@@ -14,7 +14,7 @@ const FILES = ['china_provinces.sql', 'canton_fair_categories.sql', 'canton_fair
 // The files keep ";" and "--" out of their string values.
 const statementsOf = (file) =>
   fs.readFileSync(path.join(__dirname, file), 'utf8')
-    .split('\n')
+    .split(/\r?\n/) // a Windows checkout has CRLF: "." stops at "\r", so the comment would stay
     .map((line) => line.replace(/--.*$/, ''))
     .join('\n')
     .split(';')

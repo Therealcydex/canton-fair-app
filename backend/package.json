@@ -15,7 +15,8 @@
     "db:add-canton-sections": "node sql/add_canton_sections.js",
     "db:update-fair-plan": "node sql/update_fair_plan.js",
     "db:update-product-booth": "node sql/update_product_booth.js",
-    "db:add-fair-plan": "node sql/add_fair_plan_from_site.js"
+    "db:add-fair-plan": "node sql/add_fair_plan_from_site.js",
+    "db:update-boss-fixes": "node sql/update_boss_fixes.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, refuseViewer } = require('../middleware/auth');
 const { parseImages } = require('../utils/upload');
 const c = require('../controllers/SupplierController');
 
 // Every route below requires a valid token; every user of the group sees every supplier.
-router.use(requireAuth);
+router.use(requireAuth, refuseViewer); // D62: a viewer only reads its shared booths
 
 router.get('/', c.list);
 router.post('/', c.create);

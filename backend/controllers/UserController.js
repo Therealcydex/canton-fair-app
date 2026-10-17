@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const db = require('../config/db');
 const { fail, handle, toId, clean } = require('../utils/http');
-const { ROLES, BUYER_ROLE } = require('../utils/access');
+const { ROLES, BUYER_ROLE, VIEWER_ROLE } = require('../utils/access');
 const { MIN_PASSWORD, USERNAME_RE } = require('./AuthController');
 
 // Admin only (routes/userRoutes.js).
@@ -48,6 +48,8 @@ async function validateUser(body, existing) {
     const [[company]] = await db.query('SELECT id FROM companies WHERE id = ?', [companyId]);
     if (!company) return refuse(400, 'Société introuvable');
   }
+  // D62: a viewer sees the booths shared with its company, so it needs one.
+  if (role === VIEWER_ROLE && !companyId) return refuse(400, 'Un lecteur doit appartenir à une société');
 
   const activeRaw = pick('is_active');
   const isActive = activeRaw === undefined || activeRaw === null ? 1

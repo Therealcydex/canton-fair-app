@@ -3,8 +3,8 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { Alert, App, Button, Col, Form, Input, Popconfirm, Row, Table, Tag } from 'antd';
 import {
-  ApartmentOutlined, DeleteOutlined, EditOutlined, InboxOutlined, PlusOutlined, ReloadOutlined, SearchOutlined,
-  ShareAltOutlined, TeamOutlined,
+  ApartmentOutlined, DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined,
+  ShareAltOutlined, ShopOutlined, TeamOutlined,
 } from '@ant-design/icons';
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
@@ -71,8 +71,8 @@ export default function Companies() {
       render: (v) => <Tag color="blue" icon={<TeamOutlined />} className="m-0">{plural(Number(v) || 0, 'utilisateur')}</Tag>,
     },
     {
-      title: 'Produits partagés', dataIndex: 'shared_products_count', align: 'center',
-      render: (v) => <Tag icon={<InboxOutlined />} className="m-0">{plural(Number(v) || 0, 'produit')}</Tag>,
+      title: 'Booths partagés', dataIndex: 'shared_booths_count', align: 'center',
+      render: (v) => <Tag icon={<ShopOutlined />} className="m-0">{plural(Number(v) || 0, 'booth')}</Tag>,
     },
     {
       title: 'Actions', key: 'actions', align: 'right',
@@ -121,10 +121,10 @@ export default function Companies() {
           <div className="sc-note">
             <ShareAltOutlined className="sc-panel-icon fs-5" />
             <div>
-              <h2 className="h6 mb-1">Partage des produits</h2>
+              <h2 className="h6 mb-1">Partage des booths</h2>
               <p className="mb-0 small text-secondary">
-                Les acheteurs partagent les produits retenus avec les sociétés ; chaque société voit ceux qui lui sont partagés
-                dans l'onglet « Partagés » des <Link to="/produits">Produits</Link>.
+                L'administrateur partage un booth avec une société (« Partager avec » dans la fiche du <Link to="/booths">booth</Link>) ;
+                les lecteurs de cette société le voient en lecture seule.
               </p>
             </div>
           </div>
