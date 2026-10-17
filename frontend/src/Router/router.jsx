@@ -1,6 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import AppLayout from '../components/AppLayout';
-import { RequireAccess, RequireAuth } from '../components/Guards';
+import { RequireAccess, RequireAuth, RequireBuyer } from '../components/Guards';
 import { isAdmin } from '../utils/access';
 import Login from '../feature-module/auth/Login';
 import Accueil from '../feature-module/accueil/Accueil';
@@ -30,14 +30,16 @@ export default function AppRouter() {
         <Route path="/login" element={<Login />} />
         <Route element={<RequireAuth />}>
           <Route element={<AppLayout />}>
+            {/* D62: the only pages of a viewer (LECTEUR), read-only. */}
+            <Route path="/booths" element={<Booths key="all" />} />
+            <Route path="/booths/:id" element={<BoothDetail />} />
+            <Route element={<RequireBuyer />}>
             <Route path="/" element={<Accueil />} />
             <Route path="/fournisseurs" element={<Suppliers />} />
             <Route path="/fournisseurs/:id" element={<SupplierDetail />} />
             <Route path="/contacts" element={<Contacts />} />
             <Route path="/contacts/qr" element={<ContactQrSheet />} />
             <Route path="/a-visiter" element={<Booths planning key="planning" />} />
-            <Route path="/booths" element={<Booths key="all" />} />
-            <Route path="/booths/:id" element={<BoothDetail />} />
             <Route path="/stands" element={<OldBoothLink />} />
             <Route path="/stands/:id" element={<OldBoothLink />} />
             <Route path="/produits" element={<Products />} />
@@ -49,6 +51,7 @@ export default function AppRouter() {
             <Route element={<RequireAccess allow={isAdmin} />}>
               <Route path="/admin/utilisateurs" element={<Users />} />
               <Route path="/admin/societes" element={<Companies />} />
+            </Route>
             </Route>
           </Route>
         </Route>

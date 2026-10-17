@@ -3,6 +3,10 @@ const { fail, handle, toId, clean, likeContains } = require('../utils/http');
 const { validate } = require('../utils/validate');
 const { loadSupplier } = require('../utils/scope');
 const { deleteImages, imageExtension, saveImages } = require('../utils/upload');
+const { parseDataImage } = require('../utils/dataImage');
+
+// D63: the contact's photo, resized by the app to about 256 px.
+const MAX_AVATAR_BYTES = 100 * 1024;
 
 const SUPPLIER_FIELDS = {
   name: { label: 'Nom', type: 'string', required: true, max: 200 },
@@ -90,7 +94,7 @@ exports.getById = handle('Supplier getById', async (req, res) => {
   if (!r.row) return fail(res, r.status, r.message);
   const [[supplier]] = await db.query(`${SUPPLIER_SELECT} WHERE v.id = ?`, [r.row.id]);
   const [contacts] = await db.query(
-    'SELECT id, name, phone, email, wechat_qr FROM contacts WHERE supplier_id = ? ORDER BY name',
+    'SELECT id, name, phone, email, wechat_qr, avatar FROM contacts WHERE supplier_id = ? ORDER BY name',
     [r.row.id]
   );
   res.json({ success: true, data: { ...supplier, contacts } });
@@ -127,14 +131,9 @@ exports.update = handle('Supplier update', async (req, res) => {
 exports.remove = handle('Supplier remove', async (req, res) => {
   const r = await loadSupplier(req.params.id);
   if (!r.row) return fail(res, r.status, r.message);
-  const [images] = await db.query(
-    `SELECT pi.image_url FROM product_images pi JOIN products p ON p.id = pi.product_id
-     WHERE p.supplier_id = ?`,
-    [r.row.id]
-  );
   const [contacts] = await db.query('SELECT wechat_qr FROM contacts WHERE supplier_id = ?', [r.row.id]);
   await db.query('DELETE FROM suppliers WHERE id = ?', [r.row.id]);
-  await deleteImages([...images.map((i) => i.image_url), ...qrFiles(contacts)]);
+  await deleteImages(qrFiles(contacts)); // D61: product photos are in the database
   res.json({ success: true, data: { id: r.row.id } });
 });
 
@@ -156,12 +155,21 @@ async function loadContact(req) {
 
 // A contact needs at least one of name, phone, e-mail or WeChat QR code (every column is
 // optional in v2). The QR code is not part of the body: it is added afterwards (D33).
+// D63: avatar, a Base64 photo, or null to remove it; left out, the current one stays.
 function validateContact(body, existing) {
   const v = validate(body, CONTACT_FIELDS, existing);
   if (!v.values) return v;
   const c = v.values;
   if (!c.name && !c.phone && !c.email && !existing?.wechat_qr) {
     return { message: 'Renseignez au moins le nom, le téléphone ou l\'e-mail du contact' };
+  }
+  const raw = body?.avatar;
+  c.avatar = existing?.avatar ?? null;
+  if (raw === null || raw === '') c.avatar = null;
+  else if (raw !== undefined) {
+    const img = parseDataImage(raw, MAX_AVATAR_BYTES, 'Photo du contact');
+    if (!img.value) return { message: img.message };
+    c.avatar = img.value;
   }
   return v;
 }
@@ -170,7 +178,7 @@ exports.listContacts = handle('Contact list', async (req, res) => {
   const r = await loadContact(req);
   if (!r.supplier) return fail(res, r.status, r.message);
   const [rows] = await db.query(
-    'SELECT id, name, phone, email, wechat_qr FROM contacts WHERE supplier_id = ? ORDER BY name',
+    'SELECT id, name, phone, email, wechat_qr, avatar FROM contacts WHERE supplier_id = ? ORDER BY name',
     [r.supplier.id]
   );
   res.json({ success: true, data: rows });
@@ -183,8 +191,8 @@ exports.createContact = handle('Contact create', async (req, res) => {
   if (!v.values) return fail(res, 400, v.message);
   const c = v.values;
   const [ins] = await db.query(
-    'INSERT INTO contacts (supplier_id, name, phone, email) VALUES (?, ?, ?, ?)',
-    [r.supplier.id, c.name, c.phone, c.email]
+    'INSERT INTO contacts (supplier_id, name, phone, email, avatar) VALUES (?, ?, ?, ?, ?)',
+    [r.supplier.id, c.name, c.phone, c.email, c.avatar]
   );
   res.json({ success: true, data: { id: ins.insertId } });
 });
@@ -195,8 +203,8 @@ exports.updateContact = handle('Contact update', async (req, res) => {
   const v = validateContact(req.body, r.contact);
   if (!v.values) return fail(res, 400, v.message);
   const c = v.values;
-  await db.query('UPDATE contacts SET name = ?, phone = ?, email = ? WHERE id = ?', [
-    c.name, c.phone, c.email, r.contact.id,
+  await db.query('UPDATE contacts SET name = ?, phone = ?, email = ?, avatar = ? WHERE id = ?', [
+    c.name, c.phone, c.email, c.avatar, r.contact.id,
   ]);
   res.json({ success: true, data: { id: r.contact.id } });
 });

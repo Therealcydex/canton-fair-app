@@ -8,12 +8,12 @@ const COMPANY_FIELDS = {
   branch: { label: 'Branche', type: 'string', max: 150 },
 };
 
-// Every logged-in user can list companies (needed to choose whom to share a product with).
+// Every buyer can list companies (the admin chooses among them whom to share a booth with, D62).
 exports.list = handle('Company list', async (req, res) => {
   const [rows] = await db.query(
     `SELECT c.id, c.name, c.branch,
             (SELECT COUNT(*) FROM users u WHERE u.company_id = c.id) AS users_count,
-            (SELECT COUNT(*) FROM product_shares ps WHERE ps.company_id = c.id) AS shared_products_count
+            (SELECT COUNT(*) FROM booth_shares bs WHERE bs.company_id = c.id) AS shared_booths_count
      FROM companies c ORDER BY c.name, c.branch`
   );
   res.json({ success: true, data: rows });
@@ -47,7 +47,7 @@ exports.update = handle('Company update', async (req, res) => {
   res.json({ success: true, data: { id: c.row.id, name, branch } });
 });
 
-// Its users stay, without a company (FK SET NULL); its shares go (FK CASCADE on product_shares).
+// Its users stay, without a company (FK SET NULL); its shares go (FK CASCADE on booth_shares).
 // The admin cannot delete their own company.
 exports.remove = handle('Company remove', async (req, res) => {
   const c = await loadCompany(req.params.id);

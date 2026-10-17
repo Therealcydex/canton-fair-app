@@ -9,7 +9,7 @@ const { deleteImages } = require('../utils/upload');
 const BASE = `http://localhost:${process.env.PORT || 3000}/api`;
 const PREFIX = 'TEST';
 const TABLES = [
-  'companies', 'users', 'suppliers', 'contacts', 'booths', 'products', 'product_images', 'product_shares', 'section_halls',
+  'companies', 'users', 'suppliers', 'contacts', 'booths', 'products', 'product_images', 'product_shares', 'booth_shares', 'section_halls',
 ];
 
 let failures = 0;
@@ -81,14 +81,10 @@ async function cleanup(conn) {
   const like = `${PREFIX}%`;
   const supplierIds = 'SELECT id FROM suppliers WHERE name LIKE ?';
   const productWhere = `name LIKE ? OR supplier_id IN (${supplierIds})`;
-  const [images] = await conn.query(
-    `SELECT image_url FROM product_images WHERE product_id IN (SELECT id FROM products WHERE ${productWhere})`,
-    [like, like]
-  );
   const [qrs] = await conn.query(
     `SELECT wechat_qr FROM contacts WHERE wechat_qr LIKE '/uploads/%' AND supplier_id IN (${supplierIds})`, [like]
   );
-  await deleteImages([...images.map((i) => i.image_url), ...qrs.map((q) => q.wechat_qr)]);
+  await deleteImages(qrs.map((q) => q.wechat_qr)); // D61: product photos are rows, not files
   await conn.query(`DELETE FROM products WHERE ${productWhere}`, [like, like]);
   await conn.query(`DELETE FROM booths WHERE comment LIKE ? OR supplier_id IN (${supplierIds})`, [like, like]);
   await conn.query('DELETE FROM suppliers WHERE name LIKE ?', [like]);

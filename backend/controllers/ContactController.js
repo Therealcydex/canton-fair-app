@@ -37,7 +37,7 @@ const loadContacts = (f) =>
   db.query(
     `SELECT c.id, c.supplier_id, s.name AS supplier_name,
             (SELECT COUNT(*) FROM suppliers s2 WHERE s2.id <= s.id) AS supplier_no,
-            c.name, c.phone, c.email, c.wechat_qr
+            c.name, c.phone, c.email, c.wechat_qr, c.avatar
      FROM contacts c JOIN suppliers s ON s.id = c.supplier_id
      WHERE ${f.where}
      ORDER BY s.name, c.name IS NULL, c.name, c.id LIMIT 2000`,

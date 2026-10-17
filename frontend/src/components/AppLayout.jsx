@@ -6,7 +6,7 @@ import {
   InboxOutlined, LogoutOutlined, MenuOutlined, ShopOutlined, TeamOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
-import { isAdmin } from '../utils/access';
+import { isAdmin, isViewer } from '../utils/access';
 import { companyLabel } from '../utils/lists';
 import Logo from './Logo';
 
@@ -27,6 +27,8 @@ const TABS = [
   { to: '/produits', label: 'Produits', icon: <InboxOutlined /> },
   { to: '/revue', label: 'Revue', icon: <AuditOutlined /> },
 ];
+// D62: a viewer (LECTEUR) only sees the booths shared with its company.
+const VIEWER_MENU = [{ to: '/booths', label: 'Booths partagés', icon: <ShopOutlined /> }];
 const ADMIN_MENU = [
   { to: '/admin/utilisateurs', label: 'Utilisateurs', icon: <TeamOutlined />, show: isAdmin },
   { to: '/admin/societes', label: 'Sociétés', icon: <ApartmentOutlined />, show: isAdmin },
@@ -43,6 +45,9 @@ export default function AppLayout() {
   const adminItems = ADMIN_MENU.filter((m) => m.show(user));
   const company = user.company_name ? companyLabel({ name: user.company_name, branch: user.company_branch }) : null;
   const close = () => setOpen(false);
+  const viewer = isViewer(user);
+  const menu = viewer ? VIEWER_MENU : MENU;
+  const tabs = viewer ? VIEWER_MENU : TABS;
 
   const link = (m) => (
     <Nav.Link key={m.to} as={NavLink} to={m.to} end={m.end} onClick={close}>
@@ -52,9 +57,9 @@ export default function AppLayout() {
 
   const sidebar = (
     <div className="app-side">
-      <NavLink to="/" className="app-brand" onClick={close}><Logo />Sourcing</NavLink>
+      <NavLink to={viewer ? '/booths' : '/'} className="app-brand" onClick={close}><Logo />Sourcing</NavLink>
       <Nav className="flex-column flex-nowrap app-side-nav">
-        {MENU.map(link)}
+        {menu.map(link)}
         {adminItems.length > 0 && (
           <>
             <div className="app-side-section">Administration</div>
@@ -85,7 +90,7 @@ export default function AppLayout() {
         <button type="button" className="app-menu-btn" aria-label="Ouvrir le menu" onClick={() => setOpen(true)}>
           <MenuOutlined />
         </button>
-        <NavLink to="/" className="app-brand"><Logo size={26} />Sourcing</NavLink>
+        <NavLink to={viewer ? '/booths' : '/'} className="app-brand"><Logo size={26} />Sourcing</NavLink>
       </header>
       <Offcanvas show={open} onHide={close} className="app-offcanvas d-lg-none">
         {sidebar}
@@ -100,7 +105,7 @@ export default function AppLayout() {
         </footer>
       </div>
       <nav className="app-tabbar d-lg-none" aria-label="Accès rapide">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <NavLink key={t.to} to={t.to} className="app-tab">
             <span className="app-tab-icon">{t.icon}</span>{t.label}
           </NavLink>

@@ -1,8 +1,6 @@
-// BF10-BF14: products (price, shipping type), photos, sharing with Tarek's companies.
-const fs = require('fs');
-const path = require('path');
-const { api, expect, check, PREFIX, BASE } = require('./lib');
-const { UPLOAD_ROOT } = require('../utils/upload');
+// BF10-BF12: products (price, shipping type) and their photos, stored as Base64 (D61).
+// D62: products are no longer shared.
+const { api, expect, check, PREFIX } = require('./lib');
 
 // Smallest valid PNG (1x1 pixel).
 const PNG = Buffer.from(
@@ -10,13 +8,9 @@ const PNG = Buffer.from(
   'hex'
 );
 
-const form = (files) => {
-  const f = new FormData();
-  for (const [name, buffer, type] of files) f.append('images', new Blob([buffer], { type }), name);
-  return f;
-};
-
-const fileOf = (url) => path.join(UPLOAD_ROOT, url.replace(/^\/uploads\//, ''));
+// D61: a photo as the app sends it, a Base64 data URL.
+const dataUrl = (buffer, type = 'image/png') => `data:${type};base64,${buffer.toString('base64')}`;
+const PHOTO = { data: dataUrl(PNG), thumb: dataUrl(PNG) };
 
 module.exports = async (ctx) => {
   const { tokens, companies } = ctx;
@@ -57,45 +51,60 @@ module.exports = async (ctx) => {
   check('shipping filter keeps the product', byShipping.body.data.some((p) => p.id === id));
   expect('invalid supplier filter', await api('GET', '/products?supplier_id=x', { token: A }), 400);
 
-  // Photos (BF11)
-  expect('no photo sent', await api('POST', `/products/${id}/images`, { token: A, form: new FormData() }), 400);
-  expect('a text file named .png', await api('POST', `/products/${id}/images`, { token: A, form: form([['x.png', Buffer.from('hello'), 'image/png']]) }), 400);
-  expect('photo of unknown product', await api('POST', '/products/999999/images', { token: A, form: form([['a.png', PNG, 'image/png']]) }), 404);
-  const up = expect('add 2 photos', await api('POST', `/products/${id}/images`, { token: B, form: form([['a.png', PNG, 'image/png'], ['b.png', PNG, 'image/png']]) }), 200);
+  // Photos (BF11, D61): Base64 in JSON, checked by their content.
+  expect('no photo sent', await api('POST', `/products/${id}/images`, { token: A, body: { images: [] } }), 400);
+  expect('not a data URL', await api('POST', `/products/${id}/images`, { token: A, body: { images: [{ data: '/uploads/x.png' }] } }), 400);
+  expect('text dressed as a PNG', await api('POST', `/products/${id}/images`, { token: A, body: { images: [{ data: dataUrl(Buffer.from('hello')) }] } }), 400);
+  expect('a photo too heavy', await api('POST', `/products/${id}/images`, {
+    token: A, body: { images: [{ data: dataUrl(Buffer.concat([PNG, Buffer.alloc(1600 * 1024)])) }] },
+  }), 400);
+  expect('a thumbnail too heavy', await api('POST', `/products/${id}/images`, {
+    token: A, body: { images: [{ data: PHOTO.data, thumb: dataUrl(Buffer.concat([PNG, Buffer.alloc(120 * 1024)])) }] },
+  }), 400);
+  expect('photo of unknown product', await api('POST', '/products/999999/images', { token: A, body: { images: [PHOTO] } }), 404);
+  const up = expect('add 2 photos', await api('POST', `/products/${id}/images`, { token: B, body: { images: [PHOTO, PHOTO] } }), 200);
   const [img1, img2] = up.body.data;
-  check('photo files exist', fs.existsSync(fileOf(img1.image_url)) && fs.existsSync(fileOf(img2.image_url)));
-  const served = await fetch(BASE.replace(/\/api$/, '') + img1.image_url);
-  check('photo is served', served.status === 200);
+  check('photos are stored as data URLs', img1.image_data.startsWith('data:image/png;base64,') && img2.thumb_data.startsWith('data:image/png;base64,'));
+  const listed = (await api('GET', `/products?q=${encodeURIComponent('Ruban')}`, { token: A })).body.data.find((p) => p.id === id);
+  check('the list gives the thumbnail of the first photo', listed.cover_thumb === img1.thumb_data && Number(listed.images_count) === 2);
   expect('delete a photo', await api('DELETE', `/products/${id}/images/${img1.id}`, { token: A }), 200);
-  check('its file is deleted', !fs.existsSync(fileOf(img1.image_url)));
   expect('delete it again', await api('DELETE', `/products/${id}/images/${img1.id}`, { token: A }), 404);
 
-  // Sharing with Tarek's companies (BF13-BF14)
-  expect('share without company', await api('POST', `/products/${id}/shares`, { token: A, body: {} }), 400);
-  expect('share with unknown company', await api('POST', `/products/${id}/shares`, { token: A, body: { company_id: 999999 } }), 404);
-  expect('share with company B', await api('POST', `/products/${id}/shares`, { token: A, body: { company_id: companies.B } }), 200);
-  const twice = expect('share twice', await api('POST', `/products/${id}/shares`, { token: A, body: { company_id: companies.B } }), 200);
-  check('shared once', twice.body.data.length === 1);
-  const mineB = expect('company B: shared with my company', await api('GET', '/products?mine=1', { token: B }), 200);
-  check('B sees it', mineB.body.data.some((p) => p.id === id && p.shared_with === `${PREFIX} Société B`));
-  const mineA = await api('GET', '/products?mine=1', { token: A });
-  check('A does not (not shared with A)', !mineA.body.data.some((p) => p.id === id));
+  // D61: photos in the add and edit forms, written with the product in one transaction.
+  expect('new product with a bad photo', await api('POST', '/products', {
+    token: A, body: { name: `${PREFIX} Avec photo`, images_add: [{ data: 'x' }] },
+  }), 400);
+  const none = (await api('GET', `/products?q=${encodeURIComponent(`${PREFIX} Avec photo`)}`, { token: A })).body.data;
+  check('a refused photo creates no product', none.length === 0);
+  expect('more than 10 photos', await api('POST', '/products', {
+    token: A, body: { name: `${PREFIX} Avec photo`, images_add: Array(11).fill(PHOTO) },
+  }), 400);
+  const withPhoto = expect('new product with 2 photos', await api('POST', '/products', {
+    token: A, body: { name: `${PREFIX} Avec photo`, supplier_id: supplier, images_add: [PHOTO, { data: PHOTO.data }] },
+  }), 200).body.data.id;
+  const wp = (await api('GET', `/products/${withPhoto}`, { token: A })).body.data;
+  check('created with its 2 photos (a missing thumbnail is the photo)', wp.images.length === 2 && wp.images[1].thumb_data === PHOTO.data);
+  expect('edit: remove a photo of another product', await api('PUT', `/products/${withPhoto}`, { token: A, body: { images_remove: [img2.id] } }), 404);
+  expect('edit: 9 more photos (11 in all)', await api('PUT', `/products/${withPhoto}`, { token: A, body: { images_add: Array(9).fill(PHOTO) } }), 409);
+  check('a refused edit keeps the photos', (await api('GET', `/products/${withPhoto}`, { token: A })).body.data.images.length === 2);
+  expect('edit: remove one, add one', await api('PUT', `/products/${withPhoto}`, {
+    token: A, body: { name: `${PREFIX} Avec photo modifié`, images_remove: [wp.images[0].id], images_add: [PHOTO] },
+  }), 200);
+  const wp2 = (await api('GET', `/products/${withPhoto}`, { token: A })).body.data;
+  check('edit applied with the photos', wp2.name === `${PREFIX} Avec photo modifié` && wp2.images.length === 2 && !wp2.images.some((i) => i.id === wp.images[0].id));
+  const plain = (await api('GET', `/products/${p2.body.data.id}`, { token: A })).body.data;
+  check('a product without photo has no thumbnail (the app shows its placeholder)', plain.cover_thumb === null && plain.images.length === 0);
 
-  expect('set shares: not a list', await api('PUT', `/products/${id}/shares`, { token: A, body: { company_ids: 3 } }), 400);
-  expect('set shares: invalid id', await api('PUT', `/products/${id}/shares`, { token: A, body: { company_ids: ['x'] } }), 400);
-  expect('set shares: unknown company', await api('PUT', `/products/${id}/shares`, { token: A, body: { company_ids: [companies.A, 999999] } }), 404);
-  const unchanged = await api('GET', `/products/${id}`, { token: A });
-  check('a refused list changes nothing', unchanged.body.data.shares.length === 1);
-  const set = expect('set shares A and B', await api('PUT', `/products/${id}/shares`, { token: A, body: { company_ids: [companies.A, companies.B, companies.A] } }), 200);
-  check('two companies', set.body.data.length === 2);
-  const filtered = expect('filter shared_with A', await api('GET', `/products?shared_with=${companies.A}`, { token: B }), 200);
-  check('filter finds it', filtered.body.data.some((p) => p.id === id));
-  expect('unshare B', await api('DELETE', `/products/${id}/shares/${companies.B}`, { token: B }), 200);
-  expect('unshare B again', await api('DELETE', `/products/${id}/shares/${companies.B}`, { token: B }), 404);
+  // D62: products are no longer shared (booths are): the share routes and filters are gone.
+  expect('product share route removed', await api('POST', `/products/${id}/shares`, { token: A, body: { company_id: companies.B } }), 404);
+  expect('product share list route removed', await api('PUT', `/products/${id}/shares`, { token: A, body: { company_ids: [] } }), 404);
+  expect('bulk product share route removed', await api('POST', '/products/shares', { token: A, body: {} }), 404);
+  const detail = expect('product detail', await api('GET', `/products/${id}`, { token: A }), 200);
+  check('no shares in the product', detail.body.data.shares === undefined && detail.body.data.shared_with === undefined);
 
-  // Deleting the supplier deletes its products and their photo files (D28).
+  // Deleting the supplier deletes its products and their photos (FK cascade).
   expect('delete supplier with a product', await api('DELETE', `/suppliers/${supplier}`, { token: A }), 200);
   expect('its product is gone', await api('GET', `/products/${id}`, { token: A }), 404);
-  check('its photo file is deleted', !fs.existsSync(fileOf(img2.image_url)));
+  expect('the one with photos too', await api('GET', `/products/${withPhoto}`, { token: A }), 404);
   expect('delete product', await api('DELETE', `/products/${p2.body.data.id}`, { token: B }), 200);
 };

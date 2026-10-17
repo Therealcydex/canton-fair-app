@@ -1426,3 +1426,69 @@ code {
     display: none !important;
   }
 }
+
+/* D60: on a touch screen antd shows the clear (×) of a select once it has a value, but at 12 px,
+   too small for a finger. Make it bigger there, in place of the arrow. */
+@media (hover: none) {
+  .ant-select .ant-select-clear,
+  .ant-cascader .ant-select-clear {
+    opacity: 1;
+    font-size: 16px;
+    width: 18px;
+    height: 18px;
+    margin-top: -9px;
+  }
+  .ant-select-allow-clear:has(.ant-select-clear) .ant-select-arrow {
+    opacity: 0;
+  }
+}
+
+/* D61: a product's thumbnail, or its placeholder of the same size when it has no photo. */
+.product-thumb {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--sc-border);
+  background: #fff;
+}
+
+.product-thumb-empty {
+  color: #9aa3b2;
+  font-size: 20px;
+  background: repeating-linear-gradient(45deg, #f4f6f9, #f4f6f9 6px, #eef1f5 6px, #eef1f5 12px);
+}
+
+/* D63: contacts' photos, their card, and the rows that open it. */
+.contact-avatar-empty {
+  background: var(--sc-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+.flex-none {
+  flex: none;
+}
+
+.sc-table-clickable .ant-table-row {
+  cursor: pointer;
+}
+
+.contact-card-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+}
+
+.contact-card-facts dt {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.contact-card-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

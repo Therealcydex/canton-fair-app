@@ -1,16 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, refuseViewer } = require('../middleware/auth');
 const c = require('../controllers/BoothController');
 
-// Every route below requires a valid token; every user of the group sees every booth.
+// Every route below requires a valid token; every buyer sees every booth. D62: a viewer (LECTEUR)
+// only reads the booths shared with its company; it changes nothing.
 router.use(requireAuth);
 
 router.get('/', c.list);
-router.post('/', c.create);
+router.post('/', refuseViewer, c.create);
 router.get('/:id', c.getById);
-router.put('/:id', c.update);
-router.patch('/:id/visited', c.setVisited);
-router.delete('/:id', c.remove);
+router.put('/:id', refuseViewer, c.update);
+router.patch('/:id/visited', refuseViewer, c.setVisited);
+router.delete('/:id', refuseViewer, c.remove);
 
 module.exports = router;

@@ -103,12 +103,14 @@ function productPng(colour, shape, angle = 0) {
   });
 }
 
+// D61: photos travel as Base64 data URLs; these small PNGs are their own thumbnails.
 async function addPhotos(token, productId, colour, shape, count) {
-  const form = new FormData();
+  const images = [];
   for (let i = 0; i < count; i++) {
-    form.append('images', new Blob([productPng(colour, shape, i * 0.8)], { type: 'image/png' }), `photo-${i + 1}.png`);
+    const data = `data:image/png;base64,${productPng(colour, shape, i * 0.8).toString('base64')}`;
+    images.push({ data, thumb: data });
   }
-  await call('POST', `/products/${productId}/images`, token, form);
+  if (images.length) await call('POST', `/products/${productId}/images`, token, { images });
 }
 
 // The demo, phase by phase. Booths sit in a hall of their section on the official plan (D48).
@@ -239,7 +241,7 @@ async function remove(admin) {
     for (const b of (await call('GET', `/booths?supplier_id=${s.id}`, admin)).data) await call('DELETE', `/booths/${b.id}`, admin);
     await call('DELETE', `/suppliers/${s.id}`, admin); // its contacts, products and photos go with it
   }
-  const usernames = new Set([...BUYERS.map((b) => b.username), 'sarra.demo']);
+  const usernames = new Set([...BUYERS.map((b) => b.username), 'sarra.demo', 'lecteur.demo']);
   const users = (await call('GET', '/users', admin)).data.filter((u) => usernames.has(u.username));
   for (const u of users) await call('DELETE', `/users/${u.id}`, admin);
   const companies = (await call('GET', '/companies', admin)).data.filter((c) => [COMPANY, COMPANY_B].includes(c.name));
@@ -269,6 +271,8 @@ async function load(admin) {
     userIds.push(created.data.id);
   }
   await call('POST', '/users', admin, { name: 'Sarra (acheteuse)', username: 'sarra.demo', password: DEMO_PASSWORD, level: 2, company_id: companyIds.sfax, is_active: false });
+  // D62: a viewer of the Tunis branch, who reads the booths shared with it (inactive at the end).
+  userIds.push((await call('POST', '/users', admin, { name: 'Lecteur Tunis', username: 'lecteur.demo', password: DEMO_PASSWORD, role: 'LECTEUR', company_id: companyIds.tunis })).data.id);
   const tokens = [];
   for (const b of BUYERS) tokens.push(await login(b.username, DEMO_PASSWORD));
 
@@ -300,17 +304,19 @@ async function load(admin) {
     } catch (err) {
       console.log(`  booth of ${s.supplier.name} not created (${err.message})`); // e.g. a booth already recorded there
     }
+    const shareWith = new Set(); // D62: the booth is shared with the companies its products were meant for
     for (const p of s.products) {
       const { colour, shape, photos, decision, share, ...product } = p;
       const productId = (await call('POST', '/products', token, { ...product, supplier_id: supplierId, booth_id: boothId })).data.id;
       await addPhotos(token, productId, colour, shape, photos);
       products++;
-      if (share) await call('PUT', `/products/${productId}/shares`, token, { company_ids: share.map((k) => companyIds[k]) });
+      for (const k of share || []) shareWith.add(companyIds[k]);
       if (decision) {
         await call('PUT', `/products/${productId}/decision`, admin, { status: decision[0], note: decision[1] });
         decided++;
       }
     }
+    if (boothId && shareWith.size) await call('PUT', `/booths/${boothId}`, admin, { share_company_ids: [...shareWith] });
   }
 
   // The demo buyers' password is in this file: they must not stay usable.
@@ -320,7 +326,8 @@ async function load(admin) {
   console.log(`  companies "${COMPANY}" (Tunis, Sfax) and "${COMPANY_B}"`);
   console.log(`  ${PLAN.length} suppliers with contacts, ${booths} booths (phase 1 mostly visited), ${products} products with photos`);
   console.log(`  ${decided} products already decided, ${products - decided} waiting in "Revue du soir"`);
-  console.log('  the demo buyers (acheteur.a, acheteur.b, sarra.demo) are inactive; remove it all with: npm run db:demo -- --remove');
+  console.log('  some booths shared with the companies (D62) and a viewer of the Tunis branch (lecteur.demo)');
+  console.log('  the demo accounts (acheteur.a, acheteur.b, sarra.demo, lecteur.demo) are inactive; remove it all with: npm run db:demo -- --remove');
 }
 
 (async () => {

@@ -12,6 +12,7 @@ import PageHeader from '../../components/PageHeader';
 const ROLES = [
   { value: 'ACHETEUR', label: 'Acheteur' },
   { value: 'ADMIN', label: 'Administrateur' },
+  { value: 'LECTEUR', label: 'Lecteur (société)' }, // D62: reads the booths shared with its company
 ];
 const roleLabel = (v) => ROLES.find((r) => r.value === v)?.label || v;
 // D56: the level is a number from 1 to 5, or none.
@@ -148,6 +149,7 @@ export default function Users() {
         <Select prefix={<span className="sc-label">Société :</span>} placeholder="Toutes" allowClear showSearch optionFilterProp="label"
           style={{ width: 240 }} value={filters.company_id} onChange={set('company_id')}
           options={companies.map((c) => ({ value: c.id, label: companyLabel(c) }))} />
+        <Button type="link" className="fw-semibold px-1" onClick={() => setFilters({})}>Réinitialiser</Button>
         <Button icon={<ReloadOutlined />} title="Actualiser" aria-label="Actualiser" onClick={load} />
       </div>
       <Table rowKey="id" columns={columns} dataSource={shown} loading={loading} size="middle" className="sc-table"
