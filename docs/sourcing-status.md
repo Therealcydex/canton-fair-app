@@ -37,6 +37,7 @@ acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 | BNF06 | Schema changes as scripts | À valider | |
 | D1–D51 | Decisions in `sourcing-spec.md` §5 (several replaced by v2) | À valider | Web home page (D40): API, navigateur (figures, phases, companies); web and mobile look from Stitch (D49): web build and tests, mobile lint and build, web login seen in the browser; booth table count of products (`nbr_products`): API; hover side bar and booth table: build, to check in the browser; the other pages to check in the browser and on a phone |
 | D52 | One app: the web app on the phone, `mobile/` removed | À valider | Web build and tests. Navigateur at 390 px (local database): tab bar; "À visiter" checklist (✓ saved, undo, visited booths listed after a reload); "Revue du soir" as admin (decide, next product, undo, counts); new supplier from a business card (6 fields in 5 s, supplier + contact + WeChat id saved); QR scanner opens over the new-contact form and closes; dialogs fit the screen; at 1280 px the booth table is unchanged. Still to do on an iPhone (below) |
+| D53 | Booth shown as `Ph1 3.1E12-13`, "Phase" column removed from the booth table | À valider | API scenario `03-booths` (label in the 409 message, "Ph2 …" search). Not yet checked in the browser |
 
 ## Not checked by hand yet
 

@@ -5,6 +5,7 @@ import { ZONE_HALLS } from '../../utils/fairPlan';
 import { categoryIdOf, categoryOptions, useList } from '../../utils/lists';
 import BoothList, { boothNumber } from './BoothList';
 import PageHeader from '../../components/PageHeader';
+import { boothLabel } from '../../utils/format';
 
 const ZONES = Object.entries(ZONE_HALLS).map(([zone, halls]) => ({ zone, halls }));
 const HALLS = Array.from({ length: 21 }, (_, i) => i + 1);
@@ -14,7 +15,7 @@ const plural = (n, word) => `${n} ${word}${n > 1 ? 's' : ''}`;
 const exportCsv = (rows) => {
   const head = ['Code booth', 'Phase', 'Hall', 'Étage', 'Lettre', 'Numéro', 'Zone', 'Fournisseur', 'Catégorie', 'Produits', 'Statut', 'Commentaire'];
   const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const lines = rows.map((b) => [b.booth_code, b.phase, b.hall, b.floor, b.letter, b.num_start == null ? '' : boothNumber(b), b.zone,
+  const lines = rows.map((b) => [boothLabel(b.phase, b.booth_code), b.phase, b.hall, b.floor, b.letter, b.num_start == null ? '' : boothNumber(b), b.zone,
     b.supplier_name, b.sub_category, Number(b.nbr_products) || 0, b.visited ? 'Visité' : 'À visiter', b.comment].map(cell).join(';'));
   const blob = new Blob([`﻿${[head.map(cell).join(';'), ...lines].join('\r\n')}`], { type: 'text/csv;charset=utf-8' });
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: 'booths.csv' });

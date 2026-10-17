@@ -30,14 +30,15 @@ module.exports = async (ctx) => {
   expect('end number alone', await api('POST', '/booths', { token: A, body: { ...base, letter: null, num_start: null } }), 400);
 
   const b1 = expect('create booth (letter in lowercase)', await api('POST', '/booths', { token: A, body: { ...base, category_id: phase2.id } }), 200);
-  check('booth code is built in uppercase, fair style', b1.body.data.booth_code === '126.1F10-12');
+  check('booth code is built in uppercase, fair style', b1.body.data.booth_code === '126.1F10-12' && b1.body.data.phase === 2);
   const got = expect('another user reads it', await api('GET', `/booths/${b1.body.data.id}`, { token: B }), 200);
   check('v_booths gives code, category and supplier',
     got.body.data.booth_code === '126.1F10-12' && got.body.data.sub_category === phase2.sub_category
     && got.body.data.supplier_name === `${PREFIX} Booth supplier` && got.body.data.visited === 0);
 
   expect('same code', await api('POST', '/booths', { token: B, body: { ...base, letter: 'F' } }), 409);
-  expect('overlapping number', await api('POST', '/booths', { token: A, body: { ...base, num_start: 12, num_end: null } }), 409);
+  const ov = expect('overlapping number', await api('POST', '/booths', { token: A, body: { ...base, num_start: 12, num_end: null } }), 409);
+  check('the refusal names the booth phase first', ov.body.message.includes('Ph2 126.1F10-12'));
   expect('overlapping range', await api('POST', '/booths', { token: A, body: { ...base, num_start: 8, num_end: 10 } }), 409);
   const b2 = expect('next booth (end = start is a single booth)', await api('POST', '/booths', { token: A, body: { ...base, num_start: 13, num_end: 13 } }), 200);
   check('single booth code has no range', b2.body.data.booth_code === '126.1F13');
@@ -74,6 +75,11 @@ module.exports = async (ctx) => {
   check('supplier shows 2 booths, 50 % visited', s.body.data.nbr_booths === 2 && Number(s.body.data.booth_visit_pct) === 50);
   const q = expect('search by code', await api('GET', `/booths?q=${encodeURIComponent('126.1f13')}`, { token: A }), 200);
   check('search finds the booth', q.body.data.length === 1 && q.body.data[0].id === b2.body.data.id);
+  // D53: the apps show "Ph2 126.1F13"; the search takes it, and the messages say it.
+  const qph = expect('search by phase label', await api('GET', `/booths?q=${encodeURIComponent('ph2 126.1f13')}`, { token: A }), 200);
+  check('phase label search finds the booth', qph.body.data.length === 1 && qph.body.data[0].id === b2.body.data.id);
+  const qph3 = await api('GET', `/booths?q=${encodeURIComponent('Ph3 126.1F13')}`, { token: A });
+  check('another phase finds nothing', qph3.body.data.length === 0);
 
   // Update and delete
   expect('move onto another booth', await api('PUT', `/booths/${b2.body.data.id}`, { token: A, body: { num_start: 11 } }), 409);
