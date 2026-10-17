@@ -1,71 +1,50 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { useSearchParams } from 'react-router-dom';
-import { Button, Input, Select, Space, Tabs } from 'antd';
+import { Button, Input, Select } from 'antd';
+import { PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { API_BASE_URL } from '../../config/config';
-import { useAuth } from '../../context/AuthContext';
-import { companyLabel, useList } from '../../utils/lists';
+import { useList } from '../../utils/lists';
 import { STATUS } from '../../utils/decision';
+import useDebounced from '../../utils/useDebounced';
 import ProductList, { NewProductModal } from './ProductList';
-import { PlusOutlined } from '@ant-design/icons';
 import PageHeader from '../../components/PageHeader';
 
-// Every product of the group (BF10, BF12), and those shared with the user's company (BF14).
+// Every product of the group (BF10, BF12). D60: the filters are controlled, so "Réinitialiser"
+// and each clear (×) empty them on screen and in the list at once; the search applies as you type.
+// D62: products are no longer shared (booths are).
 export default function Products() {
-  const { user } = useAuth();
-  const [params, setParams] = useSearchParams();
-  const tab = params.get('vue') === 'partages' ? 'mine' : 'all';
   const shippingTypes = useList('shipping-types');
   const [suppliers, setSuppliers] = useState([]);
-  const [companies, setCompanies] = useState([]);
   const [filters, setFilters] = useState({});
+  const [search, setSearch] = useState('');
+  const q = useDebounced(search.trim());
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     axios.get(`${API_BASE_URL}/suppliers`).then((r) => setSuppliers(r.data.data)).catch(() => {});
-    axios.get(`${API_BASE_URL}/companies`).then((r) => setCompanies(r.data.data)).catch(() => {});
   }, []);
-  const set = (key) => (value) => setFilters((f) => ({ ...f, [key]: value || undefined }));
+  const set = (key) => (value) => setFilters((f) => ({ ...f, [key]: value ?? undefined }));
+  const reset = () => { setFilters({}); setSearch(''); };
 
-  const filterBar = (mine) => (
-    <Space className="mb-3" wrap>
-      <Input.Search placeholder="Nom, référence, description" allowClear style={{ width: 260 }} onSearch={set('q')} />
-      <Select placeholder="Fournisseur" allowClear showSearch optionFilterProp="label" style={{ width: 220 }}
-        options={suppliers.map((s) => ({ value: s.id, label: s.name }))} onChange={set('supplier_id')} />
-      <Select placeholder="Décision" allowClear style={{ width: 150 }}
-        options={Object.entries(STATUS).map(([value, s]) => ({ value, label: s.label }))} onChange={set('status')} />
-      <Select placeholder="Expédition" allowClear style={{ width: 130 }}
-        options={shippingTypes.map((s) => ({ value: s.code, label: s.code }))} onChange={set('shipping_type')} />
-      {!mine && (
-        <>
-          <Select placeholder="Partage" allowClear style={{ width: 150 }} onChange={set('shared')}
-            options={[{ value: '1', label: 'Partagés' }, { value: '0', label: 'Non partagés' }]} />
-          <Select placeholder="Partagé avec" allowClear showSearch optionFilterProp="label" style={{ width: 220 }}
-            options={companies.map((c) => ({ value: c.id, label: companyLabel(c) }))} onChange={set('shared_with')} />
-        </>
-      )}
-    </Space>
-  );
-
-  // D40: design from Claude Design ("Produits", version A): select products, then "Partager avec…".
   return (
     <>
-      <PageHeader title="Produits" chip="Catalogue"
-        subtitle="Catalogue de sourcing et partage avec les sociétés du groupe"
+      <PageHeader title="Produits" chip="Catalogue" subtitle="Catalogue de sourcing du groupe"
         actions={<Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>Nouveau produit</Button>} />
-      <Tabs activeKey={tab} destroyOnHidden
-        onChange={(k) => { setFilters({}); setParams(k === 'mine' ? { vue: 'partages' } : {}); }}
-        items={[
-          { key: 'all', label: 'Tous les produits', children: <>{filterBar(false)}<ProductList filters={filters} companies={companies} /></> },
-          {
-            key: 'mine',
-            label: user.company_name
-              ? `Partagés avec ${companyLabel({ name: user.company_name, branch: user.company_branch })}`
-              : 'Partagés avec ma société',
-            disabled: !user.company_id,
-            children: <>{filterBar(true)}<ProductList filters={{ ...filters, mine: 1 }} companies={companies} /></>,
-          },
-        ]} />
+      <div className="sc-filters">
+        <Input prefix={<SearchOutlined />} placeholder="Nom, référence, description" allowClear style={{ width: 280 }}
+          value={search} onChange={(e) => setSearch(e.target.value)} />
+        <Select prefix={<span className="sc-label">Fournisseur :</span>} placeholder="Tous" allowClear showSearch optionFilterProp="label"
+          style={{ width: 260 }} value={filters.supplier_id} onChange={set('supplier_id')}
+          options={suppliers.map((s) => ({ value: s.id, label: s.name }))} />
+        <Select prefix={<span className="sc-label">Décision :</span>} placeholder="Toutes" allowClear style={{ width: 210 }}
+          value={filters.status} onChange={set('status')}
+          options={Object.entries(STATUS).map(([value, s]) => ({ value, label: s.label }))} />
+        <Select prefix={<span className="sc-label">Expédition :</span>} placeholder="Toutes" allowClear style={{ width: 180 }}
+          value={filters.shipping_type} onChange={set('shipping_type')}
+          options={shippingTypes.map((s) => ({ value: s.code, label: s.code }))} />
+        <Button type="link" icon={<ReloadOutlined />} className="fw-semibold px-1" onClick={reset}>Réinitialiser</Button>
+      </div>
+      <ProductList filters={{ ...filters, q: q || undefined }} />
       <NewProductModal open={creating} onClose={() => setCreating(false)} />
     </>
   );

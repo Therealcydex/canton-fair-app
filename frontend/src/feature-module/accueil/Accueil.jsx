@@ -93,7 +93,7 @@ export default function Accueil() {
       label: 'Partages', value: data.shares, icon: <ShareAltOutlined />,
       extra: (
         <div className="small mt-2">
-          <strong>{plural(data.products_shared, 'produit')}</strong> vers{' '}
+          <strong>{plural(data.booths_shared, 'booth')}</strong> vers{' '}
           <strong>{plural(data.companies.length, 'société')}</strong> du groupe
         </div>
       ),
@@ -176,8 +176,8 @@ export default function Accueil() {
             <div className="sc-panel-head">
               <ApartmentOutlined className="sc-panel-icon fs-5" />
               <div className="flex-grow-1">
-                <h2>Produits partagés par société</h2>
-                <div className="small text-secondary">Produits du catalogue partagés avec les sociétés du groupe</div>
+                <h2>Booths partagés par société</h2>
+                <div className="small text-secondary">Booths partagés avec les sociétés du groupe, en lecture seule</div>
               </div>
               <Tag className="m-0">{plural(data.companies.length, 'société')}</Tag>
             </div>
@@ -214,8 +214,8 @@ export default function Accueil() {
                 },
                 { title: 'Partagés', dataIndex: 'shared', align: 'right', render: (v) => <strong>{v}</strong> },
                 {
-                  title: '% du catalogue', align: 'right',
-                  render: (_, c) => <span className="fw-semibold text-primary">{pct(c.shared, data.products)} %</span>,
+                  title: '% des booths', align: 'right',
+                  render: (_, c) => <span className="fw-semibold text-primary">{pct(c.shared, planned)} %</span>,
                 },
               ]} />
             {isAdmin(user) && (

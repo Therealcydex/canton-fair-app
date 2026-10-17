@@ -2,13 +2,16 @@ import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Alert, App, Button, Form, Input, Popconfirm, Select, Table } from 'antd';
-import { DownloadOutlined, PrinterOutlined, SearchOutlined, UserAddOutlined } from '@ant-design/icons';
+import { DownloadOutlined, PrinterOutlined, ReloadOutlined, SearchOutlined, UserAddOutlined } from '@ant-design/icons';
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import FormModal from '../../components/FormModal';
 import PageHeader from '../../components/PageHeader';
 import WechatQr, { QrPicker, QrThumb } from '../suppliers/WechatQr';
 import ContactFormFields, { contactPayload } from './ContactFormFields';
+import ContactCard, { openCardOnClick } from './ContactCard';
+import ContactAvatar from '../../components/ContactAvatar';
+import useDebounced from '../../utils/useDebounced';
 
 const two = (n) => String(n).padStart(2, '0');
 
@@ -46,11 +49,13 @@ export default function Contacts() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [editing, setEditing] = useState(null); // null = closed, {} = new, row = edit
+  const [viewing, setViewing] = useState(null); // D63: the contact shown in its card
   const [exporting, setExporting] = useState(false);
   const [search, setSearch] = useState('');
+  const q = useDebounced(search.trim()); // D60: the search applies as you type
   const [pageSize, setPageSize] = useState(20);
 
-  const query = JSON.stringify(contactParams(filters));
+  const query = JSON.stringify(contactParams({ ...filters, q }));
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
@@ -136,7 +141,13 @@ export default function Contacts() {
   const columns = [
     { title: 'N°', dataIndex: 'n', width: 64, sorter: (a, b) => a.n - b.n, render: (v) => <span className="text-secondary fw-semibold">{two(v)}</span> },
     {
-      title: 'Nom', dataIndex: 'name', render: (v) => (v ? <span className="fw-semibold">{v}</span> : '—'),
+      title: 'Nom', dataIndex: 'name',
+      render: (v, c) => (
+        <span className="d-inline-flex align-items-center gap-2 text-nowrap">
+          <ContactAvatar contact={c} size={36} />
+          {v ? <span className="fw-semibold">{v}</span> : '—'}
+        </span>
+      ),
       sorter: (a, b) => (a.name || '').localeCompare(b.name || '', 'fr'),
     },
     {
@@ -182,27 +193,31 @@ export default function Contacts() {
         )} />
       <div className="sc-filters">
         <Input prefix={<SearchOutlined />} placeholder="Rechercher par nom, téléphone, e-mail, fournisseur…" allowClear
-          style={{ flex: '1 1 280px', maxWidth: 520 }} value={search}
-          onChange={(e) => { setSearch(e.target.value); if (!e.target.value) set('q')(undefined); }}
-          onPressEnter={() => set('q')(search.trim())} />
+          style={{ flex: '1 1 280px', maxWidth: 520 }} value={search} onChange={(e) => setSearch(e.target.value)} />
         <Select prefix={<span className="sc-label">Fournisseur :</span>} placeholder="Tous" allowClear showSearch optionFilterProp="label"
           style={{ width: 300 }} value={filters.supplier_id} onChange={set('supplier_id')}
           options={suppliers.map((s) => ({ value: s.id, label: `${s.name} (n° ${s.supplier_no})` }))} />
         <Select prefix={<span className="sc-label">QR code WeChat :</span>} placeholder="Tous" allowClear style={{ width: 240 }}
           value={filters.has_qr} options={QR_FILTERS} onChange={set('has_qr')} />
+        <Button type="link" icon={<ReloadOutlined />} className="fw-semibold px-1"
+          onClick={() => { setFilters({}); setSearch(''); }}>Réinitialiser</Button>
         <span className="sc-counter ms-lg-auto">
           <span className="share-dot rounded-circle" style={{ background: 'var(--sc-accent)' }} />
           <strong>{rows.length} contact{rows.length > 1 ? 's' : ''}</strong> enregistré{rows.length > 1 ? 's' : ''}
         </span>
       </div>
       {loadError && <Alert type="error" message={loadError} showIcon className="mb-3" />}
-      <Table rowKey="id" columns={columns} dataSource={rows} loading={loading} size="middle" className="sc-table"
+      <Table rowKey="id" columns={columns} dataSource={rows} loading={loading} size="middle" className="sc-table sc-table-clickable"
+        onRow={openCardOnClick(setViewing)} // D63
         scroll={{ x: 'max-content' }}
         pagination={{
           pageSize, showSizeChanger: true, pageSizeOptions: [10, 20, 50, 100], onShowSizeChange: (_, size) => setPageSize(size),
           showTotal: (total, [from, to]) => <>Affichage de <strong>{from} à {to}</strong> sur <strong>{total}</strong> contact{total > 1 ? 's' : ''}</>,
         }}
         locale={{ emptyText: 'Aucun contact' }} />
+
+      <ContactCard contact={viewing} onClose={() => setViewing(null)}
+        onEdit={(c) => { setViewing(null); setEditing(c); }} />
 
       <FormModal open={!!editing} title={editing?.id ? 'Modifier le contact' : 'Nouveau contact'} initialValues={editing}
         icon={<UserAddOutlined />} className="sc-modal-dark" width={680}

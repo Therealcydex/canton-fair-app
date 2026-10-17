@@ -4,7 +4,9 @@ import { App, Button, Cascader, Col, Form, Input, InputNumber, Row, Select, Swit
 import { PlusOutlined } from '@ant-design/icons';
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
-import { categoryIdOf, categoryOptions, useList } from '../../utils/lists';
+import { categoryIdOf, categoryOptions, categoryPath, companyLabel, useList } from '../../utils/lists';
+import { useAuth } from '../../context/AuthContext';
+import { isAdmin } from '../../utils/access';
 import { hallsOf, useFairPlan } from '../../utils/fairPlan';
 
 // Fields of the booth form. The server checks the same rules (phase 1-3, hall 1-18, floor 0-4 (D56), letter A-Z,
@@ -90,6 +92,9 @@ function SupplierSelect({ value, onChange, disabled }) {
 
 // `withSupplier` (D57): the supplier is chosen when the booth is edited, not when it is added.
 export default function BoothFormFields({ lockSupplier, withSupplier = true }) {
+  const { user } = useAuth();
+  const admin = isAdmin(user);
+  const [companies, setCompanies] = useState([]);
   const categories = useList('canton-categories');
   const phase = Form.useWatch('phase');
   const categoryPath = Form.useWatch('category_path');
@@ -97,6 +102,11 @@ export default function BoothFormFields({ lockSupplier, withSupplier = true }) {
   // D42: the halls of the chosen section, from the hall plan.
   const section = categories.find((r) => r.id === categoryIdOf(categoryPath))?.section;
   const sectionHalls = section ? hallsOf(plan, phase, section) : null;
+
+  // D62: the companies the admin can share the booth with.
+  useEffect(() => {
+    if (admin) axios.get(`${API_BASE_URL}/companies`).then((r) => setCompanies(r.data.data)).catch(() => {});
+  }, [admin]);
 
   // The Canton Fair categories are per phase: only those of the chosen phase are offered.
   const options = useMemo(() => categoryOptions(categories, phase), [categories, phase]);
@@ -158,14 +168,35 @@ export default function BoothFormFields({ lockSupplier, withSupplier = true }) {
       </Form.Item>
       <Form.Item name="visited" label="Visité" valuePropName="checked"><Switch /></Form.Item>
       <Form.Item name="comment" label="Commentaire"><Input.TextArea rows={3} /></Form.Item>
+      {/* D62: only the admin shares a booth; the company's viewers then see it read-only. */}
+      {admin && (
+        <Form.Item name="share_company_ids" label="Partager avec" className="mb-0"
+          extra="Les lecteurs de ces sociétés verront ce booth en lecture seule.">
+          <Select mode="multiple" allowClear showSearch optionFilterProp="label" placeholder="Aucune société"
+            options={companies.map((c) => ({ value: c.id, label: companyLabel(c) }))} />
+        </Form.Item>
+      )}
     </>
   );
 }
 
+// "1,3" (shared_company_ids from the API) -> [1, 3], the value of the "Partager avec" field.
+export const shareIds = (b) => (b?.shared_company_ids ? String(b.shared_company_ids).split(',').map(Number) : []);
+
+// The form's starting values for a booth from the API. The shares only for the admin, whose form
+// shows them: a buyer's save must never send them (the server refuses them, 403).
+export const boothInitialValues = (b, categories, admin) => b && {
+  ...b, visited: !!b.visited, category_path: categoryPath(categories, b.category_id),
+  ...(admin ? { share_company_ids: shareIds(b) } : {}),
+};
+
 // Form values -> API body (antd gives undefined for empty fields; the cascader gives a path).
 // Empty fields are sent as null: undefined would drop them and the server would keep the old value.
-export const boothPayload = ({ category_path, ...v }) => ({
+// share_company_ids only goes when the field was shown (the admin's form): a buyer's save leaves
+// the shares as they are.
+export const boothPayload = ({ category_path, share_company_ids: shares, shared_company_ids: _ids, ...v }) => ({
   ...v,
+  ...(Array.isArray(shares) ? { share_company_ids: shares } : {}),
   supplier_id: v.supplier_id ?? null,
   category_id: categoryIdOf(category_path),
   num_start: v.num_start ?? null,

@@ -9,7 +9,7 @@ const mysql = require('mysql2/promise');
 
 // Statements of the file: "--" comments dropped, cut on ";" (the values hold neither).
 const statements = fs.readFileSync(path.join(__dirname, 'canton_fair_sections_140.sql'), 'utf8')
-  .split('\n')
+  .split(/\r?\n/) // a Windows checkout has CRLF: "." stops at "\r", so the comment would stay
   .map((line) => line.replace(/--.*$/, ''))
   .join('\n')
   .split(';')

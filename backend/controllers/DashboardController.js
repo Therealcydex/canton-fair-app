@@ -8,8 +8,8 @@ exports.summary = handle('Dashboard summary', async (req, res) => {
     `SELECT (SELECT COUNT(*) FROM suppliers) AS suppliers,
             (SELECT COUNT(*) FROM products) AS products,
             (SELECT COUNT(*) FROM products WHERE created_at >= NOW() - INTERVAL 7 DAY) AS products_week,
-            (SELECT COUNT(*) FROM product_shares) AS shares,
-            (SELECT COUNT(DISTINCT product_id) FROM product_shares) AS products_shared`
+            (SELECT COUNT(*) FROM booth_shares) AS shares,
+            (SELECT COUNT(DISTINCT booth_id) FROM booth_shares) AS booths_shared`
   );
   // Booths planned and visited in each phase of the fair; a phase without booths still shows.
   const [booths] = await db.query(
@@ -29,7 +29,7 @@ exports.summary = handle('Dashboard summary', async (req, res) => {
   });
   const [companies] = await db.query(
     `SELECT c.id, c.name, c.branch,
-            (SELECT COUNT(*) FROM product_shares ps WHERE ps.company_id = c.id) AS shared
+            (SELECT COUNT(*) FROM booth_shares bs WHERE bs.company_id = c.id) AS shared
      FROM companies c ORDER BY c.name, c.branch`
   );
   res.json({
@@ -39,7 +39,7 @@ exports.summary = handle('Dashboard summary', async (req, res) => {
       products: Number(totals.products),
       products_week: Number(totals.products_week),
       shares: Number(totals.shares),
-      products_shared: Number(totals.products_shared),
+      booths_shared: Number(totals.booths_shared), // D62: booths are shared, no longer products
       phases,
       companies: companies.map((c) => ({ ...c, shared: Number(c.shared) })),
     },

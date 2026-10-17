@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash  VARCHAR(255) NOT NULL,                          -- D22: bcrypt
     level          TINYINT NULL,                                   -- D56: 1 to 5, or none
     CONSTRAINT chk_users_level CHECK (level BETWEEN 1 AND 5),
-    role           VARCHAR(50),                                    -- 'ADMIN' or 'ACHETEUR'
+    role           VARCHAR(50),                                    -- 'ADMIN', 'ACHETEUR' or 'LECTEUR' (D62)
     is_active      TINYINT(1) NOT NULL DEFAULT 1,                  -- 0 = sign-up waiting for the admin
     company_id     INT,
     created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,    -- D22: orders pending sign-ups
@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS contacts (
     phone        VARCHAR(50),
     email        VARCHAR(150),
     wechat_qr    VARCHAR(255),
+    avatar       MEDIUMTEXT,                           -- D63: the contact's photo, a Base64 data URL
     FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -162,10 +163,12 @@ CREATE TABLE IF NOT EXISTS section_halls (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------- Product images ----------
+-- D61: stored as Base64 data URLs ("data:image/jpeg;base64,..."), the photo and its list thumbnail.
 CREATE TABLE IF NOT EXISTS product_images (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     product_id  INT NOT NULL,
-    image_url   VARCHAR(255) NOT NULL,
+    image_data  MEDIUMTEXT NOT NULL,
+    thumb_data  MEDIUMTEXT NOT NULL,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -177,6 +180,21 @@ CREATE TABLE IF NOT EXISTS product_shares (
     PRIMARY KEY (product_id, company_id),
     FOREIGN KEY (product_id) REFERENCES products(id)  ON DELETE CASCADE,
     FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------- Booths shared with a company (D62) ----------
+-- The admin shares a booth with one of Tarek's companies; its viewers (LECTEUR) see it read-only.
+-- product_shares (above) is no longer used.
+CREATE TABLE IF NOT EXISTS booth_shares (
+    booth_id    INT NOT NULL,
+    company_id  INT NOT NULL,
+    shared_by   INT NULL,
+    shared_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (booth_id, company_id),
+    KEY ix_booth_shares_company (company_id),
+    CONSTRAINT fk_booth_shares_booth   FOREIGN KEY (booth_id)   REFERENCES booths(id)    ON DELETE CASCADE,
+    CONSTRAINT fk_booth_shares_company FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+    CONSTRAINT fk_booth_shares_user    FOREIGN KEY (shared_by)  REFERENCES users(id)     ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================
@@ -207,13 +225,10 @@ SELECT s.id, s.name, s.phone, s.email, s.website, s.address, s.province_id, s.ra
 FROM suppliers s
 LEFT JOIN china_province p ON p.id = s.province_id;
 
--- Products with shipping name, the companies they're shared with, the decision (D38) and the booth (D43)
+-- Products with shipping name, the decision (D38) and the booth (D43); D62: no longer shared
 CREATE OR REPLACE VIEW v_products AS
 SELECT pr.id, pr.supplier_id, pr.supplier_ref, pr.name, pr.description, pr.price, pr.unit,
        pr.moq, pr.shipping_type, st.name AS shipping_name,
-       (SELECT GROUP_CONCAT(CONCAT_WS(' - ', co.name, co.branch) ORDER BY co.name, co.branch SEPARATOR ', ')
-          FROM product_shares ps JOIN companies co ON co.id = ps.company_id
-         WHERE ps.product_id = pr.id) AS shared_with,
        pr.status, pr.decision_note, pr.decided_at, pr.decided_by, du.name AS decided_by_name,
        pr.created_at, pr.created_by, cu.name AS created_by_name,
        pr.booth_id, bo.booth_code, bo.phase AS booth_phase

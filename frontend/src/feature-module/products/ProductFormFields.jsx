@@ -4,6 +4,7 @@ import { Col, Form, Input, InputNumber, Row, Select } from 'antd';
 import { API_BASE_URL } from '../../config/config';
 import { useList } from '../../utils/lists';
 import { boothLabel } from '../../utils/format';
+import PhotosField from './PhotosField';
 
 // Fields of the product form. The server checks the same rules (price with 2 decimals at most,
 // a shipping type of the list) and explains a refusal.
@@ -72,13 +73,20 @@ export default function ProductFormFields({ lockSupplier }) {
         </Col>
       </Row>
       <Form.Item name="description" label="Description"><Input.TextArea rows={4} /></Form.Item>
+      {/* D61: the photos are sent with the product, resized, stored as Base64. */}
+      <Form.Item name="photos" label="Photos" className="mb-0" extra="JPG, PNG ou WebP, 10 au plus : elles sont réduites avant l'envoi.">
+        <PhotosField />
+      </Form.Item>
     </>
   );
 }
 
 // Form values -> API body: empty optional fields are sent as null so they can be cleared.
-export const productPayload = (v) => ({
+// D61: the photos field gives the photos to add and the ids of those to remove.
+export const productPayload = ({ photos, images: _images, ...v }) => ({
   ...v,
+  images_add: photos?.add || [],
+  images_remove: photos?.removed || [],
   supplier_id: v.supplier_id ?? null,
   booth_id: v.booth_id ?? null,
   price: v.price ? String(v.price).replace(',', '.') : null,

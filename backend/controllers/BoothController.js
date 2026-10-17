@@ -3,6 +3,7 @@ const { fail, handle, toId, clean, likeContains } = require('../utils/http');
 const { validate } = require('../utils/validate');
 const { padBoothNumbers } = require('../utils/halls');
 const { loadBooth } = require('../utils/scope');
+const { isAdmin, isViewer } = require('../utils/access');
 
 // The limits of the CHECK constraints and column types of schema v2, checked here first so the
 // user gets a French message instead of a database error. D56: halls 1-18, floors 0-4.
@@ -89,26 +90,67 @@ async function validateBooth(req, existing) {
   return { values: b };
 }
 
-// Runs a write; a duplicate booth (uq_booth_place) that slipped between the check and the write (two
-// users at the same moment) still ends in a 409.
-async function writeBooth(res, b, sql, params) {
+// D62: share_company_ids, the companies the booth is shared with (the whole list). Only the admin
+// shares. Returns { ids } (null when the body leaves the shares as they are) or { status, message }.
+async function readShares(req) {
+  const raw = req.body?.share_company_ids;
+  if (raw === undefined) return { ids: null };
+  if (!isAdmin(req.user)) return { status: 403, message: "Seul l'administrateur partage un booth" };
+  if (!Array.isArray(raw)) return { status: 400, message: 'Partager avec : liste de sociétés attendue' };
+  const ids = [...new Set(raw.map(toId))];
+  if (ids.includes(null)) return { status: 400, message: 'Partager avec : société invalide' };
+  if (ids.length) {
+    const [found] = await db.query('SELECT id FROM companies WHERE id IN (?)', [ids]);
+    if (found.length !== ids.length) return { status: 400, message: 'Partager avec : société introuvable' };
+  }
+  return { ids };
+}
+
+// Writes the booth and, when given, its shares in one transaction. A duplicate booth
+// (uq_booth_place) that slipped between the check and the write (two users at the same moment)
+// still ends in a 409. Returns the booth id, or null once the refusal is sent.
+async function writeBooth(req, res, b, shares, sql, params, existingId) {
+  const conn = await db.getConnection();
   try {
-    const [r] = await db.query(sql, params);
-    return r;
+    await conn.beginTransaction();
+    const [r] = await conn.query(sql, params);
+    const id = existingId || r.insertId;
+    if (shares !== null) {
+      await conn.query('DELETE FROM booth_shares WHERE booth_id = ?', [id]);
+      if (shares.length) {
+        await conn.query('INSERT INTO booth_shares (booth_id, company_id, shared_by) VALUES ?',
+          [shares.map((c) => [id, c, req.user.id])]);
+      }
+    }
+    await conn.commit();
+    return id;
   } catch (e) {
+    await conn.rollback();
     if (e.code === 'ER_DUP_ENTRY') {
       fail(res, 409, `Le booth ${boothLabel(b.phase, boothCode(b))} existe déjà`);
       return null;
     }
     throw e;
+  } finally {
+    conn.release();
   }
 }
 
+// shared_company_ids ("1,3"): the companies the booth is shared with (D62), for the admin's
+// table and form. A subquery, so v_booths keeps no GROUP BY (D23).
+const SHARED_IDS = '(SELECT GROUP_CONCAT(bs.company_id ORDER BY bs.company_id) FROM booth_shares bs WHERE bs.booth_id = v.id) AS shared_company_ids';
+const SHARED_WITH_COMPANY = 'EXISTS (SELECT 1 FROM booth_shares bs WHERE bs.booth_id = v.id AND bs.company_id = ?)';
+
 // Every booth of the group. Filters: supplier_id, phase, hall, floor, category_id,
-// visited (0 = the "to visit" list), q (booth code or supplier name).
+// visited (0 = the "to visit" list), q (booth code or supplier name). D62: a viewer (LECTEUR)
+// only gets the booths shared with its company.
 exports.list = handle('Booth list', async (req, res) => {
   const params = [];
   let where = '1=1';
+  if (isViewer(req.user)) {
+    where += ` AND ${SHARED_WITH_COMPANY}`;
+    params.push(req.user.company_id);
+  }
   for (const key of ['supplier_id', 'phase', 'hall', 'floor', 'category_id']) {
     if (req.query[key] !== undefined && req.query[key] !== '') {
       const n = key === 'floor' && req.query.floor === '0' ? 0 : toId(req.query[key]); // D56: floor 0
@@ -137,7 +179,7 @@ exports.list = handle('Booth list', async (req, res) => {
   }
   // nbr_products: the products found at the booth (D43), shown in the booth table (D49).
   const [rows] = await db.query(
-    `SELECT v.*, (SELECT COUNT(*) FROM products p WHERE p.booth_id = v.id) AS nbr_products
+    `SELECT v.*, (SELECT COUNT(*) FROM products p WHERE p.booth_id = v.id) AS nbr_products, ${SHARED_IDS}
      FROM v_booths v WHERE ${where}
      ORDER BY v.phase, v.hall, v.floor, v.letter, v.num_start LIMIT 1000`,
     params
@@ -145,10 +187,32 @@ exports.list = handle('Booth list', async (req, res) => {
   res.json({ success: true, data: rows });
 });
 
+// D62: a viewer only opens a booth shared with its company (404 otherwise, as if it did not
+// exist). It cannot read the products or suppliers routes, so its booth comes with the products
+// found there (no decision, which stays internal) and the supplier's contact details.
 exports.getById = handle('Booth getById', async (req, res) => {
   const r = await loadBooth(req.params.id);
   if (!r.row) return fail(res, r.status, r.message);
-  const [[booth]] = await db.query('SELECT * FROM v_booths WHERE id = ?', [r.row.id]);
+  const viewer = isViewer(req.user);
+  const [[booth]] = await db.query(
+    `SELECT v.*, ${SHARED_IDS} FROM v_booths v WHERE v.id = ?${viewer ? ` AND ${SHARED_WITH_COMPANY}` : ''}`,
+    viewer ? [r.row.id, req.user.company_id] : [r.row.id]);
+  if (!booth) return fail(res, 404, 'Booth introuvable');
+  if (viewer) {
+    const [products] = await db.query(
+      `SELECT p.id, p.name, p.supplier_ref, p.description, p.price, p.unit, p.moq, p.shipping_type,
+              (SELECT pi.thumb_data FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.id LIMIT 1) AS cover_thumb
+       FROM products p WHERE p.booth_id = ? ORDER BY p.name`, [booth.id]);
+    const [[supplier]] = booth.supplier_id
+      ? await db.query('SELECT id, name, phone, email, website, cantonfair_url FROM suppliers WHERE id = ?', [booth.supplier_id])
+      : [[null]];
+    if (supplier) {
+      [supplier.contacts] = await db.query(
+        'SELECT id, name, phone, email, wechat_qr, avatar FROM contacts WHERE supplier_id = ? ORDER BY name', [supplier.id]);
+    }
+    booth.products = products;
+    booth.supplier = supplier || null;
+  }
   res.json({ success: true, data: booth });
 });
 
@@ -156,12 +220,14 @@ exports.create = handle('Booth create', async (req, res) => {
   const v = await validateBooth(req);
   if (!v.values) return fail(res, v.status, v.message);
   const b = v.values;
-  const r = await writeBooth(res, b,
+  const shares = await readShares(req);
+  if (shares.status) return fail(res, shares.status, shares.message);
+  const id = await writeBooth(req, res, b, shares.ids,
     `INSERT INTO booths (phase, hall, floor, letter, num_start, num_end, category_id, supplier_id, visited, comment)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [b.phase, b.hall, b.floor, b.letter, b.num_start, b.num_end, b.category_id, b.supplier_id, b.visited, b.comment]
   );
-  if (r) res.json({ success: true, data: { id: r.insertId, phase: b.phase, booth_code: boothCode(b) } });
+  if (id) res.json({ success: true, data: { id, phase: b.phase, booth_code: boothCode(b) } });
 });
 
 exports.update = handle('Booth update', async (req, res) => {
@@ -170,12 +236,15 @@ exports.update = handle('Booth update', async (req, res) => {
   const v = await validateBooth(req, loaded.row);
   if (!v.values) return fail(res, v.status, v.message);
   const b = v.values;
-  const r = await writeBooth(res, b,
+  const shares = await readShares(req);
+  if (shares.status) return fail(res, shares.status, shares.message);
+  const id = await writeBooth(req, res, b, shares.ids,
     `UPDATE booths SET phase = ?, hall = ?, floor = ?, letter = ?, num_start = ?, num_end = ?,
             category_id = ?, supplier_id = ?, visited = ?, comment = ? WHERE id = ?`,
-    [b.phase, b.hall, b.floor, b.letter, b.num_start, b.num_end, b.category_id, b.supplier_id, b.visited, b.comment, loaded.row.id]
+    [b.phase, b.hall, b.floor, b.letter, b.num_start, b.num_end, b.category_id, b.supplier_id, b.visited, b.comment, loaded.row.id],
+    loaded.row.id
   );
-  if (r) res.json({ success: true, data: { id: loaded.row.id, phase: b.phase, booth_code: boothCode(b) } });
+  if (id) res.json({ success: true, data: { id, phase: b.phase, booth_code: boothCode(b) } });
 });
 
 // Marks a booth visited or not: { visited: true | false }. Takes it off (or puts it back on)

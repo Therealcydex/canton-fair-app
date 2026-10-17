@@ -1,22 +1,26 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
-import { Alert, App, Button, Input, Rate, Select, Space, Table, Tag } from 'antd';
+import { Alert, App, Button, Input, Rate, Select, Table, Tag } from 'antd';
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import FormModal from '../../components/FormModal';
 import SupplierFormFields, { newSupplierContact } from './SupplierFormFields';
 import { supplierPayload } from './SupplierDetail';
 import { useList } from '../../utils/lists';
-import { EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import PageHeader from '../../components/PageHeader';
+import useDebounced from '../../utils/useDebounced';
 
 export default function Suppliers() {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const provinces = useList('provinces');
-  const [filters, setFilters] = useState({ q: '', province_id: undefined });
+  // D60: the search applies as you type; "Réinitialiser" and each clear (×) empty the filters at once.
+  const [search, setSearch] = useState('');
+  const q = useDebounced(search.trim());
+  const [provinceId, setProvinceId] = useState(undefined);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [creating, setCreating] = useState(false);
@@ -26,14 +30,14 @@ export default function Suppliers() {
     setLoading(true);
     setLoadError(null);
     try {
-      const { data } = await axios.get(`${API_BASE_URL}/suppliers`, { params: { q: filters.q || undefined, province_id: filters.province_id } });
+      const { data } = await axios.get(`${API_BASE_URL}/suppliers`, { params: { q: q || undefined, province_id: provinceId } });
       setRows(data.data);
     } catch (err) {
       setLoadError(apiError(err, 'Erreur lors du chargement des fournisseurs'));
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [q, provinceId]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -100,16 +104,18 @@ export default function Suppliers() {
       <PageHeader title="Fournisseurs" chip="Foire de Canton"
         subtitle="Fournisseurs du groupe, leurs contacts, booths et produits"
         actions={<Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>Nouveau fournisseur</Button>} />
-      <Space className="mb-3 w-100 justify-content-between" wrap>
-        <Space wrap>
-          <Input.Search placeholder="Rechercher par nom ou téléphone" allowClear style={{ width: 280 }}
-            onSearch={(q) => setFilters((f) => ({ ...f, q }))} />
-          <Select placeholder="Province" allowClear showSearch optionFilterProp="label" style={{ width: 220 }} value={filters.province_id}
-            options={provinces.map((p) => ({ value: p.id, label: provinceLabel(p.id) }))}
-            onChange={(province_id) => setFilters((f) => ({ ...f, province_id }))} />
-        </Space>
-        {!loading && !loadError && <span className="text-muted small">{rows.length} fournisseur{rows.length > 1 ? 's' : ''}</span>}
-      </Space>
+      <div className="sc-filters">
+        <Input prefix={<SearchOutlined />} placeholder="Rechercher par nom ou téléphone" allowClear style={{ width: 280 }}
+          value={search} onChange={(e) => setSearch(e.target.value)} />
+        <Select prefix={<span className="sc-label">Province :</span>} placeholder="Toutes" allowClear showSearch optionFilterProp="label"
+          style={{ width: 260 }} value={provinceId} onChange={(v) => setProvinceId(v ?? undefined)}
+          options={provinces.map((p) => ({ value: p.id, label: provinceLabel(p.id) }))} />
+        <Button type="link" icon={<ReloadOutlined />} className="fw-semibold px-1"
+          onClick={() => { setSearch(''); setProvinceId(undefined); }}>Réinitialiser</Button>
+        {!loading && !loadError && (
+          <span className="sc-counter ms-lg-auto"><strong>{rows.length} fournisseur{rows.length > 1 ? 's' : ''}</strong></span>
+        )}
+      </div>
       {loadError && <Alert type="error" message={loadError} showIcon className="mb-3" />}
       <Table rowKey="id" columns={columns} dataSource={rows} loading={loading} size="middle"
         scroll={{ x: true }} pagination={{ pageSize: 20 }} />
