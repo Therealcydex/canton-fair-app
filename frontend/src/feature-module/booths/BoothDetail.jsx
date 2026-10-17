@@ -10,8 +10,8 @@ import { API_BASE_URL, fileUrl } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import { STATUS } from '../../utils/decision';
 import { ZONE_HALLS } from '../../utils/fairPlan';
-import { formatPrice } from '../../utils/format';
-import { categoryPath, useList } from '../../utils/lists';
+import { boothLabel, formatPrice } from '../../utils/format';
+import { categoryLabel, categoryPath, useList } from '../../utils/lists';
 import FormModal from '../../components/FormModal';
 import { NewProductModal } from '../products/ProductList';
 import { QrThumb } from '../suppliers/WechatQr';
@@ -126,7 +126,7 @@ export default function BoothDetail() {
       <nav className="booth-crumb">
         <Link to="/booths"><ShopOutlined /> Booths</Link>
         <span className="mx-2 text-secondary">›</span>
-        <strong>Booth {booth.booth_code}</strong>
+        <strong>Booth {boothLabel(booth.phase, booth.booth_code)}</strong>
       </nav>
 
       <div className="page-header">
@@ -134,7 +134,7 @@ export default function BoothDetail() {
           <span className="booth-hall-badge" title={`Hall ${booth.hall}`}>{booth.hall}</span>
           <div>
             <h1 className="page-title">
-              Booth {booth.booth_code}
+              Booth {boothLabel(booth.phase, booth.booth_code)}
               {booth.visited ? <Tag color="green" className="m-0">Visité</Tag> : <Tag color="orange" className="m-0">À visiter</Tag>}
             </h1>
             <div className="page-subtitle text-uppercase small">
@@ -160,7 +160,7 @@ export default function BoothDetail() {
             <div className="sc-panel-head mb-3 rounded">
               <EnvironmentOutlined className="sc-panel-icon fs-5" />
               <h2 className="flex-grow-1">Repérage du booth</h2>
-              <span className="page-chip">{booth.booth_code}</span>
+              <span className="page-chip">{boothLabel(booth.phase, booth.booth_code)}</span>
             </div>
             <div className="booth-place mb-3">
               {place.map((c) => (
@@ -171,12 +171,11 @@ export default function BoothDetail() {
               ))}
             </div>
             <div className="sc-label mb-1">Catégorie</div>
-            <p className="mb-3">{booth.sub_category ? `${booth.category} › ${booth.section} › ${booth.sub_category}` : '—'}</p>
+            <p className="mb-3">{categoryLabel(booth) || '—'}</p>
             <div className="sc-label mb-1">Commentaire de visite</div>
             <div className="booth-comment flex-grow-1">{booth.comment ? `« ${booth.comment} »` : <span className="text-secondary">Aucun commentaire.</span>}</div>
-            <div className="d-flex justify-content-between align-items-center mt-3">
+            <div className="mt-3">
               <span className="sc-label">{booth.zone ? `Zone ${booth.zone} · halls ${ZONE_HALLS[booth.zone]}` : `Hall ${booth.hall}`}</span>
-              <Link to="/plan-du-salon" className="fw-semibold">Plan du salon <ArrowRightOutlined /></Link>
             </div>
           </section>
         </Col>
@@ -239,7 +238,7 @@ export default function BoothDetail() {
           <InboxOutlined className="sc-panel-icon fs-4 mt-1" />
           <div className="flex-grow-1">
             <h2 className="h5 m-0">Produits de ce booth</h2>
-            <div className="small text-secondary">Produits trouvés au booth {booth.booth_code}</div>
+            <div className="small text-secondary">Produits trouvés au booth {boothLabel(booth.phase, booth.booth_code)}</div>
           </div>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreatingProduct(true)}>Nouveau produit</Button>
         </div>
@@ -248,14 +247,14 @@ export default function BoothDetail() {
           locale={{ emptyText: 'Aucun produit enregistré à ce booth' }}
           footer={products?.length ? () => (
             <span className="text-secondary">
-              Total : {plural(products.length, 'produit')} rattaché{products.length > 1 ? 's' : ''} au booth {booth.booth_code}
+              Total : {plural(products.length, 'produit')} rattaché{products.length > 1 ? 's' : ''} au booth {boothLabel(booth.phase, booth.booth_code)}
               <span className="mx-2">·</span>
               Retenus : {retained} ({Math.round((retained / products.length) * 100)} %)
             </span>
           ) : undefined} />
       </section>
 
-      <FormModal open={editing} title={`Modifier le booth ${booth.booth_code}`} width={640}
+      <FormModal open={editing} title={`Modifier le booth ${boothLabel(booth.phase, booth.booth_code)}`} width={640}
         initialValues={{ ...booth, visited: !!booth.visited, category_path: categoryPath(categories, booth.category_id) }}
         onCancel={() => setEditing(false)}
         onSubmit={(values) => axios.put(`${API_BASE_URL}/booths/${id}`, boothPayload(values))}

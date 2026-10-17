@@ -6,7 +6,7 @@ module.exports = async (ctx) => {
   const A = ctx.tokens.buyerA;
   const s1 = (await api('POST', '/suppliers', { token: A, body: { name: `${PREFIX} Booth supplier 1` } })).body.data.id;
   const s2 = (await api('POST', '/suppliers', { token: A, body: { name: `${PREFIX} Booth supplier 2` } })).body.data.id;
-  const place = { phase: 2, hall: 125, floor: 1, comment: `${PREFIX} product booth` };
+  const place = { phase: 2, hall: 16, floor: 0, comment: `${PREFIX} product booth` };
   const b1 = (await api('POST', '/booths', { token: A, body: { ...place, letter: 'A', num_start: 1, supplier_id: s1 } })).body.data;
   const b2 = (await api('POST', '/booths', { token: A, body: { ...place, letter: 'B', num_start: 2 } })).body.data;
   check('test booths created', !!b1?.id && !!b2?.id);
@@ -24,7 +24,7 @@ module.exports = async (ctx) => {
   check('only the products of that booth', byBooth.body.data.length === 1 && byBooth.body.data[0].id === id);
   expect('invalid booth filter', await api('GET', '/products?booth_id=x', { token: A }), 400);
   // D49: the booth list counts the products found at each booth.
-  const booths = expect('booth list', await api('GET', '/booths?hall=125', { token: A }), 200).body.data;
+  const booths = expect('booth list', await api('GET', '/booths?hall=16&floor=0', { token: A }), 200).body.data;
   const count = (bid) => booths.find((b) => b.id === bid)?.nbr_products;
   check('booth list counts the products of each booth', Number(count(b1.id)) === 1 && Number(count(b2.id)) === 0);
 

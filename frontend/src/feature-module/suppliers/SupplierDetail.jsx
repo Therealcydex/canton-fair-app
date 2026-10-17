@@ -81,7 +81,7 @@ export default function SupplierDetail() {
     {
       key: 'booths',
       label: <Space size={6}>Booths<Tag className="m-0">{visited}/{booths}</Tag></Space>,
-      children: <BoothList supplierId={supplier.id} hideSupplier onChanged={load} />,
+      children: <BoothList supplierId={supplier.id} onChanged={load} />,
     },
     {
       key: 'products',

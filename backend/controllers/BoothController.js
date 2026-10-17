@@ -5,11 +5,11 @@ const { padBoothNumbers } = require('../utils/halls');
 const { loadBooth } = require('../utils/scope');
 
 // The limits of the CHECK constraints and column types of schema v2, checked here first so the
-// user gets a French message instead of a database error.
+// user gets a French message instead of a database error. D56: halls 1-18, floors 0-4.
 const BOOTH_FIELDS = {
   phase: { label: 'Phase', type: 'int', required: true, min: 1, maxValue: 3 },
-  hall: { label: 'Hall', type: 'int', required: true, min: 1, maxValue: 127 },
-  floor: { label: 'Étage', type: 'int', required: true, min: 1, maxValue: 4 },
+  hall: { label: 'Hall', type: 'int', required: true, min: 1, maxValue: 18 },
+  floor: { label: 'Étage', type: 'int', required: true, min: 0, maxValue: 4 },
   letter: { label: 'Lettre', type: 'string', max: 1, upper: true },
   num_start: { label: 'Numéro de début', type: 'int', min: 1, maxValue: 32767 },
   num_end: { label: 'Numéro de fin', type: 'int', min: 1, maxValue: 32767 },
@@ -22,6 +22,8 @@ const BOOTH_FIELDS = {
 const two = (n) => String(n).padStart(2, '0');
 const boothCode = (b) =>
   `${b.hall}.${b.floor}${b.letter === null ? '' : `${b.letter}${two(b.num_start)}${b.num_end === null ? '' : `-${two(b.num_end)}`}`}`;
+// D53: the booth as the apps show it, phase first: "Ph1 3.1E12-13".
+const boothLabel = (phase, code) => `Ph${phase} ${code}`;
 
 // Validates a booth body. supplier_id and category_id need the database.
 // Returns { values } or { status, message }.
@@ -83,7 +85,7 @@ async function validateBooth(req, existing) {
      LIMIT 1`,
     [existing?.id ?? 0, b.phase, b.hall, b.floor, b.letter, end, b.num_start]
   );
-  if (overlap) return { status: 409, message: `Cet emplacement chevauche le booth ${overlap.booth_code} (phase ${b.phase})` };
+  if (overlap) return { status: 409, message: `Cet emplacement chevauche le booth ${boothLabel(b.phase, overlap.booth_code)}` };
   return { values: b };
 }
 
@@ -95,7 +97,7 @@ async function writeBooth(res, b, sql, params) {
     return r;
   } catch (e) {
     if (e.code === 'ER_DUP_ENTRY') {
-      fail(res, 409, `Le booth ${boothCode(b)} existe déjà`);
+      fail(res, 409, `Le booth ${boothLabel(b.phase, boothCode(b))} existe déjà`);
       return null;
     }
     throw e;
@@ -109,8 +111,8 @@ exports.list = handle('Booth list', async (req, res) => {
   let where = '1=1';
   for (const key of ['supplier_id', 'phase', 'hall', 'floor', 'category_id']) {
     if (req.query[key] !== undefined && req.query[key] !== '') {
-      const n = toId(req.query[key]);
-      if (!n) return fail(res, 400, `Filtre ${key} invalide`);
+      const n = key === 'floor' && req.query.floor === '0' ? 0 : toId(req.query[key]); // D56: floor 0
+      if (n === null) return fail(res, 400, `Filtre ${key} invalide`);
       where += ` AND v.${key} = ?`;
       params.push(n);
     }
@@ -120,7 +122,14 @@ exports.list = handle('Booth list', async (req, res) => {
     where += ' AND v.visited = ?';
     params.push(Number(req.query.visited));
   }
-  const q = clean(req.query.q);
+  let q = clean(req.query.q);
+  // D53: "Ph1 3.1E12" finds the booth 3.1E12 of phase 1 (the label the apps show).
+  const ph = q && /^ph\s*([1-3])\b\s*(.*)$/i.exec(q);
+  if (ph) {
+    where += ' AND v.phase = ?';
+    params.push(Number(ph[1]));
+    q = ph[2].trim();
+  }
   if (q) {
     // D50: "10.3A8" finds the booth 10.3A08 (numbers stored on 2 digits).
     where += ' AND (v.booth_code LIKE ? OR v.booth_code LIKE ? OR v.supplier_name LIKE ?)';
@@ -152,7 +161,7 @@ exports.create = handle('Booth create', async (req, res) => {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [b.phase, b.hall, b.floor, b.letter, b.num_start, b.num_end, b.category_id, b.supplier_id, b.visited, b.comment]
   );
-  if (r) res.json({ success: true, data: { id: r.insertId, booth_code: boothCode(b) } });
+  if (r) res.json({ success: true, data: { id: r.insertId, phase: b.phase, booth_code: boothCode(b) } });
 });
 
 exports.update = handle('Booth update', async (req, res) => {
@@ -166,7 +175,7 @@ exports.update = handle('Booth update', async (req, res) => {
             category_id = ?, supplier_id = ?, visited = ?, comment = ? WHERE id = ?`,
     [b.phase, b.hall, b.floor, b.letter, b.num_start, b.num_end, b.category_id, b.supplier_id, b.visited, b.comment, loaded.row.id]
   );
-  if (r) res.json({ success: true, data: { id: loaded.row.id, booth_code: boothCode(b) } });
+  if (r) res.json({ success: true, data: { id: loaded.row.id, phase: b.phase, booth_code: boothCode(b) } });
 });
 
 // Marks a booth visited or not: { visited: true | false }. Takes it off (or puts it back on)

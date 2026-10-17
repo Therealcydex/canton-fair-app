@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Alert, App, Button, Form, Image, Select, Space, Table, Tag, Tooltip } from 'antd';
 import { API_BASE_URL, fileUrl } from '../../config/config';
 import { apiError } from '../../utils/apiError';
-import { formatPrice } from '../../utils/format';
+import { boothLabel, formatPrice } from '../../utils/format';
 import { STATUS } from '../../utils/decision';
 import { companyLabel } from '../../utils/lists';
 import FormModal from '../../components/FormModal';
@@ -87,8 +87,8 @@ export default function ProductList({ filters, supplierId, companies }) {
     },
     !supplierId && { title: 'Fournisseur', dataIndex: 'supplier_name', responsive: ['md'], render: (v) => v || '—' },
     {
-      title: 'Booth', dataIndex: 'booth_code', width: 120, responsive: ['md'],
-      render: (v, p) => (v ? <Link to={`/booths/${p.booth_id}`}>{v}</Link> : '—'),
+      title: 'Booth', dataIndex: 'booth_code', width: 140, responsive: ['md'],
+      render: (v, p) => (v ? <Link to={`/booths/${p.booth_id}`}>{boothLabel(p.booth_phase, v)}</Link> : '—'),
     },
     {
       title: 'Décision', dataIndex: 'status', width: 130,

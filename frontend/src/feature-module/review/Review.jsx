@@ -7,7 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import { isAdmin } from '../../utils/access';
 import { apiError } from '../../utils/apiError';
 import { DECISIONS, STATUS, formatDateTime } from '../../utils/decision';
-import { formatPrice } from '../../utils/format';
+import { boothLabel, formatPrice } from '../../utils/format';
 import PageHeader from '../../components/PageHeader';
 
 const priceLine = (p) => [
@@ -160,7 +160,7 @@ function BossQueue({ review, reload }) {
           {product.supplier_id
             ? <Link to={`/fournisseurs/${product.supplier_id}`}>{product.supplier_name}</Link>
             : <span className="text-secondary">Sans fournisseur</span>}
-          {product.booth_id && <> · <Link to={`/booths/${product.booth_id}`}>Booth {product.booth_code} · phase {product.booth_phase}</Link></>}
+          {product.booth_id && <> · <Link to={`/booths/${product.booth_id}`}>Booth {boothLabel(product.booth_phase, product.booth_code)}</Link></>}
         </div>
         <p className="fs-6 fw-semibold my-2">{priceLine(product)}</p>
         {product.supplier_ref && <p className="small text-secondary mb-1">Réf. {product.supplier_ref}</p>}
@@ -201,7 +201,7 @@ function ProductRow({ product: p, children }) {
           <Tag color={STATUS[p.status].color} className="m-0 flex-shrink-0">{STATUS[p.status].label}</Tag>
         </div>
         <div className="small text-secondary text-truncate">
-          {p.supplier_name || 'Sans fournisseur'}{p.booth_code ? ` · Booth ${p.booth_code}` : ''} · {priceLine(p)}
+          {p.supplier_name || 'Sans fournisseur'}{p.booth_code ? ` · Booth ${boothLabel(p.booth_phase, p.booth_code)}` : ''} · {priceLine(p)}
         </div>
         {children}
       </div>

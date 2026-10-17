@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Nav, Offcanvas } from 'react-bootstrap';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
-  ApartmentOutlined, AuditOutlined, BankOutlined, ContactsOutlined, EnvironmentOutlined, FlagOutlined, HomeOutlined,
+  ApartmentOutlined, AuditOutlined, BankOutlined, ContactsOutlined, FlagOutlined, HomeOutlined,
   InboxOutlined, LogoutOutlined, MenuOutlined, ShopOutlined, TeamOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
@@ -19,7 +19,6 @@ const MENU = [
   { to: '/booths', label: 'Booths', icon: <ShopOutlined /> },
   { to: '/produits', label: 'Produits', icon: <InboxOutlined /> },
   { to: '/revue', label: 'Revue du soir', icon: <AuditOutlined /> }, // D38
-  { to: '/plan-du-salon', label: 'Plan du salon', icon: <EnvironmentOutlined /> }, // D42
 ];
 // D52: on a phone, the screens used on the fair floor stay one tap away at the bottom.
 const TABS = [

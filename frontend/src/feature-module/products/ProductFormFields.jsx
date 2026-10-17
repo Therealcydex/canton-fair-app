@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Col, Form, Input, InputNumber, Row, Select } from 'antd';
 import { API_BASE_URL } from '../../config/config';
 import { useList } from '../../utils/lists';
+import { boothLabel } from '../../utils/format';
 
 // Fields of the product form. The server checks the same rules (price with 2 decimals at most,
 // a shipping type of the list) and explains a refusal.
@@ -46,7 +47,7 @@ export default function ProductFormFields({ lockSupplier }) {
         <Col xs={24} sm={12}>
           <Form.Item name="booth_id" label="Booth" extra={supplierId ? (booths.length ? '' : "Ce fournisseur n'a pas de booth") : "Choisissez d'abord le fournisseur"}>
             <Select allowClear placeholder="Non précisé" disabled={!booths.length}
-              options={booths.map((b) => ({ value: b.id, label: `${b.booth_code} · phase ${b.phase}` }))} />
+              options={booths.map((b) => ({ value: b.id, label: boothLabel(b.phase, b.booth_code) }))} />
           </Form.Item>
         </Col>
         <Col xs={24} sm={12}>

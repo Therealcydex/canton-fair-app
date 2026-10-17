@@ -14,6 +14,8 @@ const ROLES = [
   { value: 'ADMIN', label: 'Administrateur' },
 ];
 const roleLabel = (v) => ROLES.find((r) => r.value === v)?.label || v;
+// D56: the level is a number from 1 to 5, or none.
+const LEVELS = [1, 2, 3, 4, 5].map((n) => ({ value: n, label: `Niveau ${n}` }));
 const userCompany = (u) => (u.company_id ? companyLabel({ name: u.company_name, branch: u.company_branch }) : '');
 
 // The users shown, as a CSV file for Excel (";" and a BOM). No password is ever in a user row.
@@ -163,7 +165,7 @@ export default function Users() {
           <p className="mb-0 small text-secondary">
             Deux rôles : <strong>Administrateur</strong> (comptes, sociétés, décisions sur les produits) et <strong>Acheteur</strong>
             (fournisseurs, booths, produits). Tous les comptes actifs voient et modifient les données du groupe. Un compte
-            inactif ne peut plus se connecter. Le niveau est un texte libre.
+            inactif ne peut plus se connecter. Le niveau va de 1 à 5.
           </p>
         </div>
       </div>
@@ -171,11 +173,11 @@ export default function Users() {
       <FormModal open={!!editing} title={editing?.id ? "Modifier l'utilisateur" : 'Nouvel utilisateur'}
         icon={<UserAddOutlined />} className="sc-modal-dark" width={640}
         initialValues={editing?.id
-          ? { ...editing, is_active: !!editing.is_active, password: '' }
-          : { name: '', username: '', password: '', level: '', role: 'ACHETEUR', is_active: true, company_id: undefined }}
+          ? { ...editing, is_active: !!editing.is_active, password: '', level: editing.level == null ? undefined : Number(editing.level) || editing.level }
+          : { name: '', username: '', password: '', level: undefined, role: 'ACHETEUR', is_active: true, company_id: undefined }}
         onCancel={() => setEditing(null)}
         onSubmit={(values) => {
-          const body = { ...values, company_id: values.company_id ?? null };
+          const body = { ...values, company_id: values.company_id ?? null, level: values.level ?? null };
           return editing.id ? axios.put(`${API_BASE_URL}/users/${editing.id}`, body) : axios.post(`${API_BASE_URL}/users`, body);
         }}
         onSaved={() => { message.success(editing.id ? 'Utilisateur modifié' : 'Utilisateur créé'); setEditing(null); load(); }}>
@@ -205,8 +207,8 @@ export default function Users() {
             </Form.Item>
           </Col>
           <Col xs={24} sm={12}>
-            <Form.Item name="level" label="Niveau" extra="Texte libre, par exemple « Chef des achats »">
-              <Input maxLength={50} />
+            <Form.Item name="level" label="Niveau" extra="De 1 à 5, facultatif">
+              <Select allowClear placeholder="Aucun" options={LEVELS} />
             </Form.Item>
           </Col>
         </Row>

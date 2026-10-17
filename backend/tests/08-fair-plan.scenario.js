@@ -9,11 +9,18 @@ module.exports = async (ctx) => {
   expect('plan without token', await api('GET', '/fair-plan'), 401);
   const all = expect('plan (a buyer may read it)', await api('GET', '/fair-plan', { token: A }), 200).body.data;
   // D48: one row per section and area, in the plan's order (areas A, D, C, B).
-  check('every section of the 3 phases', new Set(all.map((s) => `${s.phase}|${s.section}`)).size >= 58
-    && [1, 2, 3].every((p) => all.some((s) => s.phase === p)));
+  // Every section of the category list is on the plan (Phase 1 may be absent: deleted from the
+  // shared databases, D54).
+  const cats = (await api('GET', '/lists/canton-categories', { token: A })).body.data;
+  const sectionsOf = (rows, phase) => new Set(rows.map((s) => `${phase(s)}|${s.section}`));
+  const listed = sectionsOf(cats, (c) => Number(c.phase[6]));
+  const planned = sectionsOf(all, (s) => s.phase);
+  check('every section of the category list', listed.size >= 38 && [...listed].every((k) => planned.has(k)));
   const p1 = expect('plan of phase 1', await api('GET', '/fair-plan?phase=1', { token: A }), 200).body.data;
-  check('20 sections in phase 1', new Set(p1.map((s) => s.section)).size === 20 && p1.every((s) => s.phase === 1));
-  const order = p1.filter((s) => s.area).map((s) => s.area);
+  check('phase 1 has the sections of the list', p1.every((s) => s.phase === 1)
+    && new Set(p1.map((s) => s.section)).size === [...listed].filter((k) => k.startsWith('1|')).length);
+  const p2 = (await api('GET', '/fair-plan?phase=2', { token: A })).body.data;
+  const order = p2.filter((s) => s.area).map((s) => s.area);
   check('areas in the order A, D, C, B', order.join('') === [...order].sort((a, b) => 'ADCB'.indexOf(a) - 'ADCB'.indexOf(b)).join(''));
   expect('invalid phase filter', await api('GET', '/fair-plan?phase=4', { token: A }), 400);
 

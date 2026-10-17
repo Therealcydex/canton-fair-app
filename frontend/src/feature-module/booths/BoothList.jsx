@@ -7,7 +7,8 @@ import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import FormModal from '../../components/FormModal';
 import BoothFormFields, { boothPayload } from './BoothFormFields';
-import { categoryPath, useList } from '../../utils/lists';
+import { categoryParent, categoryPath, useList } from '../../utils/lists';
+import { boothLabel } from '../../utils/format';
 
 const two = (n) => String(n).padStart(2, '0'); // D50: booth numbers on 2 digits, as on the badges
 export const boothNumber = (b) => (b.num_start == null ? '—' : `${two(b.num_start)}${b.num_end == null ? '' : `-${two(b.num_end)}`}`);
@@ -34,7 +35,7 @@ function BoothChecklist({ rows, loading, saving, onToggle }) {
             {[...list.filter((b) => !b.visited), ...list.filter((b) => b.visited)].map((b) => (
               <div key={b.id} className={`booth-check-row ${b.visited ? 'is-visited' : ''}`}>
                 <Link to={`/booths/${b.id}`} className="booth-check-link">
-                  <span className="booth-code booth-check-code">{b.booth_code}</span>
+                  <span className="booth-code booth-check-code">{boothLabel(b.phase, b.booth_code)}</span>
                   <span className="overflow-hidden">
                     <span className="d-block fw-semibold text-body text-truncate">{b.supplier_name || 'Sans fournisseur'}</span>
                     <span className="d-block small text-secondary text-truncate">{b.sub_category || 'Sans catégorie'}</span>
@@ -60,7 +61,7 @@ function BoothChecklist({ rows, loading, saving, onToggle }) {
 // receives the rows, for the page's counters.
 // `checklist` (D52, "À visiter" on a phone): the booths as cards grouped by hall, each with a big ✓
 // that marks it visited (tap again to undo); the visited booths go to the bottom of their hall.
-export default function BoothList({ filters, supplierId, planning, checklist, hideSupplier, onChanged, createOpen, onCreateOpenChange, onLoaded }) {
+export default function BoothList({ filters, supplierId, planning, checklist, onChanged, createOpen, onCreateOpenChange, onLoaded }) {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
@@ -99,7 +100,7 @@ export default function BoothList({ filters, supplierId, planning, checklist, hi
   const setVisited = async (booth, visited) => {
     try {
       await axios.patch(`${API_BASE_URL}/booths/${booth.id}/visited`, { visited });
-      message.success(`${booth.booth_code} : ${visited ? 'visité' : 'à visiter'}`);
+      message.success(`${boothLabel(booth.phase, booth.booth_code)} : ${visited ? 'visité' : 'à visiter'}`);
       changed();
     } catch (err) {
       message.error(apiError(err, "Erreur lors de l'enregistrement"));
@@ -126,7 +127,7 @@ export default function BoothList({ filters, supplierId, planning, checklist, hi
   const remove = async (booth) => {
     try {
       await axios.delete(`${API_BASE_URL}/booths/${booth.id}`);
-      message.success(`Booth ${booth.booth_code} supprimé`);
+      message.success(`Booth ${boothLabel(booth.phase, booth.booth_code)} supprimé`);
       changed();
     } catch (err) {
       message.error(apiError(err, 'Erreur lors de la suppression'));
@@ -137,27 +138,18 @@ export default function BoothList({ filters, supplierId, planning, checklist, hi
     {
       title: 'Code booth', dataIndex: 'booth_code', fixed: 'left',
       render: (v, b) => (
-        <Link to={`/booths/${b.id}`} className="booth-code">{v} <LinkOutlined /></Link>
+        <Link to={`/booths/${b.id}`} className="booth-code">{boothLabel(b.phase, v)} <LinkOutlined /></Link>
       ),
     },
-    { title: 'Phase', dataIndex: 'phase', render: (v) => `Phase ${v}` },
     { title: 'Hall', dataIndex: 'hall', render: (v) => `Hall ${v}` },
     { title: 'Étage', dataIndex: 'floor', align: 'center' },
     { title: 'Lettre', dataIndex: 'letter', align: 'center', render: (v) => <strong>{v || '—'}</strong> },
     { title: 'Numéro', key: 'number', render: (_, b) => boothNumber(b) },
     { title: 'Zone', dataIndex: 'zone', align: 'center', render: (v) => v || '—' }, // D50
-    !hideSupplier && {
-      title: 'Fournisseur rattaché', dataIndex: 'supplier_name',
-      render: (v, b) => (
-        <>
-          {b.supplier_id ? <Link to={`/fournisseurs/${b.supplier_id}`} className="text-body">{v}</Link> : '—'}
-          {b.sub_category && (
-            <Tooltip title={`${b.category} › ${b.section}`}>
-              <div className="small text-secondary">{b.sub_category}</div>
-            </Tooltip>
-          )}
-        </>
-      ),
+    {
+      // D58: no supplier column (the booth page shows it); the category keeps its own column.
+      title: 'Catégorie', dataIndex: 'sub_category',
+      render: (v, b) => (v ? <Tooltip title={categoryParent(b)}><span className="small">{v}</span></Tooltip> : '—'),
     },
     {
       title: 'Produits', dataIndex: 'nbr_products', align: 'center',
@@ -183,7 +175,7 @@ export default function BoothList({ filters, supplierId, planning, checklist, hi
       render: (_, b) => (
         <span className="text-nowrap">
           <Button type="link" size="small" className="fw-semibold" onClick={() => setEditing(b)}>Modifier</Button>
-          <Popconfirm title={`Supprimer le booth ${b.booth_code} ?`}
+          <Popconfirm title={`Supprimer le booth ${boothLabel(b.phase, b.booth_code)} ?`}
             description={Number(b.nbr_products) ? 'Ses produits sont gardés, sans booth.' : undefined}
             okText="Supprimer" okButtonProps={{ danger: true }} cancelText="Annuler" onConfirm={() => remove(b)}>
             <Button type="link" size="small" danger className="fw-semibold">Supprimer</Button>
@@ -213,7 +205,7 @@ export default function BoothList({ filters, supplierId, planning, checklist, hi
           locale={{ emptyText: planning ? 'Aucun booth à visiter' : 'Aucun booth' }} />
       )}
 
-      <FormModal open={!!editing} title={editing ? `Modifier le booth ${editing.booth_code}` : ''} width={640}
+      <FormModal open={!!editing} title={editing ? `Modifier le booth ${boothLabel(editing.phase, editing.booth_code)}` : ''} width={640}
         initialValues={editing && { ...editing, visited: !!editing.visited, category_path: categoryPath(categories, editing.category_id) }}
         onCancel={() => setEditing(null)}
         onSubmit={(values) => axios.put(`${API_BASE_URL}/booths/${editing.id}`, boothPayload(values))}
@@ -222,15 +214,16 @@ export default function BoothList({ filters, supplierId, planning, checklist, hi
       </FormModal>
 
       <FormModal open={creating} title="Nouveau booth" width={640}
-        initialValues={{ supplier_id: supplierId, visited: false, floor: 1 }}
+        initialValues={{ visited: false, floor: 1 }}
         onCancel={() => setCreating(false)}
-        onSubmit={(values) => axios.post(`${API_BASE_URL}/booths`, boothPayload(values))}
+        // D57: no supplier field when adding; from a supplier's page the booth is that supplier's.
+        onSubmit={(values) => axios.post(`${API_BASE_URL}/booths`, boothPayload({ ...values, supplier_id: supplierId }))}
         onSaved={(res) => {
           setCreating(false);
-          message.success(`Booth ${res.data.data.booth_code} créé`);
+          message.success(`Booth ${boothLabel(res.data.data.phase, res.data.data.booth_code)} créé`);
           if (supplierId) changed(); else navigate(`/booths/${res.data.data.id}`);
         }}>
-        <BoothFormFields lockSupplier={!!supplierId} />
+        <BoothFormFields withSupplier={false} />
       </FormModal>
     </>
   );

@@ -8,7 +8,7 @@ import {
 } from '@ant-design/icons';
 import { API_BASE_URL, fileUrl } from '../../config/config';
 import { apiError } from '../../utils/apiError';
-import { formatPrice } from '../../utils/format';
+import { boothLabel, formatPrice } from '../../utils/format';
 import { companyLabel } from '../../utils/lists';
 import { useAuth } from '../../context/AuthContext';
 import { isAdmin } from '../../utils/access';
@@ -190,7 +190,7 @@ export default function ProductDetail() {
           </h1>
           <div className="page-subtitle d-flex flex-wrap gap-3">
             {product.supplier_id && <Link to={`/fournisseurs/${product.supplier_id}`} className="text-secondary"><BankOutlined /> {product.supplier_name}</Link>}
-            {product.booth_id && <Link to={`/booths/${product.booth_id}`}><EnvironmentOutlined /> Booth {product.booth_code} · phase {product.booth_phase}</Link>}
+            {product.booth_id && <Link to={`/booths/${product.booth_id}`}><EnvironmentOutlined /> Booth {boothLabel(product.booth_phase, product.booth_code)}</Link>}
             {product.supplier_ref && <span>Réf. fournisseur : {product.supplier_ref}</span>}
           </div>
         </div>
@@ -252,7 +252,7 @@ export default function ProductDetail() {
               <dt>Fournisseur</dt>
               <dd>{product.supplier_id ? <Link to={`/fournisseurs/${product.supplier_id}`} className="fw-semibold">{product.supplier_name}</Link> : '—'}</dd>
               <dt>Booth</dt>
-              <dd>{product.booth_id ? <Link to={`/booths/${product.booth_id}`}><Tag color="blue" className="m-0"><EnvironmentOutlined /> Booth {product.booth_code} · phase {product.booth_phase}</Tag></Link> : '—'}</dd>
+              <dd>{product.booth_id ? <Link to={`/booths/${product.booth_id}`}><Tag color="blue" className="m-0"><EnvironmentOutlined /> Booth {boothLabel(product.booth_phase, product.booth_code)}</Tag></Link> : '—'}</dd>
             </dl>
             <div className="info-price">
               <span>Prix<div className="sc-label">{product.shipping_type ? `Base ${product.shipping_type}` : 'Sans incoterm'}</div></span>

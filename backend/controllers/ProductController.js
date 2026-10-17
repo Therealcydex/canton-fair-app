@@ -64,10 +64,10 @@ async function validateProduct(req, existing) {
   if (boothRaw !== undefined && boothRaw !== null && boothRaw !== '') {
     const boothId = toId(boothRaw);
     if (!boothId) return { status: 400, message: 'Booth invalide' };
-    const [[booth]] = await db.query('SELECT id, supplier_id, booth_code FROM booths WHERE id = ?', [boothId]);
+    const [[booth]] = await db.query('SELECT id, supplier_id, phase, booth_code FROM booths WHERE id = ?', [boothId]);
     if (!booth) return { status: 400, message: 'Booth introuvable' };
     if (booth.supplier_id && p.supplier_id && booth.supplier_id !== p.supplier_id) {
-      return { status: 400, message: `Le booth ${booth.booth_code} est celui d'un autre fournisseur` };
+      return { status: 400, message: `Le booth Ph${booth.phase} ${booth.booth_code} est celui d'un autre fournisseur` };
     }
     if (!p.supplier_id && booth.supplier_id) p.supplier_id = booth.supplier_id;
     p.booth_id = boothId;

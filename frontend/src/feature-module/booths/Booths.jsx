@@ -2,20 +2,21 @@ import { useMemo, useState } from 'react';
 import { Button, Cascader, Col, Grid, Input, Row, Select } from 'antd';
 import { BuildOutlined, DownloadOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { ZONE_HALLS } from '../../utils/fairPlan';
-import { categoryOptions, useList } from '../../utils/lists';
+import { categoryIdOf, categoryLabel, categoryOptions, useList } from '../../utils/lists';
 import BoothList, { boothNumber } from './BoothList';
 import PageHeader from '../../components/PageHeader';
+import { boothLabel } from '../../utils/format';
 
 const ZONES = Object.entries(ZONE_HALLS).map(([zone, halls]) => ({ zone, halls }));
-const HALLS = Array.from({ length: 21 }, (_, i) => i + 1);
+const HALLS = Array.from({ length: 18 }, (_, i) => i + 1); // D56: halls 1-18
 const plural = (n, word) => `${n} ${word}${n > 1 ? 's' : ''}`;
 
 // The booths shown, as a CSV file for Excel (";" and a BOM, so accents and columns open right).
 const exportCsv = (rows) => {
   const head = ['Code booth', 'Phase', 'Hall', 'Étage', 'Lettre', 'Numéro', 'Zone', 'Fournisseur', 'Catégorie', 'Produits', 'Statut', 'Commentaire'];
   const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const lines = rows.map((b) => [b.booth_code, b.phase, b.hall, b.floor, b.letter, b.num_start == null ? '' : boothNumber(b), b.zone,
-    b.supplier_name, b.sub_category, Number(b.nbr_products) || 0, b.visited ? 'Visité' : 'À visiter', b.comment].map(cell).join(';'));
+  const lines = rows.map((b) => [boothLabel(b.phase, b.booth_code), b.phase, b.hall, b.floor, b.letter, b.num_start == null ? '' : boothNumber(b), b.zone,
+    b.supplier_name, categoryLabel(b), Number(b.nbr_products) || 0, b.visited ? 'Visité' : 'À visiter', b.comment].map(cell).join(';'));
   const blob = new Blob([`﻿${[head.map(cell).join(';'), ...lines].join('\r\n')}`], { type: 'text/csv;charset=utf-8' });
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: 'booths.csv' });
   a.click();
@@ -67,7 +68,7 @@ export default function Booths({ planning = false }) {
             options={[{ value: 0, label: 'À visiter' }, { value: 1, label: 'Visités' }]} />
         )}
         <Cascader placeholder="Catégorie" allowClear showSearch style={{ width: 240 }} options={options}
-          value={filters.category_path} onChange={(path) => setFilters((f) => ({ ...f, category_path: path, category_id: path?.[2] }))} />
+          value={filters.category_path} onChange={(path) => setFilters((f) => ({ ...f, category_path: path, category_id: categoryIdOf(path) ?? undefined }))} />
         <Button type="link" icon={<ReloadOutlined />} className="fw-semibold px-1" onClick={reset}>Réinitialiser</Button>
         <span className="sc-counter ms-lg-auto">
           <span className="share-dot rounded-circle" style={{ background: 'var(--sc-accent)' }} />
