@@ -2,9 +2,13 @@ const db = require('../config/db');
 const { fail, handle, toId, clean, likeContains } = require('../utils/http');
 const { validate } = require('../utils/validate');
 const { loadProduct } = require('../utils/scope');
-const { saveImages, deleteImages, imageExtension } = require('../utils/upload');
+const { parseDataImage } = require('../utils/dataImage');
 
-const MAX_IMAGES_PER_PRODUCT = 20;
+// D61: the photos are stored as Base64 in the database, resized by the app before sending
+// (about 1280 px for the photo, 200 px for the thumbnail shown in the lists).
+const MAX_IMAGES_PER_PRODUCT = 10;
+const MAX_PHOTO_BYTES = 1.5 * 1024 * 1024;
+const MAX_THUMB_BYTES = 100 * 1024;
 
 // D38: the decision on a product. A new product is "A_ETUDIER" until the admin (the boss) decides
 // at the evening review; "A_ETUDIER" again undoes a decision.
@@ -29,7 +33,7 @@ const PRODUCT_FIELDS = {
 // v_products adds the shipping type name. D62: products are no longer shared (booths are).
 const PRODUCT_SELECT = `
   SELECT v.*, s.name AS supplier_name,
-         (SELECT pi.image_url FROM product_images pi WHERE pi.product_id = v.id ORDER BY pi.id LIMIT 1) AS cover_url,
+         (SELECT pi.thumb_data FROM product_images pi WHERE pi.product_id = v.id ORDER BY pi.id LIMIT 1) AS cover_thumb,
          (SELECT COUNT(*) FROM product_images pi WHERE pi.product_id = v.id) AS images_count
   FROM v_products v
   LEFT JOIN suppliers s ON s.id = v.supplier_id`;
@@ -120,11 +124,69 @@ exports.review = handle('Product review', async (req, res) => {
   res.json({ success: true, data: { pending, counts } });
 });
 
+// D61: the photos of a request body, [{ data, thumb }] in images_add, checked one by one.
+// Returns { images } or { message }.
+function readImages(raw) {
+  if (raw === undefined || raw === null) return { images: [] };
+  if (!Array.isArray(raw)) return { message: 'Photos : liste attendue' };
+  if (raw.length > MAX_IMAGES_PER_PRODUCT) return { message: `Un produit a au plus ${MAX_IMAGES_PER_PRODUCT} photos` };
+  const images = [];
+  for (const [i, img] of raw.entries()) {
+    const label = `Photo ${i + 1}`;
+    const data = parseDataImage(img?.data, MAX_PHOTO_BYTES, label);
+    if (!data.value) return { message: data.message };
+    const thumb = parseDataImage(img?.thumb ?? img?.data, MAX_THUMB_BYTES, `${label} (vignette)`);
+    if (!thumb.value) return { message: thumb.message };
+    images.push([data.value, thumb.value]);
+  }
+  return { images };
+}
+
+// images_remove: ids of photos of this product. Returns { ids } or { status, message }.
+async function readRemovals(raw, productId) {
+  if (raw === undefined || raw === null) return { ids: [] };
+  if (!Array.isArray(raw)) return { status: 400, message: 'Photos à retirer : liste attendue' };
+  const ids = [...new Set(raw.map(toId))];
+  if (ids.includes(null)) return { status: 400, message: 'Photos à retirer : identifiant invalide' };
+  if (!ids.length) return { ids };
+  const [found] = await db.query('SELECT id FROM product_images WHERE product_id = ? AND id IN (?)', [productId, ids]);
+  if (found.length !== ids.length) return { status: 404, message: 'Photo introuvable' };
+  return { ids };
+}
+
+// Writes the product row and its photo changes in one transaction; returns the product id.
+async function writeProduct(sql, params, productId, images, removeIds) {
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [r] = await conn.query(sql, params);
+    const id = productId || r.insertId;
+    if (removeIds.length) await conn.query('DELETE FROM product_images WHERE product_id = ? AND id IN (?)', [id, removeIds]);
+    if (images.length) {
+      await conn.query('INSERT INTO product_images (product_id, image_data, thumb_data) VALUES ?', [images.map(([d, t]) => [id, d, t])]);
+    }
+    const [[{ n }]] = await conn.query('SELECT COUNT(*) AS n FROM product_images WHERE product_id = ?', [id]);
+    if (n > MAX_IMAGES_PER_PRODUCT) {
+      await conn.rollback();
+      return { status: 409, message: `Un produit a au plus ${MAX_IMAGES_PER_PRODUCT} photos` };
+    }
+    await conn.commit();
+    return { id };
+  } catch (e) {
+    await conn.rollback();
+    throw e;
+  } finally {
+    conn.release();
+  }
+}
+
+const imagesOf = async (id) => (await db.query(
+  'SELECT id, image_data, thumb_data FROM product_images WHERE product_id = ? ORDER BY id', [id]))[0];
+
 // With its photos.
 async function productDetail(id) {
   const [[product]] = await db.query(`${PRODUCT_SELECT} WHERE v.id = ?`, [id]);
-  const [images] = await db.query('SELECT id, image_url FROM product_images WHERE product_id = ? ORDER BY id', [id]);
-  return { ...product, images };
+  return { ...product, images: await imagesOf(id) };
 }
 
 exports.getById = handle('Product getById', async (req, res) => {
@@ -133,29 +195,39 @@ exports.getById = handle('Product getById', async (req, res) => {
   res.json({ success: true, data: await productDetail(r.row.id) });
 });
 
+// D61: the photos come with the product (images_add), written in the same transaction.
 exports.create = handle('Product create', async (req, res) => {
   const v = await validateProduct(req);
   if (!v.values) return fail(res, v.status, v.message);
+  const img = readImages(req.body?.images_add);
+  if (!img.images) return fail(res, 400, img.message);
   const p = v.values;
-  const [r] = await db.query(
+  const w = await writeProduct(
     `INSERT INTO products (supplier_id, booth_id, supplier_ref, name, description, price, unit, moq, shipping_type, created_by)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [p.supplier_id, p.booth_id, p.supplier_ref, p.name, p.description, p.price, p.unit, p.moq, p.shipping_type, req.user.id]
-  );
-  res.json({ success: true, data: { id: r.insertId } });
+    [p.supplier_id, p.booth_id, p.supplier_ref, p.name, p.description, p.price, p.unit, p.moq, p.shipping_type, req.user.id],
+    null, img.images, []);
+  if (!w.id) return fail(res, w.status, w.message);
+  res.json({ success: true, data: { id: w.id } });
 });
 
+// D61: images_add and images_remove change the photos with the product, in one transaction.
 exports.update = handle('Product update', async (req, res) => {
   const r = await loadProduct(req.params.id);
   if (!r.row) return fail(res, r.status, r.message);
   const v = await validateProduct(req, r.row);
   if (!v.values) return fail(res, v.status, v.message);
+  const img = readImages(req.body?.images_add);
+  if (!img.images) return fail(res, 400, img.message);
+  const rm = await readRemovals(req.body?.images_remove, r.row.id);
+  if (!rm.ids) return fail(res, rm.status, rm.message);
   const p = v.values;
-  await db.query(
+  const w = await writeProduct(
     `UPDATE products SET supplier_id = ?, booth_id = ?, supplier_ref = ?, name = ?, description = ?, price = ?,
             unit = ?, moq = ?, shipping_type = ? WHERE id = ?`,
-    [p.supplier_id, p.booth_id, p.supplier_ref, p.name, p.description, p.price, p.unit, p.moq, p.shipping_type, r.row.id]
-  );
+    [p.supplier_id, p.booth_id, p.supplier_ref, p.name, p.description, p.price, p.unit, p.moq, p.shipping_type, r.row.id],
+    r.row.id, img.images, rm.ids);
+  if (!w.id) return fail(res, w.status, w.message);
   res.json({ success: true, data: { id: r.row.id } });
 });
 
@@ -179,47 +251,27 @@ exports.decide = handle('Product decide', async (req, res) => {
   res.json({ success: true, data: await productDetail(r.row.id) });
 });
 
-// Images go with the product (FK cascade); D28: the photo files are deleted after.
+// Its photos go with it (FK cascade): D61, they live in the database.
 exports.remove = handle('Product remove', async (req, res) => {
   const r = await loadProduct(req.params.id);
   if (!r.row) return fail(res, r.status, r.message);
-  const [images] = await db.query('SELECT image_url FROM product_images WHERE product_id = ?', [r.row.id]);
   await db.query('DELETE FROM products WHERE id = ?', [r.row.id]);
-  await deleteImages(images.map((i) => i.image_url));
   res.json({ success: true, data: { id: r.row.id } });
 });
 
-// --- Photos (BF11) ----------------------------------------------------------
+// --- Photos (BF11, D61) -----------------------------------------------------
 
+// Adds photos from the product page: { images: [{ data, thumb }] }. Returns all the photos.
 exports.addImages = handle('Product addImages', async (req, res) => {
   const r = await loadProduct(req.params.id);
   if (!r.row) return fail(res, r.status, r.message);
-  const files = req.files || [];
-  if (files.length === 0) return fail(res, 400, 'Aucune photo reçue (champ « images »)');
-  const bad = files.find((f) => !imageExtension(f.buffer));
-  if (bad) return fail(res, 400, `« ${bad.originalname} » n'est pas une photo JPEG, PNG ou WebP`);
-  const [[{ n }]] = await db.query('SELECT COUNT(*) AS n FROM product_images WHERE product_id = ?', [r.row.id]);
-  if (n + files.length > MAX_IMAGES_PER_PRODUCT) {
-    return fail(res, 409, `Un produit a au plus ${MAX_IMAGES_PER_PRODUCT} photos (${n} déjà)`);
-  }
-
-  const urls = await saveImages(files, 'products');
-  const conn = await db.getConnection();
-  try {
-    await conn.beginTransaction();
-    for (const url of urls) {
-      await conn.query('INSERT INTO product_images (product_id, image_url) VALUES (?, ?)', [r.row.id, url]);
-    }
-    await conn.commit();
-  } catch (e) {
-    await conn.rollback();
-    await deleteImages(urls); // no orphan files when the rows could not be written
-    throw e;
-  } finally {
-    conn.release();
-  }
-  const [images] = await db.query('SELECT id, image_url FROM product_images WHERE product_id = ? ORDER BY id', [r.row.id]);
-  res.json({ success: true, data: images });
+  const raw = req.body?.images;
+  if (!Array.isArray(raw) || !raw.length) return fail(res, 400, 'Aucune photo reçue');
+  const img = readImages(raw);
+  if (!img.images) return fail(res, 400, img.message);
+  const w = await writeProduct('SELECT 1', [], r.row.id, img.images, []);
+  if (!w.id) return fail(res, w.status, w.message);
+  res.json({ success: true, data: await imagesOf(r.row.id) });
 });
 
 exports.removeImage = handle('Product removeImage', async (req, res) => {
@@ -227,9 +279,7 @@ exports.removeImage = handle('Product removeImage', async (req, res) => {
   if (!r.row) return fail(res, r.status, r.message);
   const imageId = toId(req.params.imageId);
   if (!imageId) return fail(res, 400, 'Identifiant invalide');
-  const [[image]] = await db.query('SELECT id, image_url FROM product_images WHERE id = ? AND product_id = ?', [imageId, r.row.id]);
-  if (!image) return fail(res, 404, 'Photo introuvable');
-  await db.query('DELETE FROM product_images WHERE id = ?', [image.id]);
-  await deleteImages([image.image_url]);
-  res.json({ success: true, data: { id: image.id } });
+  const [del] = await db.query('DELETE FROM product_images WHERE id = ? AND product_id = ?', [imageId, r.row.id]);
+  if (!del.affectedRows) return fail(res, 404, 'Photo introuvable');
+  res.json({ success: true, data: { id: imageId } });
 });

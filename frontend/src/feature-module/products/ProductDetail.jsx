@@ -6,7 +6,9 @@ import {
   BankOutlined, CheckCircleOutlined, DeleteOutlined, EditOutlined, EnvironmentOutlined, FileTextOutlined, HistoryOutlined,
   InboxOutlined, PictureOutlined, PlusOutlined, SolutionOutlined,
 } from '@ant-design/icons';
-import { API_BASE_URL, fileUrl } from '../../config/config';
+import { API_BASE_URL } from '../../config/config';
+import { ACCEPTED_IMAGES, toProductPhoto } from '../../utils/image';
+import { photosValue } from './PhotosField';
 import { apiError } from '../../utils/apiError';
 import { boothLabel, formatPrice } from '../../utils/format';
 import { useAuth } from '../../context/AuthContext';
@@ -15,8 +17,6 @@ import { STATUS, formatDateTime } from '../../utils/decision';
 import FormModal from '../../components/FormModal';
 import ProductFormFields, { productPayload } from './ProductFormFields';
 
-const ACCEPTED = 'image/jpeg,image/png,image/webp';
-const MAX_MB = 8;
 // The decisions in the order of the Stitch switch; "À étudier" puts the product back in the review.
 const CHOICES = ['A_ETUDIER', 'RETENU', 'ECHANTILLON', 'A_COMMANDER', 'REJETE'];
 
@@ -123,14 +123,15 @@ export default function ProductDetail() {
     }
   };
 
-  // Sends the selected photos in one request; the server checks type, size and count.
+  // D61: the selected photos, resized, in one request; the server checks type, size and count.
   const upload = async (files) => {
-    const tooBig = files.find((f) => f.size > MAX_MB * 1024 * 1024);
-    if (tooBig) return message.error(`« ${tooBig.name} » dépasse ${MAX_MB} Mo`);
-    const form = new FormData();
-    files.forEach((f) => form.append('images', f));
     setUploading(true);
-    await call(() => axios.post(`${API_BASE_URL}/products/${id}/images`, form), 'Photos ajoutées', "Erreur lors de l'envoi des photos");
+    try {
+      const images = await Promise.all(files.map(toProductPhoto));
+      await call(() => axios.post(`${API_BASE_URL}/products/${id}/images`, { images }), 'Photos ajoutées', "Erreur lors de l'envoi des photos");
+    } catch (err) {
+      message.error(err.message);
+    }
     setUploading(false);
   };
 
@@ -147,7 +148,7 @@ export default function ProductDetail() {
   const facts = [product.shipping_type, product.moq != null && `MOQ ${product.moq}`].filter(Boolean).join(' · ');
 
   const dropZone = (
-    <Upload.Dragger accept={ACCEPTED} multiple showUploadList={false} disabled={uploading} className="photo-drop"
+    <Upload.Dragger accept={ACCEPTED_IMAGES} multiple showUploadList={false} disabled={uploading} className="photo-drop"
       beforeUpload={(file, fileList) => {
         // Called once per file: send the whole selection once, on its last file.
         if (file === fileList[fileList.length - 1]) upload(fileList);
@@ -155,7 +156,7 @@ export default function ProductDetail() {
       }}>
       <PlusOutlined className="fs-5 text-secondary" />
       <div className="fw-semibold small">{uploading ? 'Envoi…' : 'Glisser / déposer'}</div>
-      <div className="sc-label">JPG, PNG, WebP · {MAX_MB} Mo max</div>
+      <div className="sc-label">JPG, PNG, WebP · 10 photos max</div>
     </Upload.Dragger>
   );
 
@@ -183,7 +184,7 @@ export default function ProductDetail() {
         </div>
         <div className="d-flex flex-wrap gap-2">
           <Button type="primary" icon={<EditOutlined />} onClick={() => setEditing(true)}>Modifier</Button>
-          <Popconfirm title="Supprimer ce produit ?" description="Ses photos et ses partages seront supprimés."
+          <Popconfirm title="Supprimer ce produit ?" description="Ses photos seront supprimées."
             okText="Supprimer" okButtonProps={{ danger: true }} cancelText="Annuler" onConfirm={remove}>
             <Button danger icon={<DeleteOutlined />} aria-label="Supprimer le produit" title="Supprimer" />
           </Popconfirm>
@@ -202,9 +203,9 @@ export default function ProductDetail() {
         <Col xs={24} xl={14}>
           <Panel icon={<PictureOutlined />} title="Photos" extra={<span className="small text-secondary">{images.length} photo{images.length > 1 ? 's' : ''}</span>}>
             {current ? (
-              <Image.PreviewGroup items={images.map((img) => fileUrl(img.image_url))}>
+              <Image.PreviewGroup items={images.map((img) => img.image_data)}>
                 <div className="photo-main mb-3">
-                  <Image src={fileUrl(current.image_url)} width="100%" height="100%" style={{ objectFit: 'contain' }} />
+                  <Image src={current.image_data} width="100%" height="100%" style={{ objectFit: 'contain' }} />
                 </div>
               </Image.PreviewGroup>
             ) : (
@@ -217,7 +218,7 @@ export default function ProductDetail() {
               {images.map((img, i) => (
                 <div key={img.id} className={`photo-thumb ${img === current ? 'active' : ''}`}>
                   <button type="button" className="photo-thumb-btn" onClick={() => setPhoto(i)} aria-label={`Afficher la photo ${i + 1}`}>
-                    <img src={fileUrl(img.image_url)} alt="" />
+                    <img src={img.thumb_data} alt="" />
                   </button>
                   <Popconfirm title="Supprimer cette photo ?" okText="Supprimer" okButtonProps={{ danger: true }} cancelText="Annuler"
                     onConfirm={() => call(() => axios.delete(`${API_BASE_URL}/products/${id}/images/${img.id}`), 'Photo supprimée', 'Erreur lors de la suppression')}>
@@ -281,7 +282,7 @@ export default function ProductDetail() {
         </Col>
       </Row>
 
-      <FormModal open={editing} title="Modifier le produit" width={720} initialValues={product}
+      <FormModal open={editing} title="Modifier le produit" width={720} initialValues={{ ...product, photos: photosValue(product) }}
         icon={<EditOutlined />} className="sc-modal-dark"
         onCancel={() => setEditing(false)}
         onSubmit={(values) => axios.put(`${API_BASE_URL}/products/${id}`, productPayload(values))}

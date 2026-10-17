@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { Alert, Button, Empty, Image, Input, Segmented, Spin, Tag } from 'antd';
-import { API_BASE_URL, fileUrl } from '../../config/config';
+import { API_BASE_URL } from '../../config/config';
+import ProductThumb from '../../components/ProductThumb';
 import { useAuth } from '../../context/AuthContext';
 import { isAdmin } from '../../utils/access';
 import { apiError } from '../../utils/apiError';
@@ -140,7 +141,7 @@ function BossQueue({ review, reload }) {
     );
   }
 
-  const photos = images.length ? images.map((i) => i.image_url) : product.cover_url ? [product.cover_url] : [];
+  const photos = images.length ? images.map((i) => i.image_data) : product.cover_thumb ? [product.cover_thumb] : [];
   return (
     <div className="review-queue">
       {undoBar}
@@ -149,7 +150,7 @@ function BossQueue({ review, reload }) {
         {photos.length > 0 ? (
           <div className="review-photos">
             <Image.PreviewGroup>
-              {photos.map((url) => <Image key={url} src={fileUrl(url)} alt="" className="review-photo" />)}
+              {photos.map((src, i) => <Image key={i} src={src} alt="" className="review-photo" />)}
             </Image.PreviewGroup>
           </div>
         ) : (
@@ -194,7 +195,7 @@ function PendingList({ products }) {
 function ProductRow({ product: p, children }) {
   return (
     <div className="review-row">
-      {p.cover_url ? <img src={fileUrl(p.cover_url)} alt="" className="review-thumb" /> : <div className="review-thumb" />}
+      <ProductThumb src={p.cover_thumb} className="review-thumb" />
       <div className="flex-grow-1 overflow-hidden">
         <div className="d-flex justify-content-between gap-2">
           <Link to={`/produits/${p.id}`} className="fw-semibold text-body text-truncate">{p.name}</Link>

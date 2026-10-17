@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
-import { Alert, App, Button, Image, Table, Tag, Tooltip } from 'antd';
+import { Alert, App, Button, Table, Tag, Tooltip } from 'antd';
 import { EditOutlined } from '@ant-design/icons';
-import { API_BASE_URL, fileUrl } from '../../config/config';
+import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import { boothLabel, formatPrice } from '../../utils/format';
 import { STATUS } from '../../utils/decision';
 import FormModal from '../../components/FormModal';
 import ProductFormFields, { productPayload } from './ProductFormFields';
+import { photosValue } from './PhotosField';
+import ProductThumb from '../../components/ProductThumb';
 
 // "New product", opened from the page headers (products page, supplier page, booth page: boothId).
 export function NewProductModal({ open, supplierId, boothId, onClose }) {
@@ -16,12 +18,12 @@ export function NewProductModal({ open, supplierId, boothId, onClose }) {
   const navigate = useNavigate();
   return (
     <FormModal open={open} title="Nouveau produit" width={720}
-      initialValues={{ supplier_id: supplierId, booth_id: boothId, shipping_type: 'FOB' }}
+      initialValues={{ supplier_id: supplierId, booth_id: boothId, shipping_type: 'FOB', photos: photosValue(null) }}
       onCancel={onClose}
       onSubmit={(values) => axios.post(`${API_BASE_URL}/products`, productPayload(values))}
       onSaved={(res) => {
         onClose();
-        message.success('Produit créé : ajoutez ses photos');
+        message.success('Produit créé');
         navigate(`/produits/${res.data.data.id}`);
       }}>
       <ProductFormFields lockSupplier={!!supplierId} />
@@ -54,13 +56,19 @@ export default function ProductList({ filters, supplierId }) {
 
   useEffect(() => { load(); }, [load]);
 
+  // The list has no photos: the edit form gets them from the product.
+  const edit = async (p) => {
+    try {
+      const { data } = await axios.get(`${API_BASE_URL}/products/${p.id}`);
+      setEditing({ ...data.data, photos: photosValue(data.data) });
+    } catch (err) {
+      message.error(apiError(err, 'Erreur lors du chargement du produit'));
+    }
+  };
+
   const columns = [
-    {
-      title: 'Photo', dataIndex: 'cover_url', width: 72,
-      render: (url) => (url
-        ? <Image src={fileUrl(url)} width={48} height={48} style={{ objectFit: 'cover', borderRadius: 6 }} preview={false} />
-        : <div className="bg-light border rounded" style={{ width: 48, height: 48 }} />),
-    },
+    // D61: the first photo's thumbnail, or the placeholder; never hidden, even on a phone.
+    { title: 'Photo', dataIndex: 'cover_thumb', width: 64, render: (src) => <ProductThumb src={src} /> },
     {
       title: 'Nom', dataIndex: 'name',
       render: (v, p) => (
@@ -93,7 +101,7 @@ export default function ProductList({ filters, supplierId }) {
     },
     {
       title: '', key: 'actions', width: 110, align: 'right',
-      render: (_, p) => <Button size="small" icon={<EditOutlined />} onClick={() => setEditing(p)}>Modifier</Button>,
+      render: (_, p) => <Button size="small" icon={<EditOutlined />} onClick={() => edit(p)}>Modifier</Button>,
     },
   ].filter(Boolean);
 

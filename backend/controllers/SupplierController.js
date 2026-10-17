@@ -127,14 +127,9 @@ exports.update = handle('Supplier update', async (req, res) => {
 exports.remove = handle('Supplier remove', async (req, res) => {
   const r = await loadSupplier(req.params.id);
   if (!r.row) return fail(res, r.status, r.message);
-  const [images] = await db.query(
-    `SELECT pi.image_url FROM product_images pi JOIN products p ON p.id = pi.product_id
-     WHERE p.supplier_id = ?`,
-    [r.row.id]
-  );
   const [contacts] = await db.query('SELECT wechat_qr FROM contacts WHERE supplier_id = ?', [r.row.id]);
   await db.query('DELETE FROM suppliers WHERE id = ?', [r.row.id]);
-  await deleteImages([...images.map((i) => i.image_url), ...qrFiles(contacts)]);
+  await deleteImages(qrFiles(contacts)); // D61: product photos are in the database
   res.json({ success: true, data: { id: r.row.id } });
 });
 

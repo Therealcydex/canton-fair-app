@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Alert, App, Button, Col, Image, Popconfirm, Row, Spin, Table, Tag } from 'antd';
+import { Alert, App, Button, Col, Popconfirm, Row, Spin, Table, Tag } from 'antd';
 import {
   ArrowRightOutlined, BankOutlined, CheckOutlined, DeleteOutlined, EditOutlined, EnvironmentOutlined, ExportOutlined,
   InboxOutlined, MailOutlined, PhoneOutlined, PlusOutlined, ShopOutlined, UndoOutlined,
 } from '@ant-design/icons';
-import { API_BASE_URL, fileUrl } from '../../config/config';
+import { API_BASE_URL } from '../../config/config';
+import ProductThumb from '../../components/ProductThumb';
 import { apiError } from '../../utils/apiError';
 import { STATUS } from '../../utils/decision';
 import { ZONE_HALLS } from '../../utils/fairPlan';
@@ -99,12 +100,7 @@ export default function BoothDetail() {
   ];
 
   const productColumns = [
-    {
-      title: 'Photo', dataIndex: 'cover_url', width: 72,
-      render: (url) => (url
-        ? <Image src={fileUrl(url)} width={48} height={48} style={{ objectFit: 'cover', borderRadius: 4 }} preview={false} />
-        : <div className="booth-photo-empty" />),
-    },
+    { title: 'Photo', dataIndex: 'cover_thumb', width: 64, render: (src) => <ProductThumb src={src} /> }, // D61
     {
       title: 'Désignation du produit', dataIndex: 'name',
       render: (v, p) => (

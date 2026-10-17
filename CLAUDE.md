@@ -35,6 +35,7 @@ Frontend (`frontend/`, Create React App, React 18.3). It is the only client (D52
 - `CI=true npm test -- --watchAll=false` runs the tests once. Add `-t "<test name>"` to run a single test.
 - `contacts.wechat_qr` (D34): a scanned link (`http(s)://`, the app draws the QR code from it), an older photo path (`/uploads/wechat/`), or older text: `src/utils/qr.js`. Live scanner: `components/QrScanner.jsx`.
 - Business cards (D37): `src/utils/ocr.js` (tesseract.js, loaded on the first card), `src/utils/cardParser.js` (fields from the text), `components/CardScanButton.jsx`. The reader's files are copied to `public/ocr/` (not committed) by `scripts/copy-ocr.cjs`, which runs before `start`, `start:phone` and `build`.
+- Images (D61): `src/utils/image.js` resizes a picture to a JPEG data URL before sending; `components/ProductThumb.jsx` shows a product thumbnail or its placeholder; `feature-module/products/PhotosField.jsx` is the photo field of the product form.
 - Installed app (D36/D52): `public/manifest.json`, `public/sw.js` (registered in production only, never caches `/api` or `/uploads`), icons from `node scripts/make-icons.cjs`. On small screens `AppLayout` adds a bottom tab bar; "À visiter" becomes a checklist (`BoothList` `checklist`).
 
 ## Backend structure
@@ -45,7 +46,8 @@ shared helpers instead of rewriting them:
 - `utils/validate.js`: `validate(body, FIELDS, existing)`, which checks every field, missing or not. On an update, `existing` fills the fields the client did not send. DECIMAL values stay strings.
 - `utils/scope.js`: `loadSupplier`, `loadBooth`, `loadProduct`, `loadCompany` find a record by id (400 for a bad id, 404 when missing).
 - `utils/access.js`: `isAdmin`, `isViewer`, `ROLES`.
-- `utils/upload.js`: photo upload (product photos; older WeChat QR photos in `uploads/wechat/`, D33). It checks the file content against JPEG/PNG/WebP signatures, saves under random names and deletes files. Delete the files when you delete their rows (D28).
+- `utils/upload.js`: WeChat QR photo upload (older QR photos in `uploads/wechat/`, D33). It checks the file content against JPEG/PNG/WebP signatures, saves under random names and deletes files. Delete the files when you delete their rows (D28).
+- `utils/dataImage.js`: `parseDataImage(value, maxBytes, label)` checks a Base64 image (D61: product photos, contact avatars): format, real content, size.
 - `middleware/auth.js`: `requireAuth` (reloads the user on every request, refuses `is_active = 0`), `requireAdmin`, `refuseViewer` (D62: 403 for a LECTEUR; put it after `requireAuth` in every new route file). `middleware/loginLimiter.js` limits failed logins.
 
 ## Data model (schema v2) and access rule
@@ -54,7 +56,7 @@ Tarek's schema v2 (`backend/sql/create_sourcing_schema.sql`, corrections D22-D30
 - `companies` (name, branch) are Tarek's companies. A user may belong to one (`users.company_id`, SET NULL on delete).
 - `suppliers` have a `province_id` (`china_province`), `contacts`, `booths` (supplier optional) and `products` (supplier optional).
 - `booths`: phase 1-3, hall, floor 1-4, letter and numbers (optional, together); `booth_code` is a generated column in the fair's notation, numbers on 2 digits (`1.1D22`, `10.3A08-23`, `9.1`, D32/D50), and `v_booths.zone` gives the zone from the hall (A 1-8, B 9-13, C 14-16, D 17-21), and a booth is unique per phase (the apps say "booth", never "stand", D44); `category_id` points to `canton_fair_category` (read-only list, per phase); `visited` is the "to visit" flag.
-- `products`: `price DECIMAL(12,2)`, `shipping_type` (FK to `shipping_types`, FOB by default), `product_images` (D62: products are no longer shared; `product_shares` stays, unused). D38: `status` (`A_ETUDIER` until the admin decides `RETENU`, `ECHANTILLON`, `A_COMMANDER` or `REJETE`), `decision_note`, `decided_by/at`, `created_by/at`. Only the admin decides (`PUT /api/products/:id/decision`); `GET /api/products/review` is the evening review queue (web page "Revue du soir", `/revue`). D43: `booth_id`, the booth where it was found (a booth of its supplier).
+- `products`: `price DECIMAL(12,2)`, `shipping_type` (FK to `shipping_types`, FOB by default), `product_images` (D61: Base64 `image_data` and `thumb_data`, sent with the product as `images_add`/`images_remove`; D62: products are no longer shared; `product_shares` stays, unused). D38: `status` (`A_ETUDIER` until the admin decides `RETENU`, `ECHANTILLON`, `A_COMMANDER` or `REJETE`), `decision_note`, `decided_by/at`, `created_by/at`. Only the admin decides (`PUT /api/products/:id/decision`); `GET /api/products/review` is the evening review queue (web page "Revue du soir", `/revue`). D43: `booth_id`, the booth where it was found (a booth of its supplier).
 - D62: `booth_shares` (`booth_id`, `company_id`, `shared_by/at`): the booths the admin shares with a company (`share_company_ids` in the booth body; `shared_company_ids` in the booth rows).
 - Views `v_booths`, `v_suppliers` (booth count, % visited), `v_products` (shipping name, decision, booth): keep them free of GROUP BY (D23).
 - D42/D48: `section_halls` holds the hall plan like the official one (365.cantonfair.org.cn/en-US/exhibition-hall-map): one row per section and area (A = halls 1-8, B = 9-13, C = 14-16, D = 17-21), its codes as the site writes them and its rank in the area. `GET /api/fair-plan` returns it in the plan's order; `PUT /api/fair-plan` (admin) takes all the codes of a section and the server splits them by area (`utils/halls.js`). The app groups the rows by area (`frontend/src/utils/fairPlan.js`); `suppliers.cantonfair_url` only takes a cantonfair.org.cn address.
@@ -99,7 +101,7 @@ For each rule, test two requests, first against the API (`npm run test:api`) and
 1. The request that must be refused: 401 without a token, 403 for a buyer on an admin route, 400 or 409 for a broken rule.
 2. The legitimate request, which must still succeed.
 
-The scenarios name their data `TEST…`. `tests/lib.js` `cleanup()` deletes it, including product photo files, and the runner checks that the row counts are back to their starting values. Run them on a development database only.
+The scenarios name their data `TEST…`. `tests/lib.js` `cleanup()` deletes it, including WeChat QR photo files, and the runner checks that the row counts are back to their starting values. Run them on a development database only.
 
 ## Git workflow
 

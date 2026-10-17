@@ -201,7 +201,7 @@ exports.getById = handle('Booth getById', async (req, res) => {
   if (viewer) {
     const [products] = await db.query(
       `SELECT p.id, p.name, p.supplier_ref, p.description, p.price, p.unit, p.moq, p.shipping_type,
-              (SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.id LIMIT 1) AS cover_url
+              (SELECT pi.thumb_data FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.id LIMIT 1) AS cover_thumb
        FROM products p WHERE p.booth_id = ? ORDER BY p.name`, [booth.id]);
     const [[supplier]] = booth.supplier_id
       ? await db.query('SELECT id, name, phone, email, website, cantonfair_url FROM suppliers WHERE id = ?', [booth.supplier_id])

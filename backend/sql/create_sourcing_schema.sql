@@ -160,10 +160,12 @@ CREATE TABLE IF NOT EXISTS section_halls (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------- Product images ----------
+-- D61: stored as Base64 data URLs ("data:image/jpeg;base64,..."), the photo and its list thumbnail.
 CREATE TABLE IF NOT EXISTS product_images (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     product_id  INT NOT NULL,
-    image_url   VARCHAR(255) NOT NULL,
+    image_data  MEDIUMTEXT NOT NULL,
+    thumb_data  MEDIUMTEXT NOT NULL,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

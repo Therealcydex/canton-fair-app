@@ -16,6 +16,17 @@ CREATE TABLE booth_shares (
     CONSTRAINT fk_booth_shares_user    FOREIGN KEY (shared_by)  REFERENCES users(id)     ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- step: add-image-data
+-- D61: product photos stored as Base64 in the database (photo and list thumbnail).
+ALTER TABLE product_images ADD COLUMN image_data MEDIUMTEXT NULL, ADD COLUMN thumb_data MEDIUMTEXT NULL;
+
+-- step: convert-images
+-- (done by update_boss_fixes.js: each photo file of uploads/ becomes a Base64 data URL; a
+-- missing or unreadable file drops its row. The files are deleted once this step succeeds.)
+
+-- step: drop-image-url
+ALTER TABLE product_images DROP COLUMN image_url, MODIFY image_data MEDIUMTEXT NOT NULL, MODIFY thumb_data MEDIUMTEXT NOT NULL;
+
 -- step: view
 -- D62: products are no longer shared (product_shares stays, unused). Same text as create_sourcing_schema.sql.
 CREATE OR REPLACE VIEW v_products AS
