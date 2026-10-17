@@ -39,6 +39,7 @@ acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 | D52 | One app: the web app on the phone, `mobile/` removed | À valider | Web build and tests. Navigateur at 390 px (local database): tab bar; "À visiter" checklist (✓ saved, undo, visited booths listed after a reload); "Revue du soir" as admin (decide, next product, undo, counts); new supplier from a business card (6 fields in 5 s, supplier + contact + WeChat id saved); QR scanner opens over the new-contact form and closes; dialogs fit the screen; at 1280 px the booth table is unchanged. Still to do on an iPhone (below) |
 | D53 | Booth shown as `Ph1 3.1E12-13`, "Phase" column removed from the booth table | À valider | API scenario `03-booths` (label in the 409 message, "Ph2 …" search). Not yet checked in the browser |
 | D62 | Booths shared with companies, LECTEUR role (read-only), product sharing removed | À valider | API scenario `10-booth-viewer` (only the admin shares, the viewer sees only its booth, 403 on every write and on the other modules), `04`, `07` updated |
+| D60 | Filters on the phone: controlled, search as you type, "Réinitialiser", × visible on touch screens | À valider | Browser at 375 px (iframe): products filtered by decision then reset (2 then 14 rows), booth search "Ph1" without Enter. The × on a real touch screen is still to check on the iPhone |
 
 ## Not checked by hand yet
 

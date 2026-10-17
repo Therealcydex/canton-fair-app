@@ -1426,3 +1426,19 @@ code {
     display: none !important;
   }
 }
+
+/* D60: antd shows the clear (×) of a select or cascader only on hover, which a touch screen does
+   not have: on a phone the filters could not be emptied. Show it whenever a value is set. */
+@media (hover: none) {
+  .ant-select .ant-select-clear,
+  .ant-cascader .ant-select-clear {
+    opacity: 1;
+    font-size: 16px;
+    width: 18px;
+    height: 18px;
+    margin-top: -9px;
+  }
+  .ant-select-allow-clear:has(.ant-select-clear) .ant-select-arrow {
+    opacity: 0;
+  }
+}

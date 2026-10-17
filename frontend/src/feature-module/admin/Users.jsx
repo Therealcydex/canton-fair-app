@@ -147,6 +147,7 @@ export default function Users() {
         <Select prefix={<span className="sc-label">Société :</span>} placeholder="Toutes" allowClear showSearch optionFilterProp="label"
           style={{ width: 240 }} value={filters.company_id} onChange={set('company_id')}
           options={companies.map((c) => ({ value: c.id, label: companyLabel(c) }))} />
+        <Button type="link" className="fw-semibold px-1" onClick={() => setFilters({})}>Réinitialiser</Button>
         <Button icon={<ReloadOutlined />} title="Actualiser" aria-label="Actualiser" onClick={load} />
       </div>
       <Table rowKey="id" columns={columns} dataSource={shown} loading={loading} size="middle" className="sc-table"

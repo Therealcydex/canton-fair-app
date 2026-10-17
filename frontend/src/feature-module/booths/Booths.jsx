@@ -6,6 +6,7 @@ import { categoryIdOf, categoryOptions, useList } from '../../utils/lists';
 import BoothList, { boothNumber } from './BoothList';
 import PageHeader from '../../components/PageHeader';
 import { useAuth } from '../../context/AuthContext';
+import useDebounced from '../../utils/useDebounced';
 import { isViewer } from '../../utils/access';
 import { boothLabel } from '../../utils/format';
 
@@ -33,6 +34,7 @@ export default function Booths({ planning = false }) {
   const checklist = planning && screens.md === false; // a phone's width
   const [filters, setFilters] = useState({});
   const [search, setSearch] = useState('');
+  const q = useDebounced(search.trim()); // D60: the search applies as you type
   const [rows, setRows] = useState([]);
   const [creating, setCreating] = useState(false);
   const { user } = useAuth();
@@ -60,10 +62,10 @@ export default function Booths({ planning = false }) {
 
       <div className="sc-filters">
         <Input prefix={<SearchOutlined />} placeholder="Rechercher code booth, fournisseur…" allowClear style={{ width: 280 }}
-          value={search} onChange={(e) => { setSearch(e.target.value); if (!e.target.value) set('q')(undefined); }}
-          onPressEnter={() => set('q')(search.trim() || undefined)} />
+          value={search} onChange={(e) => setSearch(e.target.value)} />
         <Select prefix={<span className="sc-label">Phase :</span>} placeholder="Toutes" allowClear style={{ width: 170 }}
-          value={filters.phase} onChange={set('phase')} options={[1, 2, 3].map((n) => ({ value: n, label: `Phase ${n}` }))} />
+          value={filters.phase} options={[1, 2, 3].map((n) => ({ value: n, label: `Phase ${n}` }))}
+          onChange={(phase) => setFilters((f) => ({ ...f, phase: phase ?? undefined, category_path: undefined, category_id: undefined }))} />
         <Select prefix={<span className="sc-label">Hall :</span>} placeholder="Tous les halls" allowClear showSearch style={{ width: 190 }}
           value={filters.hall} onChange={set('hall')} options={HALLS.map((h) => ({ value: h, label: `Hall ${h}` }))} />
         {!planning && (
@@ -82,7 +84,7 @@ export default function Booths({ planning = false }) {
       </div>
 
       {/* D52: on a phone, "À visiter" is a checklist that keeps the visited booths (to undo a tap). */}
-      <BoothList filters={{ ...filters, category_path: undefined, visited: checklist ? undefined : planning ? 0 : filters.visited }}
+      <BoothList filters={{ ...filters, q: q || undefined, category_path: undefined, visited: checklist ? undefined : planning ? 0 : filters.visited }}
         planning={planning} checklist={checklist}
         createOpen={creating} onCreateOpenChange={setCreating} onLoaded={setRows} />
 
