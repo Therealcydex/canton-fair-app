@@ -61,7 +61,7 @@ function BoothChecklist({ rows, loading, saving, onToggle }) {
 // receives the rows, for the page's counters.
 // `checklist` (D52, "À visiter" on a phone): the booths as cards grouped by hall, each with a big ✓
 // that marks it visited (tap again to undo); the visited booths go to the bottom of their hall.
-export default function BoothList({ filters, supplierId, planning, checklist, hideSupplier, onChanged, createOpen, onCreateOpenChange, onLoaded }) {
+export default function BoothList({ filters, supplierId, planning, checklist, onChanged, createOpen, onCreateOpenChange, onLoaded }) {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
@@ -146,18 +146,10 @@ export default function BoothList({ filters, supplierId, planning, checklist, hi
     { title: 'Lettre', dataIndex: 'letter', align: 'center', render: (v) => <strong>{v || '—'}</strong> },
     { title: 'Numéro', key: 'number', render: (_, b) => boothNumber(b) },
     { title: 'Zone', dataIndex: 'zone', align: 'center', render: (v) => v || '—' }, // D50
-    !hideSupplier && {
-      title: 'Fournisseur rattaché', dataIndex: 'supplier_name',
-      render: (v, b) => (
-        <>
-          {b.supplier_id ? <Link to={`/fournisseurs/${b.supplier_id}`} className="text-body">{v}</Link> : '—'}
-          {b.sub_category && (
-            <Tooltip title={categoryParent(b)}>
-              <div className="small text-secondary">{b.sub_category}</div>
-            </Tooltip>
-          )}
-        </>
-      ),
+    {
+      // D58: no supplier column (the booth page shows it); the category keeps its own column.
+      title: 'Catégorie', dataIndex: 'sub_category',
+      render: (v, b) => (v ? <Tooltip title={categoryParent(b)}><span className="small">{v}</span></Tooltip> : '—'),
     },
     {
       title: 'Produits', dataIndex: 'nbr_products', align: 'center',
