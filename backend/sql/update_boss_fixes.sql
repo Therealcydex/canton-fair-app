@@ -27,6 +27,10 @@ ALTER TABLE product_images ADD COLUMN image_data MEDIUMTEXT NULL, ADD COLUMN thu
 -- step: drop-image-url
 ALTER TABLE product_images DROP COLUMN image_url, MODIFY image_data MEDIUMTEXT NOT NULL, MODIFY thumb_data MEDIUMTEXT NOT NULL;
 
+-- step: add-contact-avatar
+-- D63: the contact's photo (avatar), a Base64 data URL of about 256 px.
+ALTER TABLE contacts ADD COLUMN avatar MEDIUMTEXT NULL AFTER wechat_qr;
+
 -- step: view
 -- D62: products are no longer shared (product_shares stays, unused). Same text as create_sourcing_schema.sql.
 CREATE OR REPLACE VIEW v_products AS

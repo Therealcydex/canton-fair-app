@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS contacts (
     phone        VARCHAR(50),
     email        VARCHAR(150),
     wechat_qr    VARCHAR(255),
+    avatar       MEDIUMTEXT,                           -- D63: the contact's photo, a Base64 data URL
     FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

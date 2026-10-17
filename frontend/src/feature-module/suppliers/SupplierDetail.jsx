@@ -7,6 +7,8 @@ import { apiError } from '../../utils/apiError';
 import FormModal from '../../components/FormModal';
 import SupplierFormFields from './SupplierFormFields';
 import { QrThumb } from './WechatQr';
+import ContactCard from '../contacts/ContactCard';
+import ContactAvatar from '../../components/ContactAvatar';
 import BoothList from '../booths/BoothList';
 import ProductList, { NewProductModal } from '../products/ProductList';
 
@@ -26,6 +28,7 @@ export default function SupplierDetail() {
   const [loadError, setLoadError] = useState(null);
   const [editing, setEditing] = useState(false);
   const [creatingProduct, setCreatingProduct] = useState(false);
+  const [viewing, setViewing] = useState(null); // D63: the contact shown in its card
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -66,15 +69,23 @@ export default function SupplierDetail() {
       children: (
         <>
           <Table rowKey="id" size="middle" pagination={false} dataSource={contacts} scroll={{ x: true }}
-            locale={{ emptyText: 'Aucun contact' }}
+            locale={{ emptyText: 'Aucun contact' }} className="sc-table-clickable"
+            onRow={(c) => ({ onClick: () => setViewing(c) })}
             columns={[
               { title: 'QR WeChat', dataIndex: 'wechat_qr', width: 110, render: (v) => <QrThumb value={v} size={72} /> },
-              { title: 'Nom', dataIndex: 'name', render: (v) => <span className="fw-medium">{v || '—'}</span> },
+              {
+                title: 'Nom', dataIndex: 'name',
+                render: (v, c) => (
+                  <span className="d-inline-flex align-items-center gap-2"><ContactAvatar contact={c} size={36} /><span className="fw-medium">{v || '—'}</span></span>
+                ),
+              },
               { title: 'Téléphone', dataIndex: 'phone', render: (v) => v || '—' },
               { title: 'E-mail', dataIndex: 'email', responsive: ['md'], render: (v) => v || '—' },
             ]} />
           {/* Contacts are added and edited on the Contacts page, filtered on this supplier. */}
           <div className="mt-2 small"><Link to={`/contacts?supplier_id=${supplier.id}`}>Ajouter ou modifier les contacts →</Link></div>
+          <ContactCard contact={viewing} supplierName={supplier.name} onClose={() => setViewing(null)}
+            onEdit={() => navigate(`/contacts?supplier_id=${supplier.id}`)} />
         </>
       ),
     },

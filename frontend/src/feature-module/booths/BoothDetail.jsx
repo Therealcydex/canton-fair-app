@@ -8,6 +8,7 @@ import {
 } from '@ant-design/icons';
 import { API_BASE_URL } from '../../config/config';
 import ProductThumb from '../../components/ProductThumb';
+import ContactAvatar from '../../components/ContactAvatar';
 import { apiError } from '../../utils/apiError';
 import { STATUS } from '../../utils/decision';
 import { ZONE_HALLS } from '../../utils/fairPlan';
@@ -22,7 +23,6 @@ import { isViewer } from '../../utils/access';
 import { boothNumber } from './BoothList';
 
 const plural = (n, word) => `${n} ${word}${n > 1 ? 's' : ''}`;
-const initials = (name) => (name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
 
 // A booth (BF07, BF08), laid out like the Stitch "Fiche Booth" screen (D49): where it is, its
 // supplier with the contacts and their WeChat QR codes, and the products found there (D43).
@@ -213,7 +213,7 @@ export default function BoothDetail() {
                   {contacts.length === 0 && <div className="booth-comment text-secondary">Aucun contact pour ce fournisseur.</div>}
                   {contacts.map((c) => (
                     <div key={c.id} className="booth-contact">
-                      <span className="booth-contact-initials">{initials(c.name)}</span>
+                      <ContactAvatar contact={c} size={48} />
                       <div className="flex-grow-1 overflow-hidden">
                         <div className="fw-semibold fs-6">{c.name || '—'}</div>
                         <div className="d-flex flex-wrap gap-3 small mt-1">

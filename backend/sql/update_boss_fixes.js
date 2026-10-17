@@ -72,6 +72,7 @@ async function main() {
     'add-image-data': async () => !(await hasColumn('product_images', 'image_data')),
     'convert-images': async () => hasColumn('product_images', 'image_url'),
     'drop-image-url': async () => hasColumn('product_images', 'image_url'),
+    'add-contact-avatar': async () => !(await hasColumn('contacts', 'avatar')),
     view: async () => true,
   };
 

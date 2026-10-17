@@ -1460,3 +1460,35 @@ code {
   font-size: 20px;
   background: repeating-linear-gradient(45deg, #f4f6f9, #f4f6f9 6px, #eef1f5 6px, #eef1f5 12px);
 }
+
+/* D63: contacts' photos, their card, and the rows that open it. */
+.contact-avatar-empty {
+  background: var(--sc-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+.flex-none {
+  flex: none;
+}
+
+.sc-table-clickable .ant-table-row {
+  cursor: pointer;
+}
+
+.contact-card-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+}
+
+.contact-card-facts dt {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.contact-card-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

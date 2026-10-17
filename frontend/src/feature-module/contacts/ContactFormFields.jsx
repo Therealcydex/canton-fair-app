@@ -1,5 +1,6 @@
 import { Col, Form, Input, Row, Select } from 'antd';
 import CardScanButton from '../../components/CardScanButton';
+import AvatarField from './AvatarField';
 
 // "Scanner une carte de visite" (D37, D52): fills the empty fields of the form around it, under
 // the field names `prefix + name|phone|email|wechat_qr` (a WeChat id is kept like a QR code that
@@ -24,6 +25,7 @@ export function CardScan({ prefix = '', onRead }) {
 // `suppliers` (optional) adds the supplier choice and the business card scan, for a new contact.
 // D49: laid out like the Stitch "Nouveau contact" form.
 export default function ContactFormFields({ suppliers }) {
+  const name = Form.useWatch('name');
   return (
     <>
       {suppliers && <CardScan />}
@@ -33,6 +35,10 @@ export default function ContactFormFields({ suppliers }) {
             options={suppliers.map((s) => ({ value: s.id, label: `${s.name} (n° ${s.supplier_no})` }))} />
         </Form.Item>
       )}
+      {/* D63: the contact's photo, stored as Base64. */}
+      <Form.Item name="avatar" label="Photo du contact">
+        <AvatarField name={name} />
+      </Form.Item>
       <Form.Item name="name" label="Nom complet" extra="Renseignez au moins le nom, le téléphone ou l'e-mail">
         <Input maxLength={150} placeholder="ex. Chen Wei" />
       </Form.Item>
@@ -55,4 +61,5 @@ export const contactPayload = (v) => ({
   name: v.name || null,
   phone: v.phone || null,
   email: v.email || null,
+  avatar: v.avatar || null, // D63
 });

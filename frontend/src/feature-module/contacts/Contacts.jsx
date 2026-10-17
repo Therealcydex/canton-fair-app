@@ -9,6 +9,8 @@ import FormModal from '../../components/FormModal';
 import PageHeader from '../../components/PageHeader';
 import WechatQr, { QrPicker, QrThumb } from '../suppliers/WechatQr';
 import ContactFormFields, { contactPayload } from './ContactFormFields';
+import ContactCard from './ContactCard';
+import ContactAvatar from '../../components/ContactAvatar';
 import useDebounced from '../../utils/useDebounced';
 
 const two = (n) => String(n).padStart(2, '0');
@@ -47,6 +49,7 @@ export default function Contacts() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [editing, setEditing] = useState(null); // null = closed, {} = new, row = edit
+  const [viewing, setViewing] = useState(null); // D63: the contact shown in its card
   const [exporting, setExporting] = useState(false);
   const [search, setSearch] = useState('');
   const q = useDebounced(search.trim()); // D60: the search applies as you type
@@ -138,7 +141,13 @@ export default function Contacts() {
   const columns = [
     { title: 'N°', dataIndex: 'n', width: 64, sorter: (a, b) => a.n - b.n, render: (v) => <span className="text-secondary fw-semibold">{two(v)}</span> },
     {
-      title: 'Nom', dataIndex: 'name', render: (v) => (v ? <span className="fw-semibold">{v}</span> : '—'),
+      title: 'Nom', dataIndex: 'name',
+      render: (v, c) => (
+        <span className="d-inline-flex align-items-center gap-2 text-nowrap">
+          <ContactAvatar contact={c} size={36} />
+          {v ? <span className="fw-semibold">{v}</span> : '—'}
+        </span>
+      ),
       sorter: (a, b) => (a.name || '').localeCompare(b.name || '', 'fr'),
     },
     {
@@ -198,13 +207,20 @@ export default function Contacts() {
         </span>
       </div>
       {loadError && <Alert type="error" message={loadError} showIcon className="mb-3" />}
-      <Table rowKey="id" columns={columns} dataSource={rows} loading={loading} size="middle" className="sc-table"
+      <Table rowKey="id" columns={columns} dataSource={rows} loading={loading} size="middle" className="sc-table sc-table-clickable"
+        onRow={(c) => ({
+          // D63: a click on the contact opens its card, except on its links and buttons.
+          onClick: (e) => { if (!e.target.closest('a, button, .ant-popover')) setViewing(c); },
+        })}
         scroll={{ x: 'max-content' }}
         pagination={{
           pageSize, showSizeChanger: true, pageSizeOptions: [10, 20, 50, 100], onShowSizeChange: (_, size) => setPageSize(size),
           showTotal: (total, [from, to]) => <>Affichage de <strong>{from} à {to}</strong> sur <strong>{total}</strong> contact{total > 1 ? 's' : ''}</>,
         }}
         locale={{ emptyText: 'Aucun contact' }} />
+
+      <ContactCard contact={viewing} onClose={() => setViewing(null)}
+        onEdit={(c) => { setViewing(null); setEditing(c); }} />
 
       <FormModal open={!!editing} title={editing?.id ? 'Modifier le contact' : 'Nouveau contact'} initialValues={editing}
         icon={<UserAddOutlined />} className="sc-modal-dark" width={680}

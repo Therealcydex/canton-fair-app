@@ -208,7 +208,7 @@ exports.getById = handle('Booth getById', async (req, res) => {
       : [[null]];
     if (supplier) {
       [supplier.contacts] = await db.query(
-        'SELECT id, name, phone, email, wechat_qr FROM contacts WHERE supplier_id = ? ORDER BY name', [supplier.id]);
+        'SELECT id, name, phone, email, wechat_qr, avatar FROM contacts WHERE supplier_id = ? ORDER BY name', [supplier.id]);
     }
     booth.products = products;
     booth.supplier = supplier || null;
