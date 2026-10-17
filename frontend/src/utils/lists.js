@@ -27,8 +27,13 @@ export function useList(name) {
 // "Phase 2 (Oct.23 - 27)" -> 2
 export const phaseNumber = (phase) => Number(/^Phase (\d)/.exec(phase || '')?.[1]) || null;
 
+// A section listed without sub-categories (D41: one row whose sub-category repeats the section's
+// name) is the last level of the menu, not "Hardware > Hardware > Hardware".
+const isBareSection = (rows, r) => r.sub_category === r.section
+  && !rows.some((x) => x.id !== r.id && x.phase === r.phase && x.category === r.category && x.section === r.section);
+
 // The flat category rows -> a Cascader tree: category > section > sub-category (value = row id),
-// limited to one fair phase when `phase` is given.
+// limited to one fair phase when `phase` is given. A bare section is a leaf whose value is its id.
 export const categoryOptions = (rows, phase) => {
   const tree = new Map();
   for (const r of rows) {
@@ -36,20 +41,26 @@ export const categoryOptions = (rows, phase) => {
     if (!tree.has(r.category)) tree.set(r.category, new Map());
     const sections = tree.get(r.category);
     if (!sections.has(r.section)) sections.set(r.section, []);
-    sections.get(r.section).push({ value: r.id, label: r.sub_category });
+    sections.get(r.section).push(r);
   }
   return [...tree].map(([category, sections]) => ({
     value: category,
     label: category,
-    children: [...sections].map(([section, subs]) => ({ value: section, label: section, children: subs })),
+    children: [...sections].map(([section, subs]) => (subs.length === 1 && isBareSection(rows, subs[0])
+      ? { value: subs[0].id, label: section }
+      : { value: section, label: section, children: subs.map((r) => ({ value: r.id, label: r.sub_category })) })),
   }));
 };
 
-// Category row id -> the Cascader path [category, section, id].
+// Category row id -> the Cascader path [category, section, id], or [category, id] for a bare section.
 export const categoryPath = (rows, id) => {
   const r = rows.find((x) => x.id === id);
-  return r ? [r.category, r.section, r.id] : undefined;
+  if (!r) return undefined;
+  return isBareSection(rows, r) ? [r.category, r.id] : [r.category, r.section, r.id];
 };
+
+// Cascader path -> the category row id: always its last value.
+export const categoryIdOf = (path) => (path?.length ? path[path.length - 1] : null);
 
 // Company with its branch: "Groupe - Tunis".
 export const companyLabel = (c) => (c.branch ? `${c.name} - ${c.branch}` : c.name);

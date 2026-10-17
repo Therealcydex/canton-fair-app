@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { Cascader, Col, Form, Input, InputNumber, Row, Select, Switch } from 'antd';
 import { API_BASE_URL } from '../../config/config';
-import { categoryOptions, useList } from '../../utils/lists';
+import { categoryIdOf, categoryOptions, useList } from '../../utils/lists';
 import { hallsOf, useFairPlan } from '../../utils/fairPlan';
 
 // Fields of the booth form. The server checks the same rules (phase 1-3, floor 1-4, letter A-Z,
@@ -47,7 +47,8 @@ export default function BoothFormFields({ lockSupplier }) {
   const categoryPath = Form.useWatch('category_path');
   const plan = useFairPlan();
   // D42: the halls of the chosen section, from the hall plan.
-  const sectionHalls = categoryPath?.[1] ? hallsOf(plan, phase, categoryPath[1]) : null;
+  const section = categories.find((r) => r.id === categoryIdOf(categoryPath))?.section;
+  const sectionHalls = section ? hallsOf(plan, phase, section) : null;
 
   useEffect(() => {
     axios.get(`${API_BASE_URL}/suppliers`).then((r) => setSuppliers(r.data.data)).catch(() => {});
@@ -121,7 +122,7 @@ export default function BoothFormFields({ lockSupplier }) {
 export const boothPayload = ({ category_path, ...v }) => ({
   ...v,
   supplier_id: v.supplier_id ?? null,
-  category_id: category_path?.[2] ?? null,
+  category_id: categoryIdOf(category_path),
   num_start: v.num_start ?? null,
   num_end: v.num_end ?? null,
   letter: v.letter ? v.letter.toUpperCase() : null,

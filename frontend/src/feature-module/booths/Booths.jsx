@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Button, Cascader, Col, Grid, Input, Row, Select } from 'antd';
 import { BuildOutlined, DownloadOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { ZONE_HALLS } from '../../utils/fairPlan';
-import { categoryOptions, useList } from '../../utils/lists';
+import { categoryIdOf, categoryOptions, useList } from '../../utils/lists';
 import BoothList, { boothNumber } from './BoothList';
 import PageHeader from '../../components/PageHeader';
 
@@ -67,7 +67,7 @@ export default function Booths({ planning = false }) {
             options={[{ value: 0, label: 'À visiter' }, { value: 1, label: 'Visités' }]} />
         )}
         <Cascader placeholder="Catégorie" allowClear showSearch style={{ width: 240 }} options={options}
-          value={filters.category_path} onChange={(path) => setFilters((f) => ({ ...f, category_path: path, category_id: path?.[2] }))} />
+          value={filters.category_path} onChange={(path) => setFilters((f) => ({ ...f, category_path: path, category_id: categoryIdOf(path) ?? undefined }))} />
         <Button type="link" icon={<ReloadOutlined />} className="fw-semibold px-1" onClick={reset}>Réinitialiser</Button>
         <span className="sc-counter ms-lg-auto">
           <span className="share-dot rounded-circle" style={{ background: 'var(--sc-accent)' }} />
