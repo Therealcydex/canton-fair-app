@@ -195,7 +195,7 @@ function PendingList({ products }) {
 function ProductRow({ product: p, children }) {
   return (
     <div className="review-row">
-      <ProductThumb src={p.cover_thumb} className="review-thumb" />
+      <ProductThumb src={p.cover_thumb} size={64} className="review-thumb" />
       <div className="flex-grow-1 overflow-hidden">
         <div className="d-flex justify-content-between gap-2">
           <Link to={`/produits/${p.id}`} className="fw-semibold text-body text-truncate">{p.name}</Link>

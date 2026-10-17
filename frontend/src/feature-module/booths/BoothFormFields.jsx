@@ -134,9 +134,11 @@ export default function BoothFormFields({ lockSupplier }) {
 // "1,3" (shared_company_ids from the API) -> [1, 3], the value of the "Partager avec" field.
 export const shareIds = (b) => (b?.shared_company_ids ? String(b.shared_company_ids).split(',').map(Number) : []);
 
-// The form's starting values for a booth from the API.
-export const boothInitialValues = (b, categories) => b && {
-  ...b, visited: !!b.visited, category_path: categoryPath(categories, b.category_id), share_company_ids: shareIds(b),
+// The form's starting values for a booth from the API. The shares only for the admin, whose form
+// shows them: a buyer's save must never send them (the server refuses them, 403).
+export const boothInitialValues = (b, categories, admin) => b && {
+  ...b, visited: !!b.visited, category_path: categoryPath(categories, b.category_id),
+  ...(admin ? { share_company_ids: shareIds(b) } : {}),
 };
 
 // Form values -> API body (antd gives undefined for empty fields; the cascader gives a path).

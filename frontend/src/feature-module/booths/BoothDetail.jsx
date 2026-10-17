@@ -19,7 +19,7 @@ import { NewProductModal } from '../products/ProductList';
 import { QrThumb } from '../suppliers/WechatQr';
 import BoothFormFields, { boothInitialValues, boothPayload } from './BoothFormFields';
 import { useAuth } from '../../context/AuthContext';
-import { isViewer } from '../../utils/access';
+import { isAdmin, isViewer } from '../../utils/access';
 import { boothNumber } from './BoothList';
 
 const plural = (n, word) => `${n} ${word}${n > 1 ? 's' : ''}`;
@@ -272,15 +272,20 @@ export default function BoothDetail() {
           ) : undefined} />
       </section>
 
-      <FormModal open={editing} title={`Modifier le booth ${boothLabel(booth.phase, booth.booth_code)}`} width={640}
-        initialValues={boothInitialValues(booth, categories)}
-        onCancel={() => setEditing(false)}
-        onSubmit={(values) => axios.put(`${API_BASE_URL}/booths/${id}`, boothPayload(values))}
-        onSaved={() => { setEditing(false); message.success('Booth modifié'); load(); }}>
-        <BoothFormFields />
-      </FormModal>
-      <NewProductModal open={creatingProduct} supplierId={booth.supplier_id || undefined}
-        boothId={booth.supplier_id ? booth.id : undefined} onClose={() => setCreatingProduct(false)} />
+      {/* D62: a viewer has no forms (they would also load lists it may not read). */}
+      {!viewer && (
+        <>
+          <FormModal open={editing} title={`Modifier le booth ${boothLabel(booth.phase, booth.booth_code)}`} width={640}
+            initialValues={boothInitialValues(booth, categories, isAdmin(user))}
+            onCancel={() => setEditing(false)}
+            onSubmit={(values) => axios.put(`${API_BASE_URL}/booths/${id}`, boothPayload(values))}
+            onSaved={() => { setEditing(false); message.success('Booth modifié'); load(); }}>
+            <BoothFormFields />
+          </FormModal>
+          <NewProductModal open={creatingProduct} supplierId={booth.supplier_id || undefined}
+            boothId={booth.supplier_id ? booth.id : undefined} onClose={() => setCreatingProduct(false)} />
+        </>
+      )}
     </>
   );
 }

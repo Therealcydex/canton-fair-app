@@ -9,7 +9,7 @@ import FormModal from '../../components/FormModal';
 import PageHeader from '../../components/PageHeader';
 import WechatQr, { QrPicker, QrThumb } from '../suppliers/WechatQr';
 import ContactFormFields, { contactPayload } from './ContactFormFields';
-import ContactCard from './ContactCard';
+import ContactCard, { openCardOnClick } from './ContactCard';
 import ContactAvatar from '../../components/ContactAvatar';
 import useDebounced from '../../utils/useDebounced';
 
@@ -208,10 +208,7 @@ export default function Contacts() {
       </div>
       {loadError && <Alert type="error" message={loadError} showIcon className="mb-3" />}
       <Table rowKey="id" columns={columns} dataSource={rows} loading={loading} size="middle" className="sc-table sc-table-clickable"
-        onRow={(c) => ({
-          // D63: a click on the contact opens its card, except on its links and buttons.
-          onClick: (e) => { if (!e.target.closest('a, button, .ant-popover')) setViewing(c); },
-        })}
+        onRow={openCardOnClick(setViewing)} // D63
         scroll={{ x: 'max-content' }}
         pagination={{
           pageSize, showSizeChanger: true, pageSizeOptions: [10, 20, 50, 100], onShowSizeChange: (_, size) => setPageSize(size),

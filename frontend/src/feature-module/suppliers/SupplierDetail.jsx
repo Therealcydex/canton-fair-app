@@ -7,7 +7,7 @@ import { apiError } from '../../utils/apiError';
 import FormModal from '../../components/FormModal';
 import SupplierFormFields from './SupplierFormFields';
 import { QrThumb } from './WechatQr';
-import ContactCard from '../contacts/ContactCard';
+import ContactCard, { openCardOnClick } from '../contacts/ContactCard';
 import ContactAvatar from '../../components/ContactAvatar';
 import BoothList from '../booths/BoothList';
 import ProductList, { NewProductModal } from '../products/ProductList';
@@ -70,7 +70,7 @@ export default function SupplierDetail() {
         <>
           <Table rowKey="id" size="middle" pagination={false} dataSource={contacts} scroll={{ x: true }}
             locale={{ emptyText: 'Aucun contact' }} className="sc-table-clickable"
-            onRow={(c) => ({ onClick: () => setViewing(c) })}
+            onRow={openCardOnClick(setViewing)} // D63
             columns={[
               { title: 'QR WeChat', dataIndex: 'wechat_qr', width: 110, render: (v) => <QrThumb value={v} size={72} /> },
               {

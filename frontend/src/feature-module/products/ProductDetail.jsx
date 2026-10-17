@@ -127,7 +127,8 @@ export default function ProductDetail() {
   const upload = async (files) => {
     setUploading(true);
     try {
-      const images = await Promise.all(files.map(toProductPhoto));
+      const images = [];
+      for (const f of files) images.push(await toProductPhoto(f)); // one at a time: a phone decodes big photos
       await call(() => axios.post(`${API_BASE_URL}/products/${id}/images`, { images }), 'Photos ajoutées', "Erreur lors de l'envoi des photos");
     } catch (err) {
       message.error(err.message);

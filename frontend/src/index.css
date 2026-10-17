@@ -1427,8 +1427,8 @@ code {
   }
 }
 
-/* D60: antd shows the clear (×) of a select or cascader only on hover, which a touch screen does
-   not have: on a phone the filters could not be emptied. Show it whenever a value is set. */
+/* D60: on a touch screen antd shows the clear (×) of a select once it has a value, but at 12 px,
+   too small for a finger. Make it bigger there, in place of the arrow. */
 @media (hover: none) {
   .ant-select .ant-select-clear,
   .ant-cascader .ant-select-clear {

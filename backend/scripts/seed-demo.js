@@ -103,12 +103,14 @@ function productPng(colour, shape, angle = 0) {
   });
 }
 
+// D61: photos travel as Base64 data URLs; these small PNGs are their own thumbnails.
 async function addPhotos(token, productId, colour, shape, count) {
-  const form = new FormData();
+  const images = [];
   for (let i = 0; i < count; i++) {
-    form.append('images', new Blob([productPng(colour, shape, i * 0.8)], { type: 'image/png' }), `photo-${i + 1}.png`);
+    const data = `data:image/png;base64,${productPng(colour, shape, i * 0.8).toString('base64')}`;
+    images.push({ data, thumb: data });
   }
-  await call('POST', `/products/${productId}/images`, token, form);
+  if (images.length) await call('POST', `/products/${productId}/images`, token, { images });
 }
 
 // The demo, phase by phase. Booths sit in a hall of their section on the official plan (D48).

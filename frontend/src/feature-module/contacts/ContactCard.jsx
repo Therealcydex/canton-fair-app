@@ -4,6 +4,17 @@ import { BankOutlined, EditOutlined, MailOutlined, PhoneOutlined } from '@ant-de
 import ContactAvatar from '../../components/ContactAvatar';
 import { QrThumb } from '../suppliers/WechatQr';
 
+// The row props that open a contact's card on a click. Not on its links, buttons or QR code
+// (which opens its own preview), and not from a popup above the row (a QR preview, a delete
+// confirmation): React passes their clicks up to the row although they are not inside it.
+export const openCardOnClick = (open) => (c) => ({
+  onClick: (e) => {
+    if (!e.currentTarget.contains(e.target)) return;
+    if (e.target.closest('a, button, .ant-image')) return;
+    open(c);
+  },
+});
+
 // D63: a contact's details in a popup, opened by clicking the contact: its photo, supplier,
 // phone, e-mail and WeChat QR code. `onEdit` (optional) adds the "Modifier" button.
 export default function ContactCard({ contact, supplierName, onClose, onEdit }) {

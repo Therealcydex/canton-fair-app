@@ -236,25 +236,30 @@ export default function BoothList({ filters, supplierId, planning, checklist, hi
           locale={{ emptyText: planning ? 'Aucun booth à visiter' : 'Aucun booth' }} />
       )}
 
-      <FormModal open={!!editing} title={editing ? `Modifier le booth ${boothLabel(editing.phase, editing.booth_code)}` : ''} width={640}
-        initialValues={boothInitialValues(editing, categories)}
-        onCancel={() => setEditing(null)}
-        onSubmit={(values) => axios.put(`${API_BASE_URL}/booths/${editing.id}`, boothPayload(values))}
-        onSaved={() => { setEditing(null); message.success('Booth modifié'); changed(); }}>
-        <BoothFormFields lockSupplier={!!supplierId} />
-      </FormModal>
+      {/* D62: a viewer has no forms (they would also load lists it may not read). */}
+      {!viewer && (
+        <>
+          <FormModal open={!!editing} title={editing ? `Modifier le booth ${boothLabel(editing.phase, editing.booth_code)}` : ''} width={640}
+            initialValues={boothInitialValues(editing, categories, admin)}
+            onCancel={() => setEditing(null)}
+            onSubmit={(values) => axios.put(`${API_BASE_URL}/booths/${editing.id}`, boothPayload(values))}
+            onSaved={() => { setEditing(null); message.success('Booth modifié'); changed(); }}>
+            <BoothFormFields lockSupplier={!!supplierId} />
+          </FormModal>
 
-      <FormModal open={creating} title="Nouveau booth" width={640}
-        initialValues={{ supplier_id: supplierId, visited: false, floor: 1 }}
-        onCancel={() => setCreating(false)}
-        onSubmit={(values) => axios.post(`${API_BASE_URL}/booths`, boothPayload(values))}
-        onSaved={(res) => {
-          setCreating(false);
-          message.success(`Booth ${boothLabel(res.data.data.phase, res.data.data.booth_code)} créé`);
-          if (supplierId) changed(); else navigate(`/booths/${res.data.data.id}`);
-        }}>
-        <BoothFormFields lockSupplier={!!supplierId} />
-      </FormModal>
+          <FormModal open={creating} title="Nouveau booth" width={640}
+            initialValues={{ supplier_id: supplierId, visited: false, floor: 1 }}
+            onCancel={() => setCreating(false)}
+            onSubmit={(values) => axios.post(`${API_BASE_URL}/booths`, boothPayload(values))}
+            onSaved={(res) => {
+              setCreating(false);
+              message.success(`Booth ${boothLabel(res.data.data.phase, res.data.data.booth_code)} créé`);
+              if (supplierId) changed(); else navigate(`/booths/${res.data.data.id}`);
+            }}>
+            <BoothFormFields lockSupplier={!!supplierId} />
+          </FormModal>
+        </>
+      )}
     </>
   );
 }
