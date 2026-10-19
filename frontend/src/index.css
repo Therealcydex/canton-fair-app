@@ -513,10 +513,15 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
   font-weight: 700;
 }
 
+/* D64: edition, phase, hall, floor, letter, number: one row, two rows of three on a phone */
 .booth-place {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 3px;
+}
+
+@media (max-width: 575.98px) {
+  .booth-place { grid-template-columns: repeat(3, 1fr); }
 }
 
 .booth-place > div {
