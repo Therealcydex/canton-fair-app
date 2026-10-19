@@ -1327,9 +1327,40 @@ code {
   opacity: 0.5;
 }
 
-/* Evening review (D38). */
+/* Evening review (D38), laid out after the Stitch screens (D59). */
 .review {
-  max-width: 720px;
+  max-width: 760px;
+}
+
+.review.review-wide {
+  max-width: 1240px;
+}
+
+.review-tabs {
+  min-width: 300px;
+}
+
+.review-tabs .ant-segmented-item-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.review-count {
+  min-width: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--sc-panel);
+  color: var(--sc-muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.review-count.is-active {
+  background: var(--sc-primary);
+  color: #fff;
 }
 
 .review-undo {
@@ -1338,46 +1369,228 @@ code {
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 12px;
-  padding: 6px 12px;
-  background: var(--sc-topbar);
+  padding: 8px 12px;
+  background: var(--sc-primary);
   border-radius: 8px;
   color: #fff;
   font-size: 13px;
 }
 
-.review-undo .ant-btn-link {
-  color: #fcd34d;
-  font-weight: 600;
+.review-undo strong {
+  color: #86efac;
 }
 
-.review-photos {
+.review-undo-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: #4ade80;
+}
+
+.review-progress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+}
+
+.review-progress-text {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--sc-primary);
+}
+
+.review-progress-bar {
+  flex: 1;
+  min-width: 140px;
+  margin: 0 !important;
+}
+
+.review-nav {
+  display: flex;
+  gap: 8px;
+}
+
+.review-product {
+  overflow: hidden;
+  padding: 0;
+}
+
+.review-gallery {
+  position: relative;
+  background: #111;
+}
+
+.review-gallery-main {
+  display: block !important;
+}
+
+.review-gallery-img {
+  display: block;
+  width: 100% !important;
+  height: 360px !important;
+  object-fit: contain;
+}
+
+.review-gallery-count {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 12px;
+}
+
+.review-gallery-thumbs {
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  scroll-snap-type: x mandatory;
+  padding: 8px 12px;
+  background: var(--sc-panel);
 }
 
-.review-photos .ant-image {
+.review-gallery-thumb {
   flex: none;
-  scroll-snap-align: start;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: none;
 }
 
-.review-photo {
-  width: 256px !important;
-  height: 224px !important;
+.review-gallery-thumb.is-active {
+  border-color: var(--sc-accent);
+}
+
+.review-gallery-thumb img {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  border-radius: 8px;
 }
 
 .review-nophoto {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 96px;
+  gap: 8px;
+  height: 120px;
   background: var(--sc-panel);
-  border-radius: 8px;
   color: var(--sc-muted);
   font-size: 13px;
+}
+
+.review-product-body {
+  padding: 16px 20px 20px;
+}
+
+.review-product-name {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.review-product-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 6px 0 14px;
+  font-size: 14px;
+}
+
+.review-chip {
+  padding: 1px 8px;
+  border: 1px solid var(--sc-border);
+  border-radius: 6px;
+  background: var(--sc-panel);
+  color: var(--sc-text);
+}
+
+.review-ref {
+  color: var(--sc-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+.review-price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 24px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--sc-border);
+  border-radius: 10px;
+  background: var(--sc-panel);
+}
+
+.review-price > div:first-child {
+  margin-right: auto;
+}
+
+.review-price-value {
+  color: var(--sc-primary);
+  font-family: var(--sc-font-heading);
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.review-price-value span {
+  color: var(--sc-muted);
+  font-family: var(--sc-font-body);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.review-price-item {
+  text-align: right;
+}
+
+.review-incoterm {
+  padding: 1px 8px;
+  border-radius: 6px;
+  background: var(--sc-primary-soft);
+  color: var(--sc-primary);
+  font-weight: 600;
+}
+
+.review-description {
+  margin-bottom: 12px;
+  white-space: pre-line;
+}
+
+.review-product-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--sc-border);
+  color: var(--sc-muted);
+  font-size: 13px;
+}
+
+.review-decide {
+  padding: 20px;
+}
+
+.review-decide-title {
+  margin-bottom: 4px;
+  color: var(--sc-primary);
+  font-size: 1.15rem;
+}
+
+.review-note {
+  margin-bottom: 12px;
 }
 
 .review-decisions {
@@ -1387,29 +1600,194 @@ code {
 }
 
 .review-decision {
-  min-height: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 64px;
+  padding: 8px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 10px;
   color: #fff;
-  font-weight: 600;
+  transition: filter 0.15s;
+}
+
+.review-decision:hover:not(:disabled) {
+  filter: brightness(1.08);
 }
 
 .review-decision:disabled {
   opacity: 0.5;
 }
 
+.review-decision-label {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.review-decision-hint {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
 .review-decision.decision-RETENU { background: var(--sc-success); }
 .review-decision.decision-ECHANTILLON { background: var(--sc-accent); }
-.review-decision.decision-A_COMMANDER { background: #722ed1; }
+.review-decision.decision-A_COMMANDER { background: #6b21a8; }
 .review-decision.decision-REJETE { background: var(--sc-error); }
 
-.review-row {
+.review-skip {
+  margin-top: 10px;
+  background: var(--sc-panel) !important;
+}
+
+.review-keys {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 14px;
   padding: 10px 12px;
-  background: #fff;
   border: 1px solid var(--sc-border);
   border-radius: 8px;
+  color: var(--sc-muted);
+  font-size: 12px;
+}
+
+.review-keys kbd {
+  padding: 0 5px;
+  border: 1px solid var(--sc-border);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--sc-text);
+  font-size: 11px;
+}
+
+/* On a computer the decision column follows the scroll; on a phone the note and the decisions stay
+   at the bottom of the screen, above the tab bar (56 px), and the keyboard help is hidden. */
+@media (min-width: 992px) {
+  .review-decide {
+    position: sticky;
+    top: 16px;
+  }
+}
+
+@media (max-width: 991.98px) {
+  /* The column sticks, not the panel: the panel's own parent (the column) is no taller than it,
+     so a sticky panel would never move; the column's parent is the whole product + decision row. */
+  .review-decide-col {
+    position: sticky;
+    bottom: calc(56px + env(safe-area-inset-bottom));
+    z-index: 5;
+  }
+
+  .review-decide {
+    margin: 0 -12px;
+    padding: 10px 12px;
+    border-radius: 0;
+    border-width: 1px 0 0;
+    box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.06);
+  }
+
+  .review-decision {
+    min-height: 48px;
+  }
+
+  .review-decision-hint,
+  .review-keys {
+    display: none;
+  }
+
+  .review-gallery-img {
+    height: 240px !important;
+  }
+
+  .review-skip {
+    margin-top: 8px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .review-tabs {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .review-tabs .ant-segmented-item {
+    flex: 1;
+  }
+
+  .review-nav {
+    display: none;
+  }
+
+  .review-product-body {
+    padding: 12px 14px 14px;
+  }
+
+  .review-product-name {
+    font-size: 1.1rem;
+  }
+
+  .review-price-value {
+    font-size: 1.35rem;
+  }
+}
+
+.review-state {
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.review-state-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 12px;
+  border-radius: 50%;
+  background: var(--sc-success-soft);
+  color: var(--sc-success);
+  font-size: 30px;
+}
+
+.review-state-good {
+  color: var(--sc-success);
+  font-weight: 600;
+}
+
+.review-state-skipped {
+  color: var(--sc-warning);
+}
+
+.review-list-head {
+  margin-bottom: 10px;
+  color: var(--sc-muted);
+  font-size: 13px;
+}
+
+/* min-width: 0, or the grid column grows to the longest name and the row leaves the phone's screen */
+.review-row {
+  min-width: 0;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid var(--sc-border);
+  border-radius: 10px;
+}
+
+.review-row-name {
+  color: var(--sc-text);
+  font-weight: 600;
+}
+
+.review-row.is-rejected .review-row-name {
+  color: var(--sc-muted);
+  text-decoration: line-through;
+}
+
+.review-row-price {
+  color: var(--sc-primary);
+  font-size: 13px;
 }
 
 .review-thumb {
@@ -1419,6 +1797,30 @@ code {
   object-fit: cover;
   background: var(--sc-panel);
   border-radius: 8px;
+}
+
+.review-note-box {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--sc-border);
+  border-radius: 8px;
+  background: var(--sc-surface);
+  font-size: 13px;
+}
+
+.review-note-box span {
+  color: var(--sc-primary);
+}
+
+.review-row-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--sc-border);
+  color: var(--sc-muted);
+  font-size: 12px;
 }
 
 @media print {
