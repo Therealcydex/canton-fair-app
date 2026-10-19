@@ -17,7 +17,8 @@
     "db:update-product-booth": "node sql/update_product_booth.js",
     "db:add-fair-plan": "node sql/add_fair_plan_from_site.js",
     "db:update-level-floor": "node sql/update_level_floor.js",
-    "db:update-boss-fixes": "node sql/update_boss_fixes.js"
+    "db:update-boss-fixes": "node sql/update_boss_fixes.js",
+    "db:update-booth-edition": "node sql/update_booth_edition.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

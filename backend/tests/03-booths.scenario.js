@@ -48,6 +48,18 @@ module.exports = async (ctx) => {
   // D32: the phase is not in the code, and the same stand holds another supplier at the next phase
   const other = expect('same stand, phase 3', await api('POST', '/booths', { token: A, body: { ...base, phase: 3, supplier_id: null } }), 200);
   check('phase 3 booth has the same code', other.body.data.booth_code === '18.0F10-12');
+  // D64: the edition of the fair, 140 when left out; the same stand holds another supplier at the next edition
+  check('edition 140 by default', b1.body.data.edition === 140 && got.body.data.edition === 140);
+  expect('edition 0', await api('POST', '/booths', { token: A, body: { ...base, edition: 0 } }), 400);
+  expect('edition 1000', await api('POST', '/booths', { token: A, body: { ...base, edition: 1000 } }), 400);
+  expect('edition not a number', await api('POST', '/booths', { token: A, body: { ...base, edition: 'x' } }), 400);
+  expect('same stand, same edition given', await api('POST', '/booths', { token: A, body: { ...base, edition: 140, supplier_id: null } }), 409);
+  const next = expect('same stand, edition 141', await api('POST', '/booths', { token: A, body: { ...base, edition: 141, supplier_id: null } }), 200);
+  check('edition 141 is kept', next.body.data.edition === 141);
+  const byEdition = expect('filter by edition', await api('GET', '/booths?edition=141&hall=18', { token: A }), 200);
+  check('only the edition 141 booth', byEdition.body.data.length === 1 && byEdition.body.data[0].id === next.body.data.id);
+  const kept = expect('edit without edition', await api('PUT', `/booths/${next.body.data.id}`, { token: A, body: { comment: `${PREFIX} edition kept` } }), 200);
+  check('an edit keeps the edition', kept.body.data.edition === 141);
 
   // D41: Phase 1 sections (added from the 140th fair's list) are chosen like the others, when the
   // database has them (db:setup adds them; they were deleted from the shared databases, D54).

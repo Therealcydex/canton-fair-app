@@ -92,6 +92,7 @@ export default function BoothDetail() {
   const contacts = supplier?.contacts || [];
   const retained = (products || []).filter((p) => p.status === 'RETENU').length;
   const place = [
+    { label: 'Édition', value: booth.edition }, // D64
     { label: 'Phase', value: booth.phase },
     { label: 'Hall', value: booth.hall },
     { label: 'Étage', value: booth.floor },

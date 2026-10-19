@@ -69,6 +69,8 @@ CREATE TABLE IF NOT EXISTS contacts (
 -- update_booth_code.js moves an existing table to this definition.
 CREATE TABLE IF NOT EXISTS booths (
     id            INT AUTO_INCREMENT PRIMARY KEY,
+    edition       SMALLINT NOT NULL DEFAULT 140,         -- D64: the session of the fair (the 140th by default)
+    CONSTRAINT chk_booths_edition CHECK (edition BETWEEN 1 AND 999),
     phase         TINYINT  NOT NULL CHECK (phase BETWEEN 1 AND 3),
     hall          TINYINT  NOT NULL,                     -- D56: 1-18, checked by the API
     floor         TINYINT  NOT NULL,
@@ -87,7 +89,8 @@ CREATE TABLE IF NOT EXISTS booths (
     visited       TINYINT(1) NOT NULL DEFAULT 0,         -- true / false
     comment       TEXT,
     -- D32: one stand per phase; NULL letters do not collide, so several suppliers can be known only by "9.1"
-    UNIQUE KEY uq_booth_place (phase, hall, floor, letter, num_start),
+    -- D64: and per edition, since the same place holds another supplier at the next session
+    UNIQUE KEY uq_booth_place (edition, phase, hall, floor, letter, num_start),
     KEY ix_booths_code (booth_code),
     KEY ix_booths_to_visit (visited, phase, hall),       -- D24: the "to visit" list and its filters
     CONSTRAINT chk_booth_place CHECK ((letter IS NULL) = (num_start IS NULL) AND (num_start IS NOT NULL OR num_end IS NULL)),
@@ -205,7 +208,7 @@ CREATE TABLE IF NOT EXISTS booth_shares (
 
 -- Booths with category names, supplier name and zone of the fair (D50: A = halls 1-8, B = 9-13, C = 14-16, D = 17-21)
 CREATE OR REPLACE VIEW v_booths AS
-SELECT b.id, b.booth_code, b.phase, b.hall, b.floor, b.letter, b.num_start, b.num_end,
+SELECT b.id, b.booth_code, b.edition, b.phase, b.hall, b.floor, b.letter, b.num_start, b.num_end,
        b.category_id, c.category, c.section, c.sub_category,
        b.supplier_id, s.name AS supplier_name,
        b.visited, b.comment,
