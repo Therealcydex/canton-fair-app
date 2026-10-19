@@ -7,7 +7,10 @@ const { isAdmin, isViewer } = require('../utils/access');
 
 // The limits of the CHECK constraints and column types of schema v2, checked here first so the
 // user gets a French message instead of a database error. D56: halls 1-18, floors 0-4.
+// D64: edition, the session of the fair; 140 when the body leaves it out.
+const DEFAULT_EDITION = 140;
 const BOOTH_FIELDS = {
+  edition: { label: 'Édition', type: 'int', min: 1, maxValue: 999 },
   phase: { label: 'Phase', type: 'int', required: true, min: 1, maxValue: 3 },
   hall: { label: 'Hall', type: 'int', required: true, min: 1, maxValue: 18 },
   floor: { label: 'Étage', type: 'int', required: true, min: 0, maxValue: 4 },
@@ -31,6 +34,7 @@ const boothLabel = (phase, code) => `Ph${phase} ${code}`;
 async function validateBooth(req, existing) {
   const v = validate(req.body, BOOTH_FIELDS, existing);
   if (!v.values) return { status: 400, message: v.message };
+  if (v.values.edition === null) v.values.edition = DEFAULT_EDITION;
   const b = v.values;
   // D27: always uppercase, so "a" and "A" cannot make two codes for one place.
   if (b.letter !== null && !/^[A-Z]$/.test(b.letter)) return { status: 400, message: 'Lettre : une lettre de A à Z' };
@@ -75,16 +79,16 @@ async function validateBooth(req, existing) {
     b.category_id = categoryId;
   }
 
-  // D26, D32: two booths of one phase cannot overlap at the same place ("12.1A22-24" and
+  // D26, D32, D64: two booths of one edition and phase cannot overlap at the same place ("12.1A22-24" and
   // "12.1A23" are the same booth). A booth known only by "9.1" overlaps nothing.
   if (b.letter === null) return { values: b };
   const end = b.num_end ?? b.num_start;
   const [[overlap]] = await db.query(
     `SELECT booth_code FROM booths
-     WHERE id <> ? AND phase = ? AND hall = ? AND floor = ? AND letter = ?
+     WHERE id <> ? AND edition = ? AND phase = ? AND hall = ? AND floor = ? AND letter = ?
        AND num_start <= ? AND COALESCE(num_end, num_start) >= ?
      LIMIT 1`,
-    [existing?.id ?? 0, b.phase, b.hall, b.floor, b.letter, end, b.num_start]
+    [existing?.id ?? 0, b.edition, b.phase, b.hall, b.floor, b.letter, end, b.num_start]
   );
   if (overlap) return { status: 409, message: `Cet emplacement chevauche le booth ${boothLabel(b.phase, overlap.booth_code)}` };
   return { values: b };
@@ -141,7 +145,7 @@ async function writeBooth(req, res, b, shares, sql, params, existingId) {
 const SHARED_IDS = '(SELECT GROUP_CONCAT(bs.company_id ORDER BY bs.company_id) FROM booth_shares bs WHERE bs.booth_id = v.id) AS shared_company_ids';
 const SHARED_WITH_COMPANY = 'EXISTS (SELECT 1 FROM booth_shares bs WHERE bs.booth_id = v.id AND bs.company_id = ?)';
 
-// Every booth of the group. Filters: supplier_id, phase, hall, floor, category_id,
+// Every booth of the group. Filters: supplier_id, edition (D64), phase, hall, floor, category_id,
 // visited (0 = the "to visit" list), q (booth code or supplier name). D62: a viewer (LECTEUR)
 // only gets the booths shared with its company.
 exports.list = handle('Booth list', async (req, res) => {
@@ -151,7 +155,7 @@ exports.list = handle('Booth list', async (req, res) => {
     where += ` AND ${SHARED_WITH_COMPANY}`;
     params.push(req.user.company_id);
   }
-  for (const key of ['supplier_id', 'phase', 'hall', 'floor', 'category_id']) {
+  for (const key of ['supplier_id', 'edition', 'phase', 'hall', 'floor', 'category_id']) {
     if (req.query[key] !== undefined && req.query[key] !== '') {
       const n = key === 'floor' && req.query.floor === '0' ? 0 : toId(req.query[key]); // D56: floor 0
       if (n === null) return fail(res, 400, `Filtre ${key} invalide`);
@@ -181,7 +185,7 @@ exports.list = handle('Booth list', async (req, res) => {
   const [rows] = await db.query(
     `SELECT v.*, (SELECT COUNT(*) FROM products p WHERE p.booth_id = v.id) AS nbr_products, ${SHARED_IDS}
      FROM v_booths v WHERE ${where}
-     ORDER BY v.phase, v.hall, v.floor, v.letter, v.num_start LIMIT 1000`,
+     ORDER BY v.edition DESC, v.phase, v.hall, v.floor, v.letter, v.num_start LIMIT 1000`,
     params
   );
   res.json({ success: true, data: rows });
@@ -223,11 +227,11 @@ exports.create = handle('Booth create', async (req, res) => {
   const shares = await readShares(req);
   if (shares.status) return fail(res, shares.status, shares.message);
   const id = await writeBooth(req, res, b, shares.ids,
-    `INSERT INTO booths (phase, hall, floor, letter, num_start, num_end, category_id, supplier_id, visited, comment)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [b.phase, b.hall, b.floor, b.letter, b.num_start, b.num_end, b.category_id, b.supplier_id, b.visited, b.comment]
+    `INSERT INTO booths (edition, phase, hall, floor, letter, num_start, num_end, category_id, supplier_id, visited, comment)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [b.edition, b.phase, b.hall, b.floor, b.letter, b.num_start, b.num_end, b.category_id, b.supplier_id, b.visited, b.comment]
   );
-  if (id) res.json({ success: true, data: { id, phase: b.phase, booth_code: boothCode(b) } });
+  if (id) res.json({ success: true, data: { id, edition: b.edition, phase: b.phase, booth_code: boothCode(b) } });
 });
 
 exports.update = handle('Booth update', async (req, res) => {
@@ -239,12 +243,12 @@ exports.update = handle('Booth update', async (req, res) => {
   const shares = await readShares(req);
   if (shares.status) return fail(res, shares.status, shares.message);
   const id = await writeBooth(req, res, b, shares.ids,
-    `UPDATE booths SET phase = ?, hall = ?, floor = ?, letter = ?, num_start = ?, num_end = ?,
+    `UPDATE booths SET edition = ?, phase = ?, hall = ?, floor = ?, letter = ?, num_start = ?, num_end = ?,
             category_id = ?, supplier_id = ?, visited = ?, comment = ? WHERE id = ?`,
-    [b.phase, b.hall, b.floor, b.letter, b.num_start, b.num_end, b.category_id, b.supplier_id, b.visited, b.comment, loaded.row.id],
+    [b.edition, b.phase, b.hall, b.floor, b.letter, b.num_start, b.num_end, b.category_id, b.supplier_id, b.visited, b.comment, loaded.row.id],
     loaded.row.id
   );
-  if (id) res.json({ success: true, data: { id, phase: b.phase, booth_code: boothCode(b) } });
+  if (id) res.json({ success: true, data: { id, edition: b.edition, phase: b.phase, booth_code: boothCode(b) } });
 });
 
 // Marks a booth visited or not: { visited: true | false }. Takes it off (or puts it back on)

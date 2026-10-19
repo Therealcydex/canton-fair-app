@@ -120,6 +120,12 @@ export default function BoothFormFields({ lockSupplier, withSupplier = true }) {
       )}
       <Row gutter={12}>
         <Col xs={12} sm={8}>
+          {/* D64: the session of the fair, 140 by default */}
+          <Form.Item name="edition" label="Édition" rules={[{ required: true, message: 'Édition obligatoire' }]}>
+            <InputNumber min={1} max={999} className="w-100" />
+          </Form.Item>
+        </Col>
+        <Col xs={12} sm={8}>
           <Form.Item name="phase" label="Phase" rules={[{ required: true, message: 'Phase obligatoire' }]}>
             <Select options={[1, 2, 3].map((n) => ({ value: n, label: `Phase ${n}` }))} />
           </Form.Item>
