@@ -8,7 +8,7 @@ import PhotosField from './PhotosField';
 
 // Fields of the product form. The server checks the same rules (price with 2 decimals at most,
 // a shipping type of the list) and explains a refusal.
-export default function ProductFormFields({ lockSupplier }) {
+export default function ProductFormFields({ lockSupplier, showBooth = true }) {
   const [suppliers, setSuppliers] = useState([]);
   const [booths, setBooths] = useState([]);
   const shippingTypes = useList('shipping-types');
@@ -21,8 +21,9 @@ export default function ProductFormFields({ lockSupplier }) {
 
   // D43: the booth where the product was found, among the booths of the chosen supplier. A booth
   // of another supplier is cleared when the supplier changes (the server refuses it anyway).
+  // "Nouveau produit" does not ask for it: the product is recorded on its supplier.
   useEffect(() => {
-    if (!supplierId) { setBooths([]); return undefined; }
+    if (!showBooth || !supplierId) { setBooths([]); return undefined; }
     let alive = true;
     axios.get(`${API_BASE_URL}/booths`, { params: { supplier_id: supplierId } }).then((r) => {
       if (!alive) return;
@@ -31,7 +32,7 @@ export default function ProductFormFields({ lockSupplier }) {
       if (current && !r.data.data.some((b) => b.id === current)) form.setFieldValue('booth_id', null);
     }).catch(() => {});
     return () => { alive = false; };
-  }, [supplierId, form]);
+  }, [supplierId, form, showBooth]);
 
   return (
     <>
@@ -45,12 +46,14 @@ export default function ProductFormFields({ lockSupplier }) {
               options={suppliers.map((s) => ({ value: s.id, label: s.name }))} />
           </Form.Item>
         </Col>
-        <Col xs={24} sm={12}>
-          <Form.Item name="booth_id" label="Booth" extra={supplierId ? (booths.length ? '' : "Ce fournisseur n'a pas de booth") : "Choisissez d'abord le fournisseur"}>
-            <Select allowClear placeholder="Non précisé" disabled={!booths.length}
-              options={booths.map((b) => ({ value: b.id, label: boothLabel(b.phase, b.booth_code) }))} />
-          </Form.Item>
-        </Col>
+        {showBooth && (
+          <Col xs={24} sm={12}>
+            <Form.Item name="booth_id" label="Booth" extra="Facultatif">
+              <Select allowClear placeholder="Non précisé" disabled={!booths.length}
+                options={booths.map((b) => ({ value: b.id, label: boothLabel(b.phase, b.booth_code) }))} />
+            </Form.Item>
+          </Col>
+        )}
         <Col xs={24} sm={12}>
           <Form.Item name="supplier_ref" label="Référence fournisseur"><Input maxLength={100} /></Form.Item>
         </Col>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Alert, App, Button, Card, Descriptions, Popconfirm, Rate, Space, Spin, Table, Tabs, Tag } from 'antd';
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
@@ -24,6 +24,7 @@ export default function SupplierDetail() {
   const { id } = useParams();
   const { message } = App.useApp();
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
   const [supplier, setSupplier] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [editing, setEditing] = useState(false);
@@ -97,7 +98,7 @@ export default function SupplierDetail() {
     {
       key: 'products',
       label: `Produits (${supplier.products_count})`,
-      children: <ProductList supplierId={supplier.id} />,
+      children: <ProductList supplierId={supplier.id} onChanged={load} />,
     },
   ];
 
@@ -146,7 +147,15 @@ export default function SupplierDetail() {
       </Card>
 
       <Card size="small">
-        <Tabs defaultActiveKey="contacts" items={tabs} />
+        <Tabs
+          activeKey={['contacts', 'booths', 'products'].includes(params.get('tab')) ? params.get('tab') : 'contacts'}
+          onChange={(key) => {
+            const next = new URLSearchParams(params);
+            if (key === 'contacts') next.delete('tab');
+            else next.set('tab', key);
+            setParams(next, { replace: true });
+          }}
+          items={tabs} />
       </Card>
 
       <NewProductModal open={creatingProduct} supplierId={supplier.id} onClose={() => setCreatingProduct(false)} />

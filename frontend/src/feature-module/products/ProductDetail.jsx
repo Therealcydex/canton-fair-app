@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Alert, App, Button, Col, Image, Input, Popconfirm, Row, Spin, Tag, Upload } from 'antd';
 import {
   BankOutlined, CheckCircleOutlined, DeleteOutlined, EditOutlined, EnvironmentOutlined, FileTextOutlined, HistoryOutlined,
@@ -83,6 +83,12 @@ export default function ProductDetail() {
   const { id } = useParams();
   const { message } = App.useApp();
   const navigate = useNavigate();
+  const [search] = useSearchParams();
+  const fromSupplier = Number(search.get('supplier'));
+  // Opened from a supplier's product list: deleting returns there, on the Produits tab.
+  const backTo = Number.isInteger(fromSupplier) && fromSupplier > 0
+    ? `/fournisseurs/${fromSupplier}?tab=products`
+    : '/produits';
   const [product, setProduct] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [editing, setEditing] = useState(false);
@@ -117,7 +123,7 @@ export default function ProductDetail() {
     try {
       await axios.delete(`${API_BASE_URL}/products/${id}`);
       message.success('Produit supprimé');
-      navigate('/produits');
+      navigate(backTo);
     } catch (err) {
       message.error(apiError(err, 'Erreur lors de la suppression'));
     }
@@ -140,7 +146,7 @@ export default function ProductDetail() {
     () => axios.put(`${API_BASE_URL}/products/${id}/decision`, { status, note }),
     `Décision enregistrée : ${STATUS[status].label}`, "Erreur lors de l'enregistrement de la décision");
 
-  if (loadError) return <Alert type="error" message={loadError} showIcon action={<Link to="/produits">Retour</Link>} />;
+  if (loadError) return <Alert type="error" message={loadError} showIcon action={<Link to={backTo}>Retour</Link>} />;
   if (!product) return <div className="text-center py-5"><Spin /></div>;
 
   const s = STATUS[product.status] || { label: product.status };
@@ -164,7 +170,7 @@ export default function ProductDetail() {
   return (
     <>
       <nav className="booth-crumb">
-        <Link to="/produits"><InboxOutlined /> Produits</Link>
+        <Link to={backTo}><InboxOutlined /> {backTo.startsWith('/fournisseurs/') ? 'Produits du fournisseur' : 'Produits'}</Link>
         <span className="mx-2 text-secondary">/</span>
         <strong>{product.name}</strong>
         {product.supplier_ref && <span className="page-chip ms-2">{product.supplier_ref}</span>}

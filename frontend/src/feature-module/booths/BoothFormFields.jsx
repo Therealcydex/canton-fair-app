@@ -8,6 +8,9 @@ import { categoryIdOf, categoryOptions, categoryPath, companyLabel, useList } fr
 import { useAuth } from '../../context/AuthContext';
 import { isAdmin } from '../../utils/access';
 import { hallsOf, useFairPlan } from '../../utils/fairPlan';
+import FormModal from '../../components/FormModal';
+import SupplierFormFields, { newSupplierContact } from '../suppliers/SupplierFormFields';
+import { supplierPayload } from '../suppliers/SupplierDetail';
 
 // Fields of the booth form. The server checks the same rules (phase 1-3, hall 1-18, floor 0-4 (D56), letter A-Z,
 // letter and number together (D32), a category of the booth's phase) and refuses a booth that
@@ -45,7 +48,7 @@ const describe = ({ hall, floor, letter, num_start: start, num_end: end }) => {
 };
 
 // The booth's supplier: pick one, or type a name that is not in the list and create it there.
-function SupplierSelect({ value, onChange, disabled }) {
+function SupplierSelect({ value, onChange, disabled, refresh }) {
   const { message } = App.useApp();
   const [suppliers, setSuppliers] = useState([]);
   const [search, setSearch] = useState('');
@@ -53,7 +56,7 @@ function SupplierSelect({ value, onChange, disabled }) {
 
   useEffect(() => {
     axios.get(`${API_BASE_URL}/suppliers`).then((r) => setSuppliers(r.data.data)).catch(() => {});
-  }, []);
+  }, [refresh]);
 
   const name = search.trim();
   const known = suppliers.some((s) => s.name.toLowerCase() === name.toLowerCase());
@@ -90,10 +93,14 @@ function SupplierSelect({ value, onChange, disabled }) {
   );
 }
 
-// `withSupplier` (D57): the supplier is chosen when the booth is edited, not when it is added.
+// `withSupplier` is false only when the booth is added from a supplier page (that supplier is already known).
 export default function BoothFormFields({ lockSupplier, withSupplier = true }) {
+  const { message } = App.useApp();
+  const form = Form.useFormInstance();
   const { user } = useAuth();
   const admin = isAdmin(user);
+  const [creatingSupplier, setCreatingSupplier] = useState(false);
+  const [supplierListKey, setSupplierListKey] = useState(0);
   const [companies, setCompanies] = useState([]);
   const categories = useList('canton-categories');
   const phase = Form.useWatch('phase');
@@ -111,11 +118,39 @@ export default function BoothFormFields({ lockSupplier, withSupplier = true }) {
   // The Canton Fair categories are per phase: only those of the chosen phase are offered.
   const options = useMemo(() => categoryOptions(categories, phase), [categories, phase]);
 
+  // Full supplier form (name, contact, card), then the new supplier is selected on the booth.
+  const createSupplier = async (values) => {
+    const res = await axios.post(`${API_BASE_URL}/suppliers`, supplierPayload(values));
+    const id = res.data.data.id;
+    const contact = newSupplierContact(values);
+    if (contact) {
+      try {
+        const { wechat_qr: wechatQr, ...fields } = contact;
+        const created = await axios.post(`${API_BASE_URL}/suppliers/${id}/contacts`, fields);
+        if (wechatQr) {
+          await axios.put(`${API_BASE_URL}/suppliers/${id}/contacts/${created.data.data.id}/wechat-qr`, { content: wechatQr });
+        }
+      } catch (err) {
+        message.warning(`Fournisseur enregistré, mais pas tout le contact : ${apiError(err, 'erreur')}`);
+      }
+    }
+    return { id, name: values.name };
+  };
+
   return (
     <>
       {withSupplier && (
-        <Form.Item name="supplier_id" label="Fournisseur">
-          <SupplierSelect disabled={lockSupplier} />
+        <Form.Item label="Fournisseur" extra={lockSupplier ? undefined : 'Choisissez un fournisseur, tapez un nom nouveau, ou ouvrez le formulaire complet.'}>
+          <div className="d-flex gap-2">
+            <div className="flex-grow-1" style={{ minWidth: 0 }}>
+              <Form.Item name="supplier_id" noStyle>
+                <SupplierSelect disabled={lockSupplier} refresh={supplierListKey} />
+              </Form.Item>
+            </div>
+            {!lockSupplier && (
+              <Button icon={<PlusOutlined />} onClick={() => setCreatingSupplier(true)}>Nouveau</Button>
+            )}
+          </div>
         </Form.Item>
       )}
       <Row gutter={12}>
@@ -182,6 +217,17 @@ export default function BoothFormFields({ lockSupplier, withSupplier = true }) {
             options={companies.map((c) => ({ value: c.id, label: companyLabel(c) }))} />
         </Form.Item>
       )}
+      <FormModal open={creatingSupplier} title="Nouveau fournisseur" width={640} zIndex={1100}
+        onCancel={() => setCreatingSupplier(false)}
+        onSubmit={createSupplier}
+        onSaved={({ id }) => {
+          form.setFieldsValue({ supplier_id: id });
+          setSupplierListKey((n) => n + 1);
+          setCreatingSupplier(false);
+          message.success('Fournisseur créé et sélectionné');
+        }}>
+        <SupplierFormFields withContact />
+      </FormModal>
     </>
   );
 }

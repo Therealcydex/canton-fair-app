@@ -243,14 +243,14 @@ export default function BoothList({ filters, supplierId, planning, checklist, on
           <FormModal open={creating} title="Nouveau booth" width={640}
             initialValues={{ visited: false, floor: 1, edition: 140 }}
             onCancel={() => setCreating(false)}
-            // D57: no supplier field when adding; from a supplier's page the booth is that supplier's.
-            onSubmit={(values) => axios.post(`${API_BASE_URL}/booths`, boothPayload({ ...values, supplier_id: supplierId }))}
+            // From a supplier's page the booth is that supplier's. Elsewhere the form picks or creates one.
+            onSubmit={(values) => axios.post(`${API_BASE_URL}/booths`, boothPayload({ ...values, supplier_id: supplierId ?? values.supplier_id }))}
             onSaved={(res) => {
               setCreating(false);
               message.success(`Booth ${boothLabel(res.data.data.phase, res.data.data.booth_code)} créé`);
               if (supplierId) changed(); else navigate(`/booths/${res.data.data.id}`);
             }}>
-            <BoothFormFields withSupplier={false} />
+            <BoothFormFields withSupplier={!supplierId} />
           </FormModal>
         </>
       )}

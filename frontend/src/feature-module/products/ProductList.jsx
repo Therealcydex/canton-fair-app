@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
-import { Alert, App, Button, Table, Tag, Tooltip } from 'antd';
-import { EditOutlined } from '@ant-design/icons';
+import { Alert, App, Button, Popconfirm, Space, Table, Tag, Tooltip } from 'antd';
+import { DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import { boothLabel, formatPrice } from '../../utils/format';
@@ -13,12 +13,12 @@ import { photosValue } from './PhotosField';
 import ProductThumb from '../../components/ProductThumb';
 
 // "New product", opened from the page headers (products page, supplier page, booth page: boothId).
-export function NewProductModal({ open, supplierId, boothId, onClose }) {
+export function NewProductModal({ open, supplierId, onClose }) {
   const { message } = App.useApp();
   const navigate = useNavigate();
   return (
     <FormModal open={open} title="Nouveau produit" width={720}
-      initialValues={{ supplier_id: supplierId, booth_id: boothId, shipping_type: 'FOB', photos: photosValue(null) }}
+      initialValues={{ supplier_id: supplierId, shipping_type: 'FOB', photos: photosValue(null) }}
       onCancel={onClose}
       onSubmit={(values) => axios.post(`${API_BASE_URL}/products`, productPayload(values))}
       onSaved={(res) => {
@@ -26,14 +26,14 @@ export function NewProductModal({ open, supplierId, boothId, onClose }) {
         message.success('Produit créé');
         navigate(`/produits/${res.data.data.id}`);
       }}>
-      <ProductFormFields lockSupplier={!!supplierId} />
+      <ProductFormFields lockSupplier={!!supplierId} showBooth={false} />
     </FormModal>
   );
 }
 
 // Table of products for the given API filters, with "Modifier" on each row. D62: products are no
 // longer shared, so the rows are not selectable any more.
-export default function ProductList({ filters, supplierId }) {
+export default function ProductList({ filters, supplierId, onChanged }) {
   const { message } = App.useApp();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +56,17 @@ export default function ProductList({ filters, supplierId }) {
 
   useEffect(() => { load(); }, [load]);
 
+  const remove = async (product) => {
+    try {
+      await axios.delete(`${API_BASE_URL}/products/${product.id}`);
+      message.success('Produit supprimé');
+      load();
+      onChanged?.();
+    } catch (err) {
+      message.error(apiError(err, 'Erreur lors de la suppression'));
+    }
+  };
+
   // The list has no photos: the edit form gets them from the product.
   const edit = async (p) => {
     try {
@@ -73,7 +84,7 @@ export default function ProductList({ filters, supplierId }) {
       title: 'Nom', dataIndex: 'name',
       render: (v, p) => (
         <>
-          <Link to={`/produits/${p.id}`} className="fw-medium">{v}</Link>
+          <Link to={supplierId ? `/produits/${p.id}?supplier=${supplierId}` : `/produits/${p.id}`} className="fw-medium">{v}</Link>
           {p.supplier_ref && <div className="text-muted small">Réf. {p.supplier_ref}</div>}
         </>
       ),
@@ -100,8 +111,18 @@ export default function ProductList({ filters, supplierId }) {
       render: (v, p) => (v ? <Tooltip title={p.shipping_name}><Tag color="geekblue" className="m-0">{v}</Tag></Tooltip> : '—'),
     },
     {
-      title: '', key: 'actions', width: 110, align: 'right',
-      render: (_, p) => <Button size="small" icon={<EditOutlined />} onClick={() => edit(p)}>Modifier</Button>,
+      title: '', key: 'actions', width: supplierId ? 220 : 110, align: 'right',
+      render: (_, p) => (
+        <Space size={4}>
+          <Button size="small" icon={<EditOutlined />} onClick={() => edit(p)}>Modifier</Button>
+          {supplierId && (
+            <Popconfirm title={`Supprimer « ${p.name} » ?`} description="Ses photos seront supprimées."
+              okText="Supprimer" okButtonProps={{ danger: true }} cancelText="Annuler" onConfirm={() => remove(p)}>
+              <Button size="small" danger icon={<DeleteOutlined />}>Supprimer</Button>
+            </Popconfirm>
+          )}
+        </Space>
+      ),
     },
   ].filter(Boolean);
 

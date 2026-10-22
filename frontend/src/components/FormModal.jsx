@@ -7,7 +7,7 @@ import { apiError } from '../utils/apiError';
 // the server's message; on success it closes and calls `onSaved`.
 // `initialValues` is applied each time the modal opens. `icon` goes before the title; `className`
 // "sc-modal-dark" gives the dark header of the Stitch forms (D49).
-export default function FormModal({ open, title, initialValues, onSubmit, onSaved, onCancel, children, width, icon, className }) {
+export default function FormModal({ open, title, initialValues, onSubmit, onSaved, onCancel, children, width, icon, className, zIndex }) {
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -45,7 +45,7 @@ export default function FormModal({ open, title, initialValues, onSubmit, onSave
   return (
     <Modal open={open} title={icon ? <span className="d-inline-flex align-items-center gap-2">{icon}{title}</span> : title}
       onCancel={onCancel} onOk={submit} okText="Enregistrer" okButtonProps={{ icon: <CheckOutlined /> }}
-      cancelText="Annuler" confirmLoading={saving} width={width} className={className} forceRender>
+      cancelText="Annuler" confirmLoading={saving} width={width} className={className} zIndex={zIndex} forceRender>
       {error && <Alert type="error" message={error} showIcon className="mb-3" />}
       <Form form={form} layout="vertical">
         {children}

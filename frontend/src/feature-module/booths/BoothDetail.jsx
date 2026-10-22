@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Alert, App, Button, Col, Popconfirm, Row, Spin, Table, Tag } from 'antd';
 import {
   ArrowRightOutlined, BankOutlined, CheckOutlined, DeleteOutlined, EditOutlined, EnvironmentOutlined, ExportOutlined,
-  InboxOutlined, MailOutlined, PhoneOutlined, PlusOutlined, ShopOutlined, UndoOutlined,
+  InboxOutlined, MailOutlined, PhoneOutlined, ShopOutlined, UndoOutlined,
 } from '@ant-design/icons';
 import { API_BASE_URL } from '../../config/config';
 import ProductThumb from '../../components/ProductThumb';
@@ -15,7 +15,6 @@ import { ZONE_HALLS } from '../../utils/fairPlan';
 import { boothLabel, formatPrice } from '../../utils/format';
 import { categoryLabel, useList } from '../../utils/lists';
 import FormModal from '../../components/FormModal';
-import { NewProductModal } from '../products/ProductList';
 import { QrThumb } from '../suppliers/WechatQr';
 import BoothFormFields, { boothInitialValues, boothPayload } from './BoothFormFields';
 import { useAuth } from '../../context/AuthContext';
@@ -40,7 +39,6 @@ export default function BoothDetail() {
   const [products, setProducts] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [editing, setEditing] = useState(false);
-  const [creatingProduct, setCreatingProduct] = useState(false);
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -254,7 +252,6 @@ export default function BoothDetail() {
             <h2 className="h5 m-0">Produits de ce booth</h2>
             <div className="small text-secondary">Produits trouvés au booth {boothLabel(booth.phase, booth.booth_code)}</div>
           </div>
-          {!viewer && <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreatingProduct(true)}>Nouveau produit</Button>}
         </div>
         <Table rowKey="id" columns={productColumns} dataSource={products || []} loading={!products} size="middle"
           pagination={false} scroll={{ x: 'max-content' }} className="sc-table"
@@ -282,8 +279,6 @@ export default function BoothDetail() {
             onSaved={() => { setEditing(false); message.success('Booth modifié'); load(); }}>
             <BoothFormFields />
           </FormModal>
-          <NewProductModal open={creatingProduct} supplierId={booth.supplier_id || undefined}
-            boothId={booth.supplier_id ? booth.id : undefined} onClose={() => setCreatingProduct(false)} />
         </>
       )}
     </>
