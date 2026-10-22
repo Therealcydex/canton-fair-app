@@ -37,24 +37,13 @@ async function main() {
   const hasColumn = async (table, name) => !!(await one(
     'SELECT 1 AS x FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?', [table, name]));
 
-  // users.company_id: its foreign key (named by the server), then the column.
-  const dropUserCompany = async () => {
-    const [fks] = await conn.query(
-      `SELECT CONSTRAINT_NAME AS name FROM information_schema.KEY_COLUMN_USAGE
-       WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'users' AND COLUMN_NAME = 'company_id' AND REFERENCED_TABLE_NAME IS NOT NULL`,
-      [dbName]);
-    for (const fk of fks) await conn.query(`ALTER TABLE users DROP FOREIGN KEY \`${fk.name}\``);
-    await conn.query('ALTER TABLE users DROP COLUMN company_id');
-  };
-
-  // Whether each step is still needed.
+  // Whether each step is still needed. The copies run while their source is there: INSERT
+  // IGNORE only adds what is missing.
   const needed = {
     'add-user-companies': async () => !(await hasTable('user_companies')),
     'copy-user-company': async () => hasColumn('users', 'company_id'),
-    'drop-user-company': async () => hasColumn('users', 'company_id'),
     'add-supplier-shares': async () => !(await hasTable('supplier_shares')),
     'copy-booth-shares': async () => hasTable('booth_shares'),
-    'drop-booth-shares': async () => hasTable('booth_shares'),
   };
 
   try {
@@ -62,17 +51,13 @@ async function main() {
     for (const step of steps) {
       if (!needed[step.name]) throw new Error(`unknown step "${step.name}" in update_supplier_shares.sql`);
       if (!(await needed[step.name]())) continue;
-      if (step.name === 'drop-user-company') await dropUserCompany();
-      else {
-        if (step.name === 'copy-booth-shares') {
-          const [[{ n }]] = await conn.query(
-            'SELECT COUNT(*) AS n FROM booth_shares bs JOIN booths b ON b.id = bs.booth_id WHERE b.supplier_id IS NULL');
-          if (n) console.log(`    ${n} share(s) of booths without a supplier dropped`);
-        }
-        const [r] = await conn.query(step.sql);
-        if (r.affectedRows !== undefined && step.name.startsWith('copy-')) console.log(`    ${r.affectedRows} row(s) copied`);
+      if (step.name === 'copy-booth-shares') {
+        const [[{ n }]] = await conn.query(
+          'SELECT COUNT(*) AS n FROM booth_shares bs JOIN booths b ON b.id = bs.booth_id WHERE b.supplier_id IS NULL');
+        if (n) console.log(`    ${n} share(s) of booths without a supplier not copied`);
       }
-      console.log(`  ${step.name}`);
+      const [r] = await conn.query(step.sql);
+      console.log(`  ${step.name}${step.name.startsWith('copy-') ? `: ${r.affectedRows} row(s) added` : ''}`);
       run++;
     }
     console.log(run

@@ -14,13 +14,10 @@ CREATE TABLE user_companies (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- step: copy-user-company
--- Each user keeps the company it had.
+-- Each user keeps the company it had. users.company_id stays, unused, so an older version of the
+-- app on the same database keeps working; a later run adds what it changed meanwhile.
 INSERT IGNORE INTO user_companies (user_id, company_id)
 SELECT id, company_id FROM users WHERE company_id IS NOT NULL;
-
--- step: drop-user-company
--- (done by update_supplier_shares.js: drops the foreign key of users.company_id, whose name the
--- server chose, then the column.)
 
 -- step: add-supplier-shares
 -- The suppliers the admin shares with a company; its viewers (LECTEUR) read them.
@@ -38,11 +35,9 @@ CREATE TABLE supplier_shares (
 
 -- step: copy-booth-shares
 -- A booth shared with a company becomes its supplier shared with that company. The share of a
--- booth without a supplier is dropped (update_supplier_shares.js counts them first).
+-- booth without a supplier is not copied (update_supplier_shares.js counts them). booth_shares
+-- stays, unused, like product_shares.
 INSERT IGNORE INTO supplier_shares (supplier_id, company_id, shared_by, shared_at)
 SELECT b.supplier_id, bs.company_id, bs.shared_by, bs.shared_at
 FROM booth_shares bs JOIN booths b ON b.id = bs.booth_id
 WHERE b.supplier_id IS NOT NULL;
-
--- step: drop-booth-shares
-DROP TABLE booth_shares;
