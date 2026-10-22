@@ -79,12 +79,12 @@ export default function Booths({ planning = false }) {
         <span className="sc-counter ms-lg-auto">
           <span className="share-dot rounded-circle" style={{ background: 'var(--sc-accent)' }} />
           <strong>{plural(rows.length - visited, 'booth')} à visiter</strong>
-          {(!planning || checklist) && <> · {plural(visited, 'visité')} <span className="sc-label">({rows.length} au total)</span></>}
+          {' · '}{plural(visited, 'visité')} <span className="sc-label">({rows.length} au total)</span>
         </span>
       </div>
 
-      {/* D52: on a phone, "À visiter" is a checklist that keeps the visited booths (to undo a tap). */}
-      <BoothList filters={{ ...filters, q: q || undefined, category_path: undefined, visited: checklist ? undefined : planning ? 0 : filters.visited }}
+      {/* D52, D66: "À visiter" keeps the visited booths (to count them and undo a tap). */}
+      <BoothList filters={{ ...filters, q: q || undefined, category_path: undefined, visited: planning ? undefined : filters.visited }}
         planning={planning} checklist={checklist}
         createOpen={creating} onCreateOpenChange={setCreating} onLoaded={setRows} />
 
@@ -100,7 +100,7 @@ export default function Booths({ planning = false }) {
                 <div key={z.zone}>
                   <div className="d-flex justify-content-between small mb-1">
                     <span className="fw-semibold text-primary">Zone {z.zone} (halls {z.halls})</span>
-                    <span className="fw-semibold">{plural(z.total, 'booth')}{z.total > 0 && !planning ? ` · ${z.visited} visité${z.visited > 1 ? 's' : ''}` : ''}</span>
+                    <span className="fw-semibold">{plural(z.total, 'booth')}{z.total > 0 ? ` · ${z.visited} visité${z.visited > 1 ? 's' : ''}` : ''}</span>
                   </div>
                   <div className="sc-progress">
                     <span style={{ width: `${rows.length ? (z.total / rows.length) * 100 : 0}%` }} />

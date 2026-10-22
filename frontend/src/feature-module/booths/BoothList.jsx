@@ -76,22 +76,44 @@ function BoothChecklist({ rows, loading, saving, onToggle }) {
   );
 }
 
-// D66: "À visiter" on a computer: one table per hall, under its phase. The hall and zone columns
-// are left out (the heading gives them).
+// "1/3 visités" and its bar.
+function Progress({ rows }) {
+  const done = rows.filter((b) => b.visited).length;
+  return (
+    <span className="d-inline-flex align-items-center gap-2 small fw-semibold text-nowrap">
+      <span className={done === rows.length ? 'text-success' : 'text-secondary'}>{done}/{rows.length} visité{done > 1 ? 's' : ''}</span>
+      <span className="sc-progress d-inline-block" style={{ width: 90 }}>
+        <span style={{ width: `${(done / rows.length) * 100}%`, background: 'var(--sc-success)' }} />
+      </span>
+    </span>
+  );
+}
+
+// D66: "À visiter" on a computer: one table per hall, under its phase, with the booths visited out
+// of the planned ones; the visited booths stay, at the bottom of their hall. The hall and zone
+// columns are left out (the heading gives them).
 function BoothGroups({ rows, loading, columns }) {
   if (loading && !rows.length) return <div className="text-center py-5"><Spin /></div>;
   if (!rows.length) return <Empty description="Aucun booth à visiter" className="py-4" />;
   const shown = columns.filter((c) => !['hall', 'zone'].includes(c.dataIndex));
   return byPhaseHall(rows).map((p) => (
     <section key={p.phase} className="sc-panel p-3 mb-3">
-      <div className="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-2">
+      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
         <h2 className="h5 m-0">Phase {p.phase}</h2>
-        <span className="small text-secondary">{plural(p.rows.length, 'booth')} · {plural(p.halls.length, 'hall')}</span>
+        <span className="d-inline-flex flex-wrap align-items-center gap-3">
+          <span className="small text-secondary">{plural(p.rows.length, 'booth')} · {plural(p.halls.length, 'hall')}</span>
+          <Progress rows={p.rows} />
+        </span>
       </div>
       {p.halls.map((h) => (
         <div key={h.hall} className="mb-3">
-          <div className="sc-label mb-1">{hallLabel(h)} · {plural(h.rows.length, 'booth')}</div>
-          <Table rowKey="id" columns={shown} dataSource={h.rows} size="small" pagination={false}
+          <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-1">
+            <span className="sc-label">{hallLabel(h)} · {plural(h.rows.length, 'booth')}</span>
+            <Progress rows={h.rows} />
+          </div>
+          <Table rowKey="id" columns={shown} size="small" pagination={false}
+            dataSource={[...h.rows.filter((b) => !b.visited), ...h.rows.filter((b) => b.visited)]}
+            rowClassName={(b) => (b.visited ? 'opacity-50' : '')}
             className="sc-table" scroll={{ x: 'max-content' }} />
         </div>
       ))}
