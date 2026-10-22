@@ -17,7 +17,7 @@ async function fixtures(adminToken) {
     const username = `${PREFIX}_buyer${key}`;
     const u = await api('POST', '/users', {
       token: adminToken,
-      body: { name: `${PREFIX} buyer ${key}`, username, password: PASSWORD, level: 2, company_id: c.body.data.id },
+      body: { name: `${PREFIX} buyer ${key}`, username, password: PASSWORD, level: 2, company_ids: [c.body.data.id] },
     });
     if (!u.body.success) throw new Error(`fixture user ${username}: ${JSON.stringify(u.body)}`);
     ctx.users[`buyer${key}`] = u.body.data.id;

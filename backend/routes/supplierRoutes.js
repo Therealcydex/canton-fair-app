@@ -4,15 +4,18 @@ const { requireAuth, refuseViewer } = require('../middleware/auth');
 const { parseImages } = require('../utils/upload');
 const c = require('../controllers/SupplierController');
 
-// Every route below requires a valid token; every user of the group sees every supplier.
-router.use(requireAuth, refuseViewer); // D62: a viewer only reads its shared booths
+// Every route below requires a valid token; every buyer sees every supplier. D66: a viewer
+// (LECTEUR) only reads the suppliers shared with its companies (the three GET routes below).
+router.use(requireAuth);
 
 router.get('/', c.list);
-router.post('/', c.create);
+router.get('/provinces', c.provinces); // before /:id
+router.post('/', refuseViewer, c.create);
 router.get('/:id', c.getById);
-router.put('/:id', c.update);
-router.delete('/:id', c.remove);
+router.put('/:id', refuseViewer, c.update);
+router.delete('/:id', refuseViewer, c.remove);
 
+router.use('/:id/contacts', refuseViewer); // the viewer gets the contacts with GET /:id
 router.get('/:id/contacts', c.listContacts);
 router.post('/:id/contacts', c.createContact);
 router.put('/:id/contacts/:contactId', c.updateContact);

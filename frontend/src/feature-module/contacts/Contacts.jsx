@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Alert, App, Button, Form, Input, Popconfirm, Select, Table } from 'antd';
@@ -137,37 +137,53 @@ export default function Contacts() {
 
   const printQr = () => navigate(`/contacts/qr?${new URLSearchParams(JSON.parse(query))}`);
 
-  // D49: columns of the Stitch "Contacts" screen.
+  // D66: the contacts under their supplier, in the server's order (supplier name, then contact).
+  // A supplier is a row of its own, open by default, that folds its contacts.
+  const groups = useMemo(() => {
+    const bySupplier = new Map();
+    for (const c of rows) {
+      if (!bySupplier.has(c.supplier_id)) {
+        bySupplier.set(c.supplier_id, {
+          key: `s${c.supplier_id}`, group: true, supplier_id: c.supplier_id, supplier_name: c.supplier_name, supplier_no: c.supplier_no, children: [],
+        });
+      }
+      bySupplier.get(c.supplier_id).children.push({ ...c, key: c.id });
+    }
+    return [...bySupplier.values()];
+  }, [rows]);
+  const [folded, setFolded] = useState([]); // the keys of the suppliers closed by the user
+
+  // D49: columns of the Stitch "Contacts" screen. A supplier row spans them all.
+  const onlyContact = (r) => (r.group ? { colSpan: 0 } : {});
   const columns = [
-    { title: 'N°', dataIndex: 'n', width: 64, sorter: (a, b) => a.n - b.n, render: (v) => <span className="text-secondary fw-semibold">{two(v)}</span> },
     {
-      title: 'Nom', dataIndex: 'name',
+      title: 'N°', dataIndex: 'n', width: 64,
+      onCell: (r) => (r.group ? { colSpan: 6 } : {}),
+      render: (v, r) => (r.group ? (
+        <span className="d-inline-flex flex-wrap align-items-baseline gap-2">
+          <span className="sc-label">N° {two(r.supplier_no)}</span>
+          <Link to={`/fournisseurs/${r.supplier_id}`} className="fw-semibold">{r.supplier_name}</Link>
+          <span className="small text-secondary">{r.children.length} contact{r.children.length > 1 ? 's' : ''}</span>
+        </span>
+      ) : <span className="text-secondary fw-semibold">{two(v)}</span>),
+    },
+    {
+      title: 'Nom', dataIndex: 'name', onCell: onlyContact,
       render: (v, c) => (
         <span className="d-inline-flex align-items-center gap-2 text-nowrap">
           <ContactAvatar contact={c} size={36} />
           {v ? <span className="fw-semibold">{v}</span> : '—'}
         </span>
       ),
-      sorter: (a, b) => (a.name || '').localeCompare(b.name || '', 'fr'),
     },
+    { title: 'Téléphone mobile', dataIndex: 'phone', onCell: onlyContact, render: (v) => (v ? <a href={`tel:${v}`} className="text-body text-nowrap">{v}</a> : '—') },
+    { title: 'E-mail professionnel', dataIndex: 'email', onCell: onlyContact, render: (v) => (v ? <a href={`mailto:${v}`}>{v}</a> : '—') },
     {
-      title: 'Fournisseur rattaché', dataIndex: 'supplier_name',
-      sorter: (a, b) => a.supplier_name.localeCompare(b.supplier_name, 'fr'),
-      render: (v, c) => (
-        <span className="text-nowrap">
-          <span className="sc-label me-2">N° {two(c.supplier_no)}</span>
-          <Link to={`/fournisseurs/${c.supplier_id}`}>{v}</Link>
-        </span>
-      ),
-    },
-    { title: 'Téléphone mobile', dataIndex: 'phone', render: (v) => (v ? <a href={`tel:${v}`} className="text-body text-nowrap">{v}</a> : '—') },
-    { title: 'E-mail professionnel', dataIndex: 'email', render: (v) => (v ? <a href={`mailto:${v}`}>{v}</a> : '—') },
-    {
-      title: 'QR code WeChat', dataIndex: 'wechat_qr', width: 130, align: 'center',
+      title: 'QR code WeChat', dataIndex: 'wechat_qr', width: 130, align: 'center', onCell: onlyContact,
       render: (v) => <QrThumb value={v} />,
     },
     {
-      title: 'Actions', key: 'actions', align: 'right',
+      title: 'Actions', key: 'actions', align: 'right', onCell: onlyContact,
       render: (_, c) => (
         <span className="text-nowrap">
           <Button type="link" size="small" className="fw-semibold" onClick={() => setEditing(c)}>Modifier</Button>
@@ -203,16 +219,20 @@ export default function Contacts() {
           onClick={() => { setFilters({}); setSearch(''); }}>Réinitialiser</Button>
         <span className="sc-counter ms-lg-auto">
           <span className="share-dot rounded-circle" style={{ background: 'var(--sc-accent)' }} />
-          <strong>{rows.length} contact{rows.length > 1 ? 's' : ''}</strong> enregistré{rows.length > 1 ? 's' : ''}
+          <strong>{rows.length} contact{rows.length > 1 ? 's' : ''}</strong> chez {groups.length} fournisseur{groups.length > 1 ? 's' : ''}
         </span>
       </div>
       {loadError && <Alert type="error" message={loadError} showIcon className="mb-3" />}
-      <Table rowKey="id" columns={columns} dataSource={rows} loading={loading} size="middle" className="sc-table sc-table-clickable"
-        onRow={openCardOnClick(setViewing)} // D63
+      <Table rowKey="key" columns={columns} dataSource={groups} loading={loading} size="middle" className="sc-table sc-table-clickable"
+        onRow={(r) => (r.group ? { style: { background: 'var(--sc-panel)' } } : openCardOnClick(setViewing)(r))} // D63
+        expandable={{
+          expandedRowKeys: groups.filter((g) => !folded.includes(g.key)).map((g) => g.key),
+          onExpand: (open, g) => setFolded((keys) => (open ? keys.filter((k) => k !== g.key) : [...keys, g.key])),
+        }}
         scroll={{ x: 'max-content' }}
         pagination={{
           pageSize, showSizeChanger: true, pageSizeOptions: [10, 20, 50, 100], onShowSizeChange: (_, size) => setPageSize(size),
-          showTotal: (total, [from, to]) => <>Affichage de <strong>{from} à {to}</strong> sur <strong>{total}</strong> contact{total > 1 ? 's' : ''}</>,
+          showTotal: (total, [from, to]) => <>Fournisseurs <strong>{from} à {to}</strong> sur <strong>{total}</strong></>,
         }}
         locale={{ emptyText: 'Aucun contact' }} />
 

@@ -6,15 +6,15 @@ const { fail, handle, clean } = require('../utils/http');
 const MIN_PASSWORD = 8;
 const USERNAME_RE = /^[\w.-]{3,50}$/;
 
-const publicUser = (u) => ({
-  id: u.id, company_id: u.company_id, company_name: u.company_name, company_branch: u.company_branch,
-  name: u.name, username: u.username, level: u.level, role: u.role,
-});
+// D66: companies, the user's companies ({ id, name, branch }).
+const publicUser = async (u) => {
+  const [companies] = await db.query(
+    `SELECT c.id, c.name, c.branch FROM user_companies uc JOIN companies c ON c.id = uc.company_id
+     WHERE uc.user_id = ? ORDER BY c.name, c.branch`, [u.id]);
+  return { id: u.id, name: u.name, username: u.username, level: u.level, role: u.role, companies };
+};
 
-const USER_SELECT = `
-  SELECT u.id, u.company_id, c.name AS company_name, c.branch AS company_branch, u.name, u.username,
-         u.password_hash, u.level, u.role, u.is_active
-  FROM users u LEFT JOIN companies c ON c.id = u.company_id`;
+const USER_SELECT = 'SELECT u.id, u.name, u.username, u.password_hash, u.level, u.role, u.is_active FROM users u';
 
 exports.login = handle('Auth login', async (req, res) => {
   const username = clean(req.body?.username);
@@ -31,12 +31,12 @@ exports.login = handle('Auth login', async (req, res) => {
     return fail(res, 403, "Compte désactivé : contactez l'administrateur");
   }
 
-  res.json({ success: true, token: signToken(user), user: publicUser(user) });
+  res.json({ success: true, token: signToken(user), user: await publicUser(user) });
 });
 
 exports.me = handle('Auth me', async (req, res) => {
   const [[user]] = await db.query(`${USER_SELECT} WHERE u.id = ?`, [req.user.id]);
-  res.json({ success: true, data: publicUser(user) });
+  res.json({ success: true, data: await publicUser(user) });
 });
 
 module.exports.MIN_PASSWORD = MIN_PASSWORD;

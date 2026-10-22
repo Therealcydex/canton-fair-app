@@ -5,7 +5,7 @@ const c = require('../controllers/ProductController');
 
 // Every route below requires a valid token; every buyer sees every product. Only the admin
 // decides (D38). D62: products are no longer shared (booths are).
-router.use(requireAuth, refuseViewer); // D62: a viewer only reads its shared booths
+router.use(requireAuth, refuseViewer); // D66: a viewer only reads its shared suppliers
 
 router.get('/', c.list);
 router.post('/', c.create);

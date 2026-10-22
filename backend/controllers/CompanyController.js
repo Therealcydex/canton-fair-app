@@ -8,12 +8,12 @@ const COMPANY_FIELDS = {
   branch: { label: 'Branche', type: 'string', max: 150 },
 };
 
-// Every buyer can list companies (the admin chooses among them whom to share a booth with, D62).
+// Every buyer can list companies (the admin chooses among them whom to share a supplier with, D66).
 exports.list = handle('Company list', async (req, res) => {
   const [rows] = await db.query(
     `SELECT c.id, c.name, c.branch,
-            (SELECT COUNT(*) FROM users u WHERE u.company_id = c.id) AS users_count,
-            (SELECT COUNT(*) FROM booth_shares bs WHERE bs.company_id = c.id) AS shared_booths_count
+            (SELECT COUNT(*) FROM user_companies uc WHERE uc.company_id = c.id) AS users_count,
+            (SELECT COUNT(*) FROM supplier_shares ss WHERE ss.company_id = c.id) AS shared_suppliers_count
      FROM companies c ORDER BY c.name, c.branch`
   );
   res.json({ success: true, data: rows });
@@ -47,12 +47,13 @@ exports.update = handle('Company update', async (req, res) => {
   res.json({ success: true, data: { id: c.row.id, name, branch } });
 });
 
-// Its users stay, without a company (FK SET NULL); its shares go (FK CASCADE on booth_shares).
-// The admin cannot delete their own company.
+// Its users stay, without this company, and its shares go (FK CASCADE on user_companies and
+// supplier_shares). The admin cannot delete one of their own companies.
 exports.remove = handle('Company remove', async (req, res) => {
   const c = await loadCompany(req.params.id);
   if (!c.row) return fail(res, c.status, c.message);
-  if (c.row.id === req.user.company_id) return fail(res, 409, 'Vous ne pouvez pas supprimer votre propre société');
+  const [[own]] = await db.query('SELECT 1 AS x FROM user_companies WHERE user_id = ? AND company_id = ?', [req.user.id, c.row.id]);
+  if (own) return fail(res, 409, 'Vous ne pouvez pas supprimer votre propre société');
   await db.query('DELETE FROM companies WHERE id = ?', [c.row.id]);
   res.json({ success: true, data: { id: c.row.id } });
 });

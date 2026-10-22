@@ -12,7 +12,7 @@ module.exports = async (ctx) => {
   const ok = await api('POST', '/login', { body: { username: `${PREFIX}_buyerA`, password } });
   check('login returns token and user without password',
     ok.status === 200 && ok.body.token && ok.body.user && !('password_hash' in ok.body.user));
-  check('login returns the company', ok.body.user?.company_id === companies.A);
+  check('login returns the companies', ok.body.user?.companies?.length === 1 && ok.body.user.companies[0].id === companies.A);
 
   // Token
   expect('no token', await api('GET', '/me'), 401);
@@ -26,7 +26,7 @@ module.exports = async (ctx) => {
   expect('sign-up companies route removed', await api('GET', '/signup/companies'), 404);
   const created = expect('admin creates an inactive account', await api('POST', '/users', {
     token: adminToken,
-    body: { name: `${PREFIX} Nouveau`, username: `${PREFIX}_new1`, password, level: 2, company_id: companies.A, is_active: false },
+    body: { name: `${PREFIX} Nouveau`, username: `${PREFIX}_new1`, password, level: 2, company_ids: [companies.A], is_active: false },
   }), 200);
   const newId = created.body.data?.id;
   const newUser = (await api('GET', '/users?pending=1', { token: adminToken })).body.data.find((u) => u.id === newId);
@@ -53,8 +53,8 @@ module.exports = async (ctx) => {
   expect('level cleared', await api('PUT', `/users/${newId}`, { token: adminToken, body: { level: null } }), 200);
   expect('short password', await api('POST', '/users', { token: adminToken, body: { name: 'X', username: `${PREFIX}_x1`, password: 'court' } }), 400);
   expect('duplicate username', await api('POST', '/users', { token: adminToken, body: { name: 'X', username: `${PREFIX}_buyerB`, password } }), 409);
-  expect('unknown company', await api('POST', '/users', { token: adminToken, body: { name: 'X', username: `${PREFIX}_x1`, password, company_id: 999999 } }), 400);
-  expect('admin creates a user', await api('POST', '/users', { token: adminToken, body: { name: 'X', username: `${PREFIX}_x1`, password, company_id: companies.B } }), 200);
+  expect('unknown company', await api('POST', '/users', { token: adminToken, body: { name: 'X', username: `${PREFIX}_x1`, password, company_ids: [999999] } }), 400);
+  expect('admin creates a user', await api('POST', '/users', { token: adminToken, body: { name: 'X', username: `${PREFIX}_x1`, password, company_ids: [companies.B] } }), 200);
 
   const adminUser = (await api('GET', '/me', { token: adminToken })).body.data;
   expect('admin deactivates self', await api('PUT', `/users/${adminUser.id}`, { token: adminToken, body: { is_active: 0 } }), 409);
@@ -82,8 +82,8 @@ module.exports = async (ctx) => {
 
   // Deleting a company keeps its users, without a company.
   const tmp = (await api('POST', '/companies', { token: adminToken, body: { name: `${PREFIX} Temp à supprimer` } })).body.data.id;
-  const u = (await api('POST', '/users', { token: adminToken, body: { name: 'Y', username: `${PREFIX}_y1`, password, company_id: tmp } })).body.data.id;
+  const u = (await api('POST', '/users', { token: adminToken, body: { name: 'Y', username: `${PREFIX}_y1`, password, company_ids: [tmp, companies.B] } })).body.data.id;
   expect('delete company with users', await api('DELETE', `/companies/${tmp}`, { token: adminToken }), 200);
   const after = await api('GET', `/users/${u}`, { token: adminToken });
-  check('its user stays, without a company', after.status === 200 && after.body.data.company_id === null);
+  check('its user stays, without that company', after.status === 200 && after.body.data.company_ids.join() === String(companies.B));
 };

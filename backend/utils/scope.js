@@ -17,4 +17,20 @@ const loadBooth = (id) => loadOne('SELECT * FROM booths WHERE id = ?', id, 'Boot
 const loadProduct = (id) => loadOne('SELECT * FROM products WHERE id = ?', id, 'Produit introuvable');
 const loadCompany = (id) => loadOne('SELECT * FROM companies WHERE id = ?', id, 'Société introuvable');
 
-module.exports = { loadSupplier, loadBooth, loadProduct, loadCompany };
+// D66: a list of company ids from a request body (the companies of a user, those a supplier is
+// shared with). Returns { ids } (duplicates removed) or { message } for a 400.
+async function loadCompanyIds(raw, label) {
+  if (!Array.isArray(raw)) return { message: `${label} : liste de sociétés attendue` };
+  const ids = [...new Set(raw.map(toId))];
+  if (ids.includes(null)) return { message: `${label} : société invalide` };
+  if (ids.length) {
+    const [found] = await db.query('SELECT id FROM companies WHERE id IN (?)', [ids]);
+    if (found.length !== ids.length) return { message: `${label} : société introuvable` };
+  }
+  return { ids };
+}
+
+// "1,3" from a GROUP_CONCAT subquery -> [1, 3].
+const idList = (value) => (value ? String(value).split(',').map(Number) : []);
+
+module.exports = { loadSupplier, loadBooth, loadProduct, loadCompany, loadCompanyIds, idList };

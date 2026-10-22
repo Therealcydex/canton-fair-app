@@ -9,7 +9,7 @@ const secret = () => process.env.JWT_SECRET;
 // Signs a token with the caller's identity. Never the password.
 const signToken = (user) =>
   jwt.sign(
-    { id: user.id, company_id: user.company_id, name: user.name, level: user.level, role: user.role },
+    { id: user.id, name: user.name, level: user.level, role: user.role },
     secret(),
     { expiresIn: process.env.JWT_EXPIRES_IN || '12h' }
   );
@@ -31,7 +31,7 @@ const requireAuth = async (req, res, next) => {
 
   try {
     const [[user]] = await db.query(
-      'SELECT id, company_id, name, username, level, role, is_active FROM users WHERE id = ?',
+      'SELECT id, name, username, level, role, is_active FROM users WHERE id = ?',
       [payload.id]
     );
     if (!user || !user.is_active) return fail(res, 401, 'Compte inexistant ou désactivé');
@@ -49,7 +49,7 @@ const requireAdmin = (req, res, next) => {
   return fail(res, 403, "Action réservée à l'administrateur");
 };
 
-// D62: 403 for a viewer (LECTEUR), who only reads the booths shared with its company.
+// D62: 403 for a viewer (LECTEUR), who only reads the suppliers shared with its companies (D66).
 const refuseViewer = (req, res, next) => {
   if (!isViewer(req.user)) return next();
   return fail(res, 403, 'Accès en lecture seule');

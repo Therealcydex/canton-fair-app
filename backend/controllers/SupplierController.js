@@ -1,9 +1,10 @@
 const db = require('../config/db');
 const { fail, handle, toId, clean, likeContains } = require('../utils/http');
 const { validate } = require('../utils/validate');
-const { loadSupplier } = require('../utils/scope');
+const { loadSupplier, loadCompanyIds, idList } = require('../utils/scope');
 const { deleteImages, imageExtension, saveImages } = require('../utils/upload');
 const { parseDataImage } = require('../utils/dataImage');
+const { isAdmin, isViewer, sharedWithViewer } = require('../utils/access');
 
 // D63: the contact's photo, resized by the app to about 256 px.
 const MAX_AVATAR_BYTES = 100 * 1024;
@@ -36,12 +37,18 @@ const qrFiles = (rows) => rows.map((r) => r.wechat_qr).filter(isQrPhoto);
 // v_suppliers adds the province name, the number of booths and the % of them visited.
 // supplier_no: the supplier's number shown in the apps, 1, 2, 3… in creation order without the
 // gaps left by deleted suppliers (the id keeps them and stays internal). Same as in ContactController.
-const SUPPLIER_SELECT = `
+// D66: shared_company_ids, the companies the supplier is shared with, for the buyers and the
+// admin only (a viewer does not learn which other companies read it). A subquery, so
+// v_suppliers keeps no GROUP BY (D23).
+const supplierSelect = (viewer) => `
   SELECT v.*,
          (SELECT COUNT(*) FROM suppliers s2 WHERE s2.id <= v.id) AS supplier_no,
          (SELECT COUNT(*) FROM contacts c WHERE c.supplier_id = v.id) AS contacts_count,
          (SELECT COUNT(*) FROM products p WHERE p.supplier_id = v.id) AS products_count
+         ${viewer ? '' : `, (SELECT GROUP_CONCAT(ss.company_id ORDER BY ss.company_id)
+             FROM supplier_shares ss WHERE ss.supplier_id = v.id) AS shared_company_ids`}
   FROM v_suppliers v`;
+const withShareIds = (row) => (row.shared_company_ids === undefined ? row : { ...row, shared_company_ids: idList(row.shared_company_ids) });
 
 // D42: the exhibitor's page on the fair's site, only an http(s) address of cantonfair.org.cn
 // (or cantonfair.org): the apps open it as a link.
@@ -70,10 +77,17 @@ async function validateSupplier(body, existing) {
   return v;
 }
 
-// Every supplier of the group, filtered by name or phone (q, D40) and province_id.
+// The WHERE clause that limits a viewer to its shared suppliers (D66), or none for the others.
+const scopeOf = (req) => (isViewer(req.user)
+  ? { where: ` AND ${sharedWithViewer('v.id')}`, params: [req.user.id] }
+  : { where: '', params: [] });
+
+// Every supplier of the group, filtered by name or phone (q, D40) and province_id. D66: phase
+// and hall keep the suppliers with a booth there (both given: a booth in that hall at that phase).
 exports.list = handle('Supplier list', async (req, res) => {
-  const params = [];
-  let where = '1=1';
+  const scope = scopeOf(req);
+  const params = [...scope.params];
+  let where = `1=1${scope.where}`;
   const q = clean(req.query.q);
   if (q) {
     where += ' AND (v.name LIKE ? OR v.phone LIKE ?)';
@@ -85,31 +99,104 @@ exports.list = handle('Supplier list', async (req, res) => {
     where += ' AND v.province_id = ?';
     params.push(provinceId);
   }
-  const [rows] = await db.query(`${SUPPLIER_SELECT} WHERE ${where} ORDER BY v.name LIMIT 500`, params);
+  const booth = [];
+  for (const [key, max] of [['phase', 3], ['hall', 18]]) {
+    if (req.query[key] === undefined || req.query[key] === '') continue;
+    const n = toId(req.query[key]);
+    if (!n || n > max) return fail(res, 400, `Filtre ${key} invalide`);
+    booth.push(`b.${key} = ?`);
+    params.push(n);
+  }
+  if (booth.length) where += ` AND EXISTS (SELECT 1 FROM booths b WHERE b.supplier_id = v.id AND ${booth.join(' AND ')})`;
+  const [rows] = await db.query(`${supplierSelect(isViewer(req.user))} WHERE ${where} ORDER BY v.name LIMIT 500`, params);
+  res.json({ success: true, data: rows.map(withShareIds) });
+});
+
+// D66: the provinces of at least one supplier (of the viewer's shared suppliers for a viewer),
+// for the province filter of the supplier list.
+exports.provinces = handle('Supplier provinces', async (req, res) => {
+  const scope = scopeOf(req);
+  const [rows] = await db.query(
+    `SELECT p.id, p.name_en, p.name_zh FROM china_province p
+     WHERE EXISTS (SELECT 1 FROM suppliers v WHERE v.province_id = p.id${scope.where})
+     ORDER BY p.name_en`, scope.params);
   res.json({ success: true, data: rows });
 });
 
+// D66: a viewer only opens a supplier shared with one of its companies (404 otherwise, as if it
+// did not exist). It cannot read the products routes, so its supplier comes with its products
+// (no decision, which stays internal).
 exports.getById = handle('Supplier getById', async (req, res) => {
   const r = await loadSupplier(req.params.id);
   if (!r.row) return fail(res, r.status, r.message);
-  const [[supplier]] = await db.query(`${SUPPLIER_SELECT} WHERE v.id = ?`, [r.row.id]);
+  const viewer = isViewer(req.user);
+  const scope = scopeOf(req);
+  const [[supplier]] = await db.query(`${supplierSelect(viewer)} WHERE v.id = ?${scope.where}`, [r.row.id, ...scope.params]);
+  if (!supplier) return fail(res, 404, 'Fournisseur introuvable');
   const [contacts] = await db.query(
     'SELECT id, name, phone, email, wechat_qr, avatar FROM contacts WHERE supplier_id = ? ORDER BY name',
     [r.row.id]
   );
-  res.json({ success: true, data: { ...supplier, contacts } });
+  const data = { ...withShareIds(supplier), contacts };
+  if (viewer) {
+    [data.products] = await db.query(
+      `SELECT p.id, p.name, p.supplier_ref, p.description, p.price, p.unit, p.moq, p.shipping_type, st.name AS shipping_name,
+              p.booth_id, b.booth_code, b.phase AS booth_phase,
+              (SELECT pi.thumb_data FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.id LIMIT 1) AS cover_thumb
+       FROM products p
+       LEFT JOIN shipping_types st ON st.code = p.shipping_type
+       LEFT JOIN booths b ON b.id = p.booth_id
+       WHERE p.supplier_id = ? ORDER BY p.name`, [r.row.id]);
+  }
+  res.json({ success: true, data });
 });
+
+// D66: share_company_ids, the companies the supplier is shared with (the whole list). Only the
+// admin shares. Returns { ids } (null when the body leaves the shares as they are) or { status, message }.
+async function readShares(req) {
+  const raw = req.body?.share_company_ids;
+  if (raw === undefined) return { ids: null };
+  if (!isAdmin(req.user)) return { status: 403, message: "Seul l'administrateur partage un fournisseur" };
+  const r = await loadCompanyIds(raw, 'Partager avec');
+  return r.ids ? r : { status: 400, message: r.message };
+}
+
+// Writes the supplier and, when given, its shares in one transaction. Returns its id.
+async function writeSupplier(req, shares, sql, params, existingId) {
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [r] = await conn.query(sql, params);
+    const id = existingId || r.insertId;
+    if (shares !== null) {
+      await conn.query('DELETE FROM supplier_shares WHERE supplier_id = ?', [id]);
+      if (shares.length) {
+        await conn.query('INSERT INTO supplier_shares (supplier_id, company_id, shared_by) VALUES ?',
+          [shares.map((c) => [id, c, req.user.id])]);
+      }
+    }
+    await conn.commit();
+    return id;
+  } catch (e) {
+    await conn.rollback();
+    throw e;
+  } finally {
+    conn.release();
+  }
+}
 
 exports.create = handle('Supplier create', async (req, res) => {
   const v = await validateSupplier(req.body);
   if (!v.values) return fail(res, 400, v.message);
+  const shares = await readShares(req);
+  if (shares.status) return fail(res, shares.status, shares.message);
   const s = v.values;
-  const [r] = await db.query(
+  const id = await writeSupplier(req, shares.ids,
     `INSERT INTO suppliers (name, phone, email, website, cantonfair_url, address, province_id, rating, notes)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [s.name, s.phone, s.email, s.website, s.cantonfair_url, s.address, s.province_id, s.rating, s.notes]
   );
-  res.json({ success: true, data: { id: r.insertId } });
+  res.json({ success: true, data: { id, name: s.name } });
 });
 
 exports.update = handle('Supplier update', async (req, res) => {
@@ -117,11 +204,14 @@ exports.update = handle('Supplier update', async (req, res) => {
   if (!r.row) return fail(res, r.status, r.message);
   const v = await validateSupplier(req.body, r.row);
   if (!v.values) return fail(res, 400, v.message);
+  const shares = await readShares(req);
+  if (shares.status) return fail(res, shares.status, shares.message);
   const s = v.values;
-  await db.query(
+  await writeSupplier(req, shares.ids,
     `UPDATE suppliers SET name = ?, phone = ?, email = ?, website = ?, cantonfair_url = ?, address = ?,
             province_id = ?, rating = ?, notes = ? WHERE id = ?`,
-    [s.name, s.phone, s.email, s.website, s.cantonfair_url, s.address, s.province_id, s.rating, s.notes, r.row.id]
+    [s.name, s.phone, s.email, s.website, s.cantonfair_url, s.address, s.province_id, s.rating, s.notes, r.row.id],
+    r.row.id
   );
   res.json({ success: true, data: { id: r.row.id } });
 });

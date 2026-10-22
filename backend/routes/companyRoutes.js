@@ -4,7 +4,7 @@ const { requireAuth, requireAdmin, refuseViewer } = require('../middleware/auth'
 const c = require('../controllers/CompanyController');
 
 // Every route below requires a valid token; only the admin changes the companies.
-router.use(requireAuth, refuseViewer); // D62: a viewer only reads its shared booths
+router.use(requireAuth, refuseViewer); // D66: a viewer only reads its shared suppliers
 
 router.get('/', c.list);
 router.post('/', requireAdmin, c.create);

@@ -24,10 +24,20 @@ CREATE TABLE IF NOT EXISTS users (
     CONSTRAINT chk_users_level CHECK (level BETWEEN 1 AND 5),
     role           VARCHAR(50),                                    -- 'ADMIN', 'ACHETEUR' or 'LECTEUR' (D62)
     is_active      TINYINT(1) NOT NULL DEFAULT 1,                  -- 0 = sign-up waiting for the admin
-    company_id     INT,
     created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,    -- D22: orders pending sign-ups
-    UNIQUE KEY uq_users_username (username),
-    FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE SET NULL
+    UNIQUE KEY uq_users_username (username)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------- Companies of a user (D66) ----------
+-- A user belongs to any number of Tarek's companies (users.company_id before D66).
+-- update_supplier_shares.js moves an existing database to it.
+CREATE TABLE IF NOT EXISTS user_companies (
+    user_id     INT NOT NULL,
+    company_id  INT NOT NULL,
+    PRIMARY KEY (user_id, company_id),
+    KEY ix_user_companies_company (company_id),
+    CONSTRAINT fk_user_companies_user    FOREIGN KEY (user_id)    REFERENCES users(id)     ON DELETE CASCADE,
+    CONSTRAINT fk_user_companies_company FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------- Suppliers ----------
@@ -185,19 +195,19 @@ CREATE TABLE IF NOT EXISTS product_shares (
     FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ---------- Booths shared with a company (D62) ----------
--- The admin shares a booth with one of Tarek's companies; its viewers (LECTEUR) see it read-only.
--- product_shares (above) is no longer used.
-CREATE TABLE IF NOT EXISTS booth_shares (
-    booth_id    INT NOT NULL,
+-- ---------- Suppliers shared with a company (D66, booth_shares before) ----------
+-- The admin shares a supplier with some of Tarek's companies; their viewers (LECTEUR) read it,
+-- with its contacts, booths and products. product_shares (above) is no longer used.
+CREATE TABLE IF NOT EXISTS supplier_shares (
+    supplier_id INT NOT NULL,
     company_id  INT NOT NULL,
     shared_by   INT NULL,
     shared_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (booth_id, company_id),
-    KEY ix_booth_shares_company (company_id),
-    CONSTRAINT fk_booth_shares_booth   FOREIGN KEY (booth_id)   REFERENCES booths(id)    ON DELETE CASCADE,
-    CONSTRAINT fk_booth_shares_company FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
-    CONSTRAINT fk_booth_shares_user    FOREIGN KEY (shared_by)  REFERENCES users(id)     ON DELETE SET NULL
+    PRIMARY KEY (supplier_id, company_id),
+    KEY ix_supplier_shares_company (company_id),
+    CONSTRAINT fk_supplier_shares_supplier FOREIGN KEY (supplier_id) REFERENCES suppliers(id)  ON DELETE CASCADE,
+    CONSTRAINT fk_supplier_shares_company  FOREIGN KEY (company_id)  REFERENCES companies(id)  ON DELETE CASCADE,
+    CONSTRAINT fk_supplier_shares_user     FOREIGN KEY (shared_by)   REFERENCES users(id)      ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================

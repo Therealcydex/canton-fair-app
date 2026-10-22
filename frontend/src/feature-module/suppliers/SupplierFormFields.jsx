@@ -1,15 +1,27 @@
+import { useEffect, useState } from 'react';
+import axios from 'axios';
 import { Col, Form, Input, Rate, Row, Select } from 'antd';
-import { useList } from '../../utils/lists';
+import { API_BASE_URL } from '../../config/config';
+import { companyLabel, useList } from '../../utils/lists';
 import { CANTON_FAIR_URL } from '../../utils/fairPlan';
+import { useAuth } from '../../context/AuthContext';
+import { isAdmin } from '../../utils/access';
 import { CardScan } from '../contacts/ContactFormFields';
 import { QrPicker } from './WechatQr';
 
 // Fields of the supplier form; the server checks the same rules (name required, 1-5 rating…).
 // `withContact` (new supplier, D52): the business card scan and the first contact, as on the fair
 // floor: the company and the website go to the supplier, the person to the contact.
+// D66: the admin's form also has "Partager avec", the companies whose viewers read the supplier.
 export default function SupplierFormFields({ withContact = false }) {
   const provinces = useList('provinces');
   const form = Form.useFormInstance();
+  const { user } = useAuth();
+  const admin = isAdmin(user);
+  const [companies, setCompanies] = useState([]);
+  useEffect(() => {
+    if (admin) axios.get(`${API_BASE_URL}/companies`).then((r) => setCompanies(r.data.data)).catch(() => {});
+  }, [admin]);
   return (
     <>
       {withContact && (
@@ -50,6 +62,13 @@ export default function SupplierFormFields({ withContact = false }) {
       <Form.Item name="address" label="Adresse"><Input.TextArea rows={2} /></Form.Item>
       <Form.Item name="rating" label="Note"><Rate allowClear /></Form.Item>
       <Form.Item name="notes" label="Notes"><Input.TextArea rows={3} /></Form.Item>
+      {admin && (
+        <Form.Item name="share_company_ids" label="Partager avec"
+          extra="Les lecteurs de ces sociétés verront ce fournisseur, ses contacts, booths et produits, en lecture seule.">
+          <Select mode="multiple" allowClear showSearch optionFilterProp="label" placeholder="Aucune société"
+            options={companies.map((c) => ({ value: c.id, label: companyLabel(c) }))} />
+        </Form.Item>
+      )}
       {withContact && (
         <>
           <h3 className="h6 mt-2">Contact <span className="fw-normal small text-secondary">(facultatif)</span></h3>

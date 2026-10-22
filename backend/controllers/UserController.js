@@ -2,19 +2,21 @@ const bcrypt = require('bcryptjs');
 const db = require('../config/db');
 const { fail, handle, toId, clean } = require('../utils/http');
 const { ROLES, BUYER_ROLE, VIEWER_ROLE } = require('../utils/access');
+const { loadCompanyIds, idList } = require('../utils/scope');
 const { MIN_PASSWORD, USERNAME_RE } = require('./AuthController');
 
-// Admin only (routes/userRoutes.js).
-const USER_COLUMNS = `u.id, u.company_id, c.name AS company_name, c.branch AS company_branch,
-                      u.name, u.username, u.level, u.role, u.is_active, u.created_at`;
-const USER_FROM = 'FROM users u LEFT JOIN companies c ON c.id = u.company_id';
+// Admin only (routes/userRoutes.js). D66: company_ids, the user's companies.
+const USER_COLUMNS = `u.id, u.name, u.username, u.level, u.role, u.is_active, u.created_at,
+  (SELECT GROUP_CONCAT(uc.company_id ORDER BY uc.company_id) FROM user_companies uc WHERE uc.user_id = u.id) AS company_ids`;
+const USER_FROM = 'FROM users u';
+const withCompanyIds = (u) => ({ ...u, company_ids: idList(u.company_ids) });
 
 async function loadUser(rawId) {
   const id = toId(rawId);
   if (!id) return { status: 400, message: 'Identifiant invalide' };
   const [[user]] = await db.query(`SELECT ${USER_COLUMNS} ${USER_FROM} WHERE u.id = ?`, [id]);
   if (!user) return { status: 404, message: 'Utilisateur introuvable' };
-  return { user };
+  return { user: withCompanyIds(user) };
 }
 
 // Validates the fields of a create or an update; `existing` fills what the body leaves out.
@@ -42,16 +44,13 @@ async function validateUser(body, existing) {
   const role = (clean(pick('role')) || BUYER_ROLE).toUpperCase();
   if (!ROLES.includes(role)) return refuse(400, `Rôle : ${ROLES.join(' ou ')}`);
 
-  const companyRaw = pick('company_id');
-  let companyId = null;
-  if (companyRaw !== undefined && companyRaw !== null && companyRaw !== '') {
-    companyId = toId(companyRaw);
-    if (!companyId) return refuse(400, 'Société invalide');
-    const [[company]] = await db.query('SELECT id FROM companies WHERE id = ?', [companyId]);
-    if (!company) return refuse(400, 'Société introuvable');
-  }
-  // D62: a viewer sees the booths shared with its company, so it needs one.
-  if (role === VIEWER_ROLE && !companyId) return refuse(400, 'Un lecteur doit appartenir à une société');
+  // D66: the user's companies, any number of them (left out on an update: they stay).
+  const companiesRaw = pick('company_ids');
+  const companies = await loadCompanyIds(companiesRaw ?? [], 'Sociétés');
+  if (!companies.ids) return refuse(400, companies.message);
+  const companyIds = companies.ids;
+  // D62, D66: a viewer reads the suppliers shared with its companies, so it needs one.
+  if (role === VIEWER_ROLE && !companyIds.length) return refuse(400, 'Un lecteur doit appartenir à au moins une société');
 
   const activeRaw = pick('is_active');
   const isActive = activeRaw === undefined || activeRaw === null ? 1
@@ -72,7 +71,28 @@ async function validateUser(body, existing) {
   ]);
   if (dup) return refuse(409, "Ce nom d'utilisateur est déjà pris");
 
-  return { values: { name, username, level, role, companyId, isActive, password } };
+  return { values: { name, username, level, role, companyIds, isActive, password } };
+}
+
+// Writes the user row and its companies in one transaction; returns the user id.
+async function writeUser(sql, params, existingId, companyIds) {
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [r] = await conn.query(sql, params);
+    const id = existingId || r.insertId;
+    await conn.query('DELETE FROM user_companies WHERE user_id = ?', [id]);
+    if (companyIds.length) {
+      await conn.query('INSERT INTO user_companies (user_id, company_id) VALUES ?', [companyIds.map((c) => [id, c])]);
+    }
+    await conn.commit();
+    return id;
+  } catch (e) {
+    await conn.rollback();
+    throw e;
+  } finally {
+    conn.release();
+  }
 }
 
 // pending=1: sign-ups waiting for validation (inactive), newest first. company_id: a filter.
@@ -84,12 +104,12 @@ exports.list = handle('User list', async (req, res) => {
   if (req.query.company_id) {
     const companyId = toId(req.query.company_id);
     if (!companyId) return fail(res, 400, 'Filtre company_id invalide');
-    where += ' AND u.company_id = ?';
+    where += ' AND EXISTS (SELECT 1 FROM user_companies uc WHERE uc.user_id = u.id AND uc.company_id = ?)';
     params.push(companyId);
   }
-  const order = pending ? 'u.created_at DESC, u.id DESC' : 'u.is_active, c.name, u.name';
+  const order = pending ? 'u.created_at DESC, u.id DESC' : 'u.is_active, u.name';
   const [rows] = await db.query(`SELECT ${USER_COLUMNS} ${USER_FROM} WHERE ${where} ORDER BY ${order}`, params);
-  res.json({ success: true, data: rows });
+  res.json({ success: true, data: rows.map(withCompanyIds) });
 });
 
 exports.getById = handle('User getById', async (req, res) => {
@@ -103,12 +123,12 @@ exports.create = handle('User create', async (req, res) => {
   if (!r.values) return fail(res, r.status, r.message);
   const v = r.values;
   const hash = await bcrypt.hash(v.password, 10);
-  const [ins] = await db.query(
-    `INSERT INTO users (name, username, password_hash, level, role, is_active, company_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [v.name, v.username, hash, v.level, v.role, v.isActive, v.companyId]
+  const id = await writeUser(
+    `INSERT INTO users (name, username, password_hash, level, role, is_active)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [v.name, v.username, hash, v.level, v.role, v.isActive], null, v.companyIds
   );
-  res.json({ success: true, data: { id: ins.insertId } });
+  res.json({ success: true, data: { id } });
 });
 
 // Also how the admin activates or deactivates an account: { is_active: 1 | 0 }.
@@ -126,14 +146,14 @@ exports.update = handle('User update', async (req, res) => {
     if (v.role !== existing.role) return fail(res, 409, 'Vous ne pouvez pas modifier votre propre rôle');
   }
 
-  const sets = ['name = ?', 'username = ?', 'level = ?', 'role = ?', 'is_active = ?', 'company_id = ?'];
-  const params = [v.name, v.username, v.level, v.role, v.isActive, v.companyId];
+  const sets = ['name = ?', 'username = ?', 'level = ?', 'role = ?', 'is_active = ?'];
+  const params = [v.name, v.username, v.level, v.role, v.isActive];
   if (v.password) {
     sets.push('password_hash = ?');
     params.push(await bcrypt.hash(v.password, 10));
   }
   params.push(existing.id);
-  await db.query(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`, params);
+  await writeUser(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`, params, existing.id, v.companyIds);
   res.json({ success: true, data: { id: existing.id } });
 });
 

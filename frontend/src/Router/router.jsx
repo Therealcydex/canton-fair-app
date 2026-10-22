@@ -30,13 +30,13 @@ export default function AppRouter() {
         <Route path="/login" element={<Login />} />
         <Route element={<RequireAuth />}>
           <Route element={<AppLayout />}>
-            {/* D62: the only pages of a viewer (LECTEUR), read-only. */}
+            {/* D66: the only pages of a viewer (LECTEUR), read-only. */}
+            <Route path="/fournisseurs" element={<Suppliers />} />
+            <Route path="/fournisseurs/:id" element={<SupplierDetail />} />
             <Route path="/booths" element={<Booths key="all" />} />
             <Route path="/booths/:id" element={<BoothDetail />} />
             <Route element={<RequireBuyer />}>
             <Route path="/" element={<Accueil />} />
-            <Route path="/fournisseurs" element={<Suppliers />} />
-            <Route path="/fournisseurs/:id" element={<SupplierDetail />} />
             <Route path="/contacts" element={<Contacts />} />
             <Route path="/contacts/qr" element={<ContactQrSheet />} />
             <Route path="/a-visiter" element={<Booths planning key="planning" />} />

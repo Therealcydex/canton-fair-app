@@ -18,15 +18,15 @@ import FormModal from '../../components/FormModal';
 import { QrThumb } from '../suppliers/WechatQr';
 import BoothFormFields, { boothInitialValues, boothPayload } from './BoothFormFields';
 import { useAuth } from '../../context/AuthContext';
-import { isAdmin, isViewer } from '../../utils/access';
+import { isViewer } from '../../utils/access';
 import { boothNumber } from './BoothList';
 
 const plural = (n, word) => `${n} ${word}${n > 1 ? 's' : ''}`;
 
 // A booth (BF07, BF08), laid out like the Stitch "Fiche Booth" screen (D49): where it is, its
 // supplier with the contacts and their WeChat QR codes, and the products found there (D43).
-// D62: a viewer (LECTEUR) reads a booth shared with its company: no change, no link to the
-// supplier and product pages, and no decision (the server sends the booth with its products).
+// D66: a viewer (LECTEUR) reads a booth of a supplier shared with its companies: no change, no
+// link to the product pages, and no decision (the server sends the booth with its products).
 export default function BoothDetail() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -197,11 +197,9 @@ export default function BoothDetail() {
                     <div className="sc-label">Fournisseur rattaché</div>
                     <h2>{booth.supplier_name}</h2>
                   </div>
-                  {!viewer && (
-                    <Link to={`/fournisseurs/${booth.supplier_id}`}>
-                      <Button type="primary">Voir la fiche fournisseur <ArrowRightOutlined /></Button>
-                    </Link>
-                  )}
+                  <Link to={`/fournisseurs/${booth.supplier_id}`}>
+                    <Button type="primary">Voir la fiche fournisseur <ArrowRightOutlined /></Button>
+                  </Link>
                 </div>
                 <div className="d-flex justify-content-between mb-2">
                   <span className="sc-label">Contacts du fournisseur</span>
@@ -273,7 +271,7 @@ export default function BoothDetail() {
       {!viewer && (
         <>
           <FormModal open={editing} title={`Modifier le booth ${boothLabel(booth.phase, booth.booth_code)}`} width={640}
-            initialValues={boothInitialValues(booth, categories, isAdmin(user))}
+            initialValues={boothInitialValues(booth, categories)}
             onCancel={() => setEditing(false)}
             onSubmit={(values) => axios.put(`${API_BASE_URL}/booths/${id}`, boothPayload(values))}
             onSaved={() => { setEditing(false); message.success('Booth modifié'); load(); }}>

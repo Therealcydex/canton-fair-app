@@ -267,12 +267,12 @@ async function load(admin) {
   // The buyers who record the data (shared by the whole group), and an inactive account.
   const userIds = [];
   for (const b of BUYERS) {
-    const created = await call('POST', '/users', admin, { name: b.name, username: b.username, password: DEMO_PASSWORD, level: b.level, company_id: companyIds[b.company] });
+    const created = await call('POST', '/users', admin, { name: b.name, username: b.username, password: DEMO_PASSWORD, level: b.level, company_ids: [companyIds[b.company]] });
     userIds.push(created.data.id);
   }
-  await call('POST', '/users', admin, { name: 'Sarra (acheteuse)', username: 'sarra.demo', password: DEMO_PASSWORD, level: 2, company_id: companyIds.sfax, is_active: false });
-  // D62: a viewer of the Tunis branch, who reads the booths shared with it (inactive at the end).
-  userIds.push((await call('POST', '/users', admin, { name: 'Lecteur Tunis', username: 'lecteur.demo', password: DEMO_PASSWORD, role: 'LECTEUR', company_id: companyIds.tunis })).data.id);
+  await call('POST', '/users', admin, { name: 'Sarra (acheteuse)', username: 'sarra.demo', password: DEMO_PASSWORD, level: 2, company_ids: [companyIds.sfax], is_active: false });
+  // D62, D66: a viewer of both branches, who reads the suppliers shared with them (inactive at the end).
+  userIds.push((await call('POST', '/users', admin, { name: 'Lecteur Tunis', username: 'lecteur.demo', password: DEMO_PASSWORD, role: 'LECTEUR', company_ids: [companyIds.tunis, companyIds.sfax] })).data.id);
   const tokens = [];
   for (const b of BUYERS) tokens.push(await login(b.username, DEMO_PASSWORD));
 
@@ -304,7 +304,7 @@ async function load(admin) {
     } catch (err) {
       console.log(`  booth of ${s.supplier.name} not created (${err.message})`); // e.g. a booth already recorded there
     }
-    const shareWith = new Set(); // D62: the booth is shared with the companies its products were meant for
+    const shareWith = new Set(); // D66: the supplier is shared with the companies its products were meant for
     for (const p of s.products) {
       const { colour, shape, photos, decision, share, ...product } = p;
       const productId = (await call('POST', '/products', token, { ...product, supplier_id: supplierId, booth_id: boothId })).data.id;
@@ -316,7 +316,7 @@ async function load(admin) {
         decided++;
       }
     }
-    if (boothId && shareWith.size) await call('PUT', `/booths/${boothId}`, admin, { share_company_ids: [...shareWith] });
+    if (shareWith.size) await call('PUT', `/suppliers/${supplierId}`, admin, { share_company_ids: [...shareWith] });
   }
 
   // The demo buyers' password is in this file: they must not stay usable.
@@ -326,7 +326,7 @@ async function load(admin) {
   console.log(`  companies "${COMPANY}" (Tunis, Sfax) and "${COMPANY_B}"`);
   console.log(`  ${PLAN.length} suppliers with contacts, ${booths} booths (phase 1 mostly visited), ${products} products with photos`);
   console.log(`  ${decided} products already decided, ${products - decided} waiting in "Revue du soir"`);
-  console.log('  some booths shared with the companies (D62) and a viewer of the Tunis branch (lecteur.demo)');
+  console.log('  some suppliers shared with the companies (D66) and a viewer of the Tunis and Sfax branches (lecteur.demo)');
   console.log('  the demo accounts (acheteur.a, acheteur.b, sarra.demo, lecteur.demo) are inactive; remove it all with: npm run db:demo -- --remove');
 }
 

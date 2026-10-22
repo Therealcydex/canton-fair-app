@@ -27,8 +27,11 @@ const TABS = [
   { to: '/produits', label: 'Produits', icon: <InboxOutlined /> },
   { to: '/revue', label: 'Revue', icon: <AuditOutlined /> },
 ];
-// D62: a viewer (LECTEUR) only sees the booths shared with its company.
-const VIEWER_MENU = [{ to: '/booths', label: 'Booths partagés', icon: <ShopOutlined /> }];
+// D66: a viewer (LECTEUR) only sees the suppliers shared with its companies, and their booths.
+const VIEWER_MENU = [
+  { to: '/fournisseurs', label: 'Fournisseurs partagés', icon: <BankOutlined /> },
+  { to: '/booths', label: 'Booths', icon: <ShopOutlined /> },
+];
 const ADMIN_MENU = [
   { to: '/admin/utilisateurs', label: 'Utilisateurs', icon: <TeamOutlined />, show: isAdmin },
   { to: '/admin/societes', label: 'Sociétés', icon: <ApartmentOutlined />, show: isAdmin },
@@ -43,7 +46,7 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const adminItems = ADMIN_MENU.filter((m) => m.show(user));
-  const company = user.company_name ? companyLabel({ name: user.company_name, branch: user.company_branch }) : null;
+  const company = user.companies?.length ? user.companies.map(companyLabel).join(', ') : null;
   const close = () => setOpen(false);
   const viewer = isViewer(user);
   const menu = viewer ? VIEWER_MENU : MENU;
@@ -57,7 +60,7 @@ export default function AppLayout() {
 
   const sidebar = (
     <div className="app-side">
-      <NavLink to={viewer ? '/booths' : '/'} className="app-brand" onClick={close}><Logo />Sourcing</NavLink>
+      <NavLink to={viewer ? '/fournisseurs' : '/'} className="app-brand" onClick={close}><Logo />Sourcing</NavLink>
       <Nav className="flex-column flex-nowrap app-side-nav">
         {menu.map(link)}
         {adminItems.length > 0 && (
@@ -90,7 +93,7 @@ export default function AppLayout() {
         <button type="button" className="app-menu-btn" aria-label="Ouvrir le menu" onClick={() => setOpen(true)}>
           <MenuOutlined />
         </button>
-        <NavLink to={viewer ? '/booths' : '/'} className="app-brand"><Logo size={26} />Sourcing</NavLink>
+        <NavLink to={viewer ? '/fournisseurs' : '/'} className="app-brand"><Logo size={26} />Sourcing</NavLink>
       </header>
       <Offcanvas show={open} onHide={close} className="app-offcanvas d-lg-none">
         {sidebar}

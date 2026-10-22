@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Alert, App, Button, Col, Form, Input, Popconfirm, Row, Table, Tag } from 'antd';
 import {
   ApartmentOutlined, DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined,
-  ShareAltOutlined, ShopOutlined, TeamOutlined,
+  ShareAltOutlined, BankOutlined, TeamOutlined,
 } from '@ant-design/icons';
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
@@ -71,8 +71,8 @@ export default function Companies() {
       render: (v) => <Tag color="blue" icon={<TeamOutlined />} className="m-0">{plural(Number(v) || 0, 'utilisateur')}</Tag>,
     },
     {
-      title: 'Booths partagés', dataIndex: 'shared_booths_count', align: 'center',
-      render: (v) => <Tag icon={<ShopOutlined />} className="m-0">{plural(Number(v) || 0, 'booth')}</Tag>,
+      title: 'Fournisseurs partagés', dataIndex: 'shared_suppliers_count', align: 'center',
+      render: (v) => <Tag icon={<BankOutlined />} className="m-0">{plural(Number(v) || 0, 'fournisseur')}</Tag>,
     },
     {
       title: 'Actions', key: 'actions', align: 'right',
@@ -80,7 +80,7 @@ export default function Companies() {
         <span className="d-inline-flex gap-2">
           <Button size="small" icon={<EditOutlined />} onClick={() => setEditing(c)}>Modifier</Button>
           <Popconfirm title="Supprimer cette société ?"
-            description="Ses utilisateurs restent, sans société ; les produits ne lui sont plus partagés."
+            description="Ses utilisateurs restent, sans cette société ; les fournisseurs ne lui sont plus partagés."
             okText="Supprimer" okButtonProps={{ danger: true }} cancelText="Annuler" onConfirm={() => remove(c)}>
             <Button size="small" danger icon={<DeleteOutlined />}>Supprimer</Button>
           </Popconfirm>
@@ -93,7 +93,7 @@ export default function Companies() {
     <>
       <PageHeader eyebrow="Administration / Sociétés du groupe" title="Sociétés du groupe"
         chip={plural(companies.length, 'société')}
-        subtitle="Les sociétés avec lesquelles les produits sont partagés"
+        subtitle="Les sociétés avec lesquelles les fournisseurs sont partagés"
         actions={(
           <>
             <Input prefix={<SearchOutlined />} placeholder="Filtrer société ou branche…" allowClear style={{ width: 260 }}
@@ -121,10 +121,11 @@ export default function Companies() {
           <div className="sc-note">
             <ShareAltOutlined className="sc-panel-icon fs-5" />
             <div>
-              <h2 className="h6 mb-1">Partage des booths</h2>
+              <h2 className="h6 mb-1">Partage des fournisseurs</h2>
               <p className="mb-0 small text-secondary">
-                L'administrateur partage un booth avec une société (« Partager avec » dans la fiche du <Link to="/booths">booth</Link>) ;
-                les lecteurs de cette société le voient en lecture seule.
+                L'administrateur partage un fournisseur avec une ou plusieurs sociétés (« Partager avec » dans la fiche
+                du <Link to="/fournisseurs">fournisseur</Link>) ; les lecteurs de ces sociétés le voient en lecture seule,
+                avec ses contacts, ses booths et ses produits.
               </p>
             </div>
           </div>
@@ -135,8 +136,8 @@ export default function Companies() {
             <div>
               <h2 className="h6 mb-1">Utilisateurs rattachés</h2>
               <p className="mb-0 small text-secondary">
-                Un utilisateur appartient au plus à une société, choisie dans son compte (<Link to="/admin/utilisateurs">Utilisateurs</Link>).
-                Supprimer une société garde ses utilisateurs, sans société.
+                Un utilisateur peut appartenir à plusieurs sociétés, choisies dans son compte (<Link to="/admin/utilisateurs">Utilisateurs</Link>).
+                Supprimer une société garde ses utilisateurs, sans cette société.
               </p>
             </div>
           </div>

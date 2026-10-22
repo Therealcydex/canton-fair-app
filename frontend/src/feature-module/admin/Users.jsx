@@ -12,17 +12,16 @@ import PageHeader from '../../components/PageHeader';
 const ROLES = [
   { value: 'ACHETEUR', label: 'Acheteur' },
   { value: 'ADMIN', label: 'Administrateur' },
-  { value: 'LECTEUR', label: 'Lecteur (société)' }, // D62: reads the booths shared with its company
+  { value: 'LECTEUR', label: 'Lecteur (société)' }, // D66: reads the suppliers shared with its companies
 ];
 const roleLabel = (v) => ROLES.find((r) => r.value === v)?.label || v;
 // D56: the level is a number from 1 to 5, or none.
 const LEVELS = [1, 2, 3, 4, 5].map((n) => ({ value: n, label: `Niveau ${n}` }));
-const userCompany = (u) => (u.company_id ? companyLabel({ name: u.company_name, branch: u.company_branch }) : '');
 
 // The users shown, as a CSV file for Excel (";" and a BOM). No password is ever in a user row.
-const exportCsv = (rows) => {
+const exportCsv = (rows, userCompany) => {
   const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const lines = [['Nom', "Nom d'utilisateur", 'Rôle', 'Niveau', 'Société', 'Statut'],
+  const lines = [['Nom', "Nom d'utilisateur", 'Rôle', 'Niveau', 'Sociétés', 'Statut'],
     ...rows.map((u) => [u.name, u.username, roleLabel(u.role), u.level, userCompany(u), u.is_active ? 'Actif' : 'Inactif'])];
   const blob = new Blob([`﻿${lines.map((l) => l.map(cell).join(';')).join('\r\n')}`], { type: 'text/csv;charset=utf-8' });
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: 'utilisateurs.csv' });
@@ -61,11 +60,18 @@ export default function Users() {
 
   useEffect(() => { load(); }, [load]);
 
+  // D66: a user belongs to any number of companies.
+  const companyName = (id) => {
+    const c = companies.find((x) => x.id === id);
+    return c ? companyLabel(c) : `Société ${id}`;
+  };
+  const userCompany = (u) => u.company_ids.map(companyName).join(', ');
+
   const shown = useMemo(() => {
     const q = (filters.q || '').trim().toLowerCase();
     return users.filter((u) => (!q || `${u.name} ${u.username}`.toLowerCase().includes(q))
       && (!filters.role || u.role === filters.role)
-      && (!filters.company_id || u.company_id === filters.company_id));
+      && (!filters.company_id || u.company_ids.includes(filters.company_id)));
   }, [users, filters]);
   const active = users.filter((u) => u.is_active).length;
   const set = (key) => (value) => setFilters((f) => ({ ...f, [key]: value || undefined }));
@@ -102,7 +108,10 @@ export default function Users() {
       render: (v) => (v === 'ADMIN' ? <span className="fw-semibold text-primary">{roleLabel(v)}</span> : roleLabel(v)),
     },
     { title: 'Niveau', dataIndex: 'level', render: (v) => (v ? <Tag className="m-0">{v}</Tag> : '—') },
-    { title: 'Société rattachée', key: 'company', render: (_, u) => userCompany(u) || '—' },
+    {
+      title: 'Sociétés rattachées', key: 'companies',
+      render: (_, u) => (u.company_ids.length ? u.company_ids.map((id) => <Tag key={id} className="mb-1">{companyName(id)}</Tag>) : '—'),
+    },
     { title: 'Statut', dataIndex: 'is_active', render: (v) => (v ? <Tag color="green" className="m-0">Actif</Tag> : <Tag className="m-0">Inactif</Tag>) },
     {
       title: 'Actions', key: 'actions', align: 'right',
@@ -132,7 +141,7 @@ export default function Users() {
         subtitle="Contrôle des accès des acheteurs : il n'y a pas d'inscription, l'administrateur crée chaque compte"
         actions={(
           <>
-            <Button icon={<DownloadOutlined />} disabled={!shown.length} onClick={() => exportCsv(shown)}>Exporter (CSV)</Button>
+            <Button icon={<DownloadOutlined />} disabled={!shown.length} onClick={() => exportCsv(shown, userCompany)}>Exporter (CSV)</Button>
             <Button type="primary" icon={<UserAddOutlined />} onClick={() => setEditing({})}>Nouvel utilisateur</Button>
           </>
         )} />
@@ -165,9 +174,10 @@ export default function Users() {
         <div>
           <h2 className="sc-label text-body mb-1">Règles d'accès</h2>
           <p className="mb-0 small text-secondary">
-            Deux rôles : <strong>Administrateur</strong> (comptes, sociétés, décisions sur les produits) et <strong>Acheteur</strong>
-            (fournisseurs, booths, produits). Tous les comptes actifs voient et modifient les données du groupe. Un compte
-            inactif ne peut plus se connecter. Le niveau va de 1 à 5.
+            Trois rôles : <strong>Administrateur</strong> (comptes, sociétés, partages, décisions sur les produits),
+            <strong> Acheteur</strong> (fournisseurs, booths, produits) et <strong>Lecteur</strong> (lit les fournisseurs partagés
+            avec l'une de ses sociétés). Les acheteurs voient et modifient les données du groupe. Un compte inactif ne peut
+            plus se connecter. Le niveau va de 1 à 5.
           </p>
         </div>
       </div>
@@ -176,10 +186,10 @@ export default function Users() {
         icon={<UserAddOutlined />} className="sc-modal-dark" width={640}
         initialValues={editing?.id
           ? { ...editing, is_active: !!editing.is_active, password: '', level: editing.level == null ? undefined : Number(editing.level) || editing.level }
-          : { name: '', username: '', password: '', level: undefined, role: 'ACHETEUR', is_active: true, company_id: undefined }}
+          : { name: '', username: '', password: '', level: undefined, role: 'ACHETEUR', is_active: true, company_ids: [] }}
         onCancel={() => setEditing(null)}
         onSubmit={(values) => {
-          const body = { ...values, company_id: values.company_id ?? null, level: values.level ?? null };
+          const body = { ...values, company_ids: values.company_ids || [], level: values.level ?? null };
           return editing.id ? axios.put(`${API_BASE_URL}/users/${editing.id}`, body) : axios.post(`${API_BASE_URL}/users`, body);
         }}
         onSaved={() => { message.success(editing.id ? 'Utilisateur modifié' : 'Utilisateur créé'); setEditing(null); load(); }}>
@@ -201,11 +211,21 @@ export default function Users() {
             </Form.Item>
           </Col>
         </Row>
+        {/* D66: any number of companies; a viewer reads the suppliers shared with any of them. */}
+        <Form.Item name="company_ids" label="Sociétés" dependencies={['role']}
+          extra="Un lecteur voit les fournisseurs partagés avec l'une de ses sociétés."
+          rules={[({ getFieldValue }) => ({
+            validator: (_, value) => (getFieldValue('role') === 'LECTEUR' && !value?.length
+              ? Promise.reject(new Error('Un lecteur doit appartenir à au moins une société'))
+              : Promise.resolve()),
+          })]}>
+          <Select mode="multiple" allowClear placeholder="Aucune" showSearch optionFilterProp="label"
+            options={companies.map((c) => ({ value: c.id, label: companyLabel(c) }))} />
+        </Form.Item>
         <Row gutter={12}>
           <Col xs={24} sm={12}>
-            <Form.Item name="company_id" label="Société">
-              <Select allowClear placeholder="Aucune" showSearch optionFilterProp="label"
-                options={companies.map((c) => ({ value: c.id, label: companyLabel(c) }))} />
+            <Form.Item name="role" label="Rôle" extra={isSelf ? 'Pas le vôtre' : ''}>
+              <Select disabled={isSelf} options={ROLES} />
             </Form.Item>
           </Col>
           <Col xs={24} sm={12}>
@@ -214,19 +234,10 @@ export default function Users() {
             </Form.Item>
           </Col>
         </Row>
-        <Row gutter={12}>
-          <Col xs={24} sm={12}>
-            <Form.Item name="role" label="Rôle" extra={isSelf ? 'Pas le vôtre' : ''}>
-              <Select disabled={isSelf} options={ROLES} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={12}>
-            <Form.Item name="is_active" label="Actif" valuePropName="checked"
-              extra={isSelf ? 'Vous ne pouvez pas vous désactiver' : ''}>
-              <Switch disabled={isSelf} />
-            </Form.Item>
-          </Col>
-        </Row>
+        <Form.Item name="is_active" label="Actif" valuePropName="checked"
+          extra={isSelf ? 'Vous ne pouvez pas vous désactiver' : ''}>
+          <Switch disabled={isSelf} />
+        </Form.Item>
       </FormModal>
     </>
   );

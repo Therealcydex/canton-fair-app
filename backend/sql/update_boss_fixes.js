@@ -68,7 +68,8 @@ async function main() {
 
   // Whether each step is still needed.
   const needed = {
-    'add-booth-shares': async () => !(await hasTable('booth_shares')),
+    // D66 replaced booth_shares with supplier_shares.
+    'add-booth-shares': async () => !(await hasTable('booth_shares')) && !(await hasTable('supplier_shares')),
     'add-image-data': async () => !(await hasColumn('product_images', 'image_data')),
     'convert-images': async () => hasColumn('product_images', 'image_url'),
     'drop-image-url': async () => hasColumn('product_images', 'image_url'),

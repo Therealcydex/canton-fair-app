@@ -11,10 +11,10 @@ export function RequireAuth() {
   return <Outlet />;
 }
 
-// D62: a viewer (LECTEUR) only has the shared booths; any other page sends it there.
+// D66: a viewer (LECTEUR) only has the shared suppliers and their booths; any other page sends it there.
 export function RequireBuyer() {
   const { user } = useAuth();
-  if (isViewer(user)) return <Navigate to="/booths" replace />;
+  if (isViewer(user)) return <Navigate to="/fournisseurs" replace />;
   return <Outlet />;
 }
 

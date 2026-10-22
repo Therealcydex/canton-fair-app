@@ -5,7 +5,7 @@ const c = require('../controllers/ContactController');
 
 // Every route below requires a valid token. Read only: contacts are changed through
 // /api/suppliers/:id/contacts.
-router.use(requireAuth, refuseViewer); // D62: a viewer only reads its shared booths
+router.use(requireAuth, refuseViewer); // D66: a viewer only reads its shared suppliers
 
 // Fixed paths FIRST: '/export' declared after a '/:id' would be captured by it.
 router.get('/export', c.exportCsv);

@@ -6,54 +6,97 @@ import { CheckOutlined, LinkOutlined, PlusOutlined } from '@ant-design/icons';
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import FormModal from '../../components/FormModal';
-import BoothFormFields, { boothInitialValues, boothPayload, shareIds } from './BoothFormFields';
+import BoothFormFields, { boothInitialValues, boothPayload } from './BoothFormFields';
 import { useAuth } from '../../context/AuthContext';
-import { isAdmin, isViewer } from '../../utils/access';
-import { categoryParent, companyLabel, useList } from '../../utils/lists';
+import { isViewer } from '../../utils/access';
+import { categoryParent, useList } from '../../utils/lists';
 import { boothLabel } from '../../utils/format';
 
 const two = (n) => String(n).padStart(2, '0'); // D50: booth numbers on 2 digits, as on the badges
 export const boothNumber = (b) => (b.num_start == null ? '—' : `${two(b.num_start)}${b.num_end == null ? '' : `-${two(b.num_end)}`}`);
 
-const hallOf = (b) => `Phase ${b.phase} · ${b.zone ? `Zone ${b.zone} · ` : ''}Hall ${b.hall}`;
+const plural = (n, word) => `${n} ${word}${n > 1 ? 's' : ''}`;
+const hallLabel = (h) => `${h.zone ? `Zone ${h.zone} · ` : ''}Hall ${h.hall}`;
+
+// D66: the booths by phase, then by hall, as walked on the fair floor.
+// Returns [{ phase, rows, halls: [{ hall, zone, rows }] }], phases and halls in order.
+const byPhaseHall = (rows) => {
+  const phases = new Map();
+  for (const b of rows) {
+    if (!phases.has(b.phase)) phases.set(b.phase, { phase: b.phase, rows: [], halls: new Map() });
+    const p = phases.get(b.phase);
+    if (!p.halls.has(b.hall)) p.halls.set(b.hall, { hall: b.hall, zone: b.zone, rows: [] });
+    p.rows.push(b);
+    p.halls.get(b.hall).rows.push(b);
+  }
+  return [...phases.values()].sort((a, b) => a.phase - b.phase)
+    .map((p) => ({ ...p, halls: [...p.halls.values()].sort((a, b) => a.hall - b.hall) }));
+};
 
 // The booths grouped by phase and hall, as walked on the fair floor, with each hall's progress.
 function BoothChecklist({ rows, loading, saving, onToggle }) {
   if (loading && !rows.length) return <div className="text-center py-5"><Spin /></div>;
   if (!rows.length) return <Empty description="Aucun booth à visiter" className="py-4" />;
-  const groups = new Map();
-  rows.forEach((b) => groups.set(hallOf(b), [...(groups.get(hallOf(b)) || []), b]));
   return (
     <div className="booth-check">
-      {[...groups.entries()].map(([label, list]) => {
-        const done = list.filter((b) => b.visited).length;
-        return (
-          <section key={label} className="mb-3">
-            <div className="d-flex justify-content-between align-items-baseline mb-1">
-              <span className="sc-label">{label}</span>
-              <span className="small fw-semibold text-secondary">{list.length - done} restant{list.length - done > 1 ? 's' : ''}</span>
-            </div>
-            <div className="sc-progress mb-2"><span style={{ width: `${(done / list.length) * 100}%`, background: 'var(--sc-success)' }} /></div>
-            {[...list.filter((b) => !b.visited), ...list.filter((b) => b.visited)].map((b) => (
-              <div key={b.id} className={`booth-check-row ${b.visited ? 'is-visited' : ''}`}>
-                <Link to={`/booths/${b.id}`} className="booth-check-link">
-                  <span className="booth-code booth-check-code">{boothLabel(b.phase, b.booth_code)}</span>
-                  <span className="overflow-hidden">
-                    <span className="d-block fw-semibold text-body text-truncate">{b.supplier_name || 'Sans fournisseur'}</span>
-                    <span className="d-block small text-secondary text-truncate">{b.sub_category || 'Sans catégorie'}</span>
-                  </span>
-                </Link>
-                <button type="button" className="booth-check-btn" disabled={saving.includes(b.id)} onClick={() => onToggle(b)}
-                  aria-label={b.visited ? 'Remettre à visiter' : 'Marquer comme visité'} aria-pressed={!!b.visited}>
-                  <CheckOutlined />
-                </button>
-              </div>
-            ))}
-          </section>
-        );
-      })}
+      {byPhaseHall(rows).map((p) => (
+        <section key={p.phase} className="mb-4">
+          <h2 className="h5 mb-2">Phase {p.phase}</h2>
+          {p.halls.map((h) => {
+            const list = h.rows;
+            const done = list.filter((b) => b.visited).length;
+            return (
+              <section key={h.hall} className="mb-3">
+                <div className="d-flex justify-content-between align-items-baseline mb-1">
+                  <span className="sc-label">{hallLabel(h)}</span>
+                  <span className="small fw-semibold text-secondary">{list.length - done} restant{list.length - done > 1 ? 's' : ''}</span>
+                </div>
+                <div className="sc-progress mb-2"><span style={{ width: `${(done / list.length) * 100}%`, background: 'var(--sc-success)' }} /></div>
+                {[...list.filter((b) => !b.visited), ...list.filter((b) => b.visited)].map((b) => (
+                  <div key={b.id} className={`booth-check-row ${b.visited ? 'is-visited' : ''}`}>
+                    <Link to={`/booths/${b.id}`} className="booth-check-link">
+                      <span className="booth-code booth-check-code">{boothLabel(b.phase, b.booth_code)}</span>
+                      <span className="overflow-hidden">
+                        <span className="d-block fw-semibold text-body text-truncate">{b.supplier_name || 'Sans fournisseur'}</span>
+                        <span className="d-block small text-secondary text-truncate">{b.sub_category || 'Sans catégorie'}</span>
+                      </span>
+                    </Link>
+                    <button type="button" className="booth-check-btn" disabled={saving.includes(b.id)} onClick={() => onToggle(b)}
+                      aria-label={b.visited ? 'Remettre à visiter' : 'Marquer comme visité'} aria-pressed={!!b.visited}>
+                      <CheckOutlined />
+                    </button>
+                  </div>
+                ))}
+              </section>
+            );
+          })}
+        </section>
+      ))}
     </div>
   );
+}
+
+// D66: "À visiter" on a computer: one table per hall, under its phase. The hall and zone columns
+// are left out (the heading gives them).
+function BoothGroups({ rows, loading, columns }) {
+  if (loading && !rows.length) return <div className="text-center py-5"><Spin /></div>;
+  if (!rows.length) return <Empty description="Aucun booth à visiter" className="py-4" />;
+  const shown = columns.filter((c) => !['hall', 'zone'].includes(c.dataIndex));
+  return byPhaseHall(rows).map((p) => (
+    <section key={p.phase} className="sc-panel p-3 mb-3">
+      <div className="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-2">
+        <h2 className="h5 m-0">Phase {p.phase}</h2>
+        <span className="small text-secondary">{plural(p.rows.length, 'booth')} · {plural(p.halls.length, 'hall')}</span>
+      </div>
+      {p.halls.map((h) => (
+        <div key={h.hall} className="mb-3">
+          <div className="sc-label mb-1">{hallLabel(h)} · {plural(h.rows.length, 'booth')}</div>
+          <Table rowKey="id" columns={shown} dataSource={h.rows} size="small" pagination={false}
+            className="sc-table" scroll={{ x: 'max-content' }} />
+        </div>
+      ))}
+    </section>
+  ));
 }
 
 // Table of booths for the given API filters (D49: laid out like the Stitch "Booths" screen), with
@@ -76,12 +119,7 @@ export default function BoothList({ filters, supplierId, planning, checklist, on
   const [pageSize, setPageSize] = useState(20);
   const categories = useList('canton-categories');
   const { user } = useAuth();
-  const viewer = isViewer(user); // D62: read-only, only its shared booths
-  const admin = isAdmin(user);
-  const [companies, setCompanies] = useState([]);
-  useEffect(() => {
-    if (admin) axios.get(`${API_BASE_URL}/companies`).then((r) => setCompanies(r.data.data)).catch(() => {});
-  }, [admin]);
+  const viewer = isViewer(user); // D66: read-only, the booths of its shared suppliers
 
   const query = JSON.stringify({ ...filters, supplier_id: supplierId });
   // Only the answer to the latest request is shown: when the filters change quickly (the page
@@ -168,17 +206,6 @@ export default function BoothList({ filters, supplierId, planning, checklist, on
         return <Tag color={n ? 'blue' : 'default'} className="m-0">{n} produit{n > 1 ? 's' : ''}</Tag>;
       },
     },
-    admin && {
-      title: 'Partagé avec', key: 'shares',
-      render: (_, b) => {
-        const ids = shareIds(b);
-        if (!ids.length) return <span className="text-secondary small">Non partagé</span>;
-        return ids.map((id) => {
-          const c = companies.find((x) => x.id === id);
-          return <Tag key={id} color="purple" className="mb-1">{c ? companyLabel(c) : `Société ${id}`}</Tag>;
-        });
-      },
-    },
     viewer ? {
       title: 'Statut', dataIndex: 'visited',
       render: (v) => <Tag color={v ? 'default' : 'orange'} className="m-0">{v ? 'Visité' : 'À visiter'}</Tag>,
@@ -219,6 +246,8 @@ export default function BoothList({ filters, supplierId, planning, checklist, on
       {loadError && <Alert type="error" message={loadError} showIcon className="mb-3" />}
       {checklist ? (
         <BoothChecklist rows={rows} loading={loading} saving={saving} onToggle={toggleVisited} />
+      ) : planning ? (
+        <BoothGroups rows={rows} loading={loading} columns={columns} />
       ) : (
         <Table rowKey="id" columns={columns} dataSource={rows} loading={loading} size="middle" className="sc-table"
           scroll={{ x: 'max-content' }}
@@ -233,7 +262,7 @@ export default function BoothList({ filters, supplierId, planning, checklist, on
       {!viewer && (
         <>
           <FormModal open={!!editing} title={editing ? `Modifier le booth ${boothLabel(editing.phase, editing.booth_code)}` : ''} width={640}
-            initialValues={boothInitialValues(editing, categories, admin)}
+            initialValues={boothInitialValues(editing, categories)}
             onCancel={() => setEditing(null)}
             onSubmit={(values) => axios.put(`${API_BASE_URL}/booths/${editing.id}`, boothPayload(values))}
             onSaved={() => { setEditing(null); message.success('Booth modifié'); changed(); }}>
