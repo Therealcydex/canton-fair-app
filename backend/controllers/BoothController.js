@@ -6,13 +6,13 @@ const { loadBooth } = require('../utils/scope');
 const { isViewer, sharedWithViewer } = require('../utils/access');
 
 // The limits of the CHECK constraints and column types of schema v2, checked here first so the
-// user gets a French message instead of a database error. D56: halls 1-18, floors 0-4.
+// user gets a French message instead of a database error. D67: halls 1-21, floors 0-4.
 // D64: edition, the session of the fair; 140 when the body leaves it out.
 const DEFAULT_EDITION = 140;
 const BOOTH_FIELDS = {
   edition: { label: 'Édition', type: 'int', min: 1, maxValue: 999 },
   phase: { label: 'Phase', type: 'int', required: true, min: 1, maxValue: 3 },
-  hall: { label: 'Hall', type: 'int', required: true, min: 1, maxValue: 18 },
+  hall: { label: 'Hall', type: 'int', required: true, min: 1, maxValue: 21 },
   floor: { label: 'Étage', type: 'int', required: true, min: 0, maxValue: 4 },
   letter: { label: 'Lettre', type: 'string', max: 1, upper: true },
   num_start: { label: 'Numéro de début', type: 'int', min: 1, maxValue: 32767 },
@@ -172,7 +172,7 @@ exports.getById = handle('Booth getById', async (req, res) => {
   if (!booth) return fail(res, 404, 'Booth introuvable');
   if (viewer) {
     const [products] = await db.query(
-      `SELECT p.id, p.name, p.supplier_ref, p.description, p.price, p.unit, p.moq, p.shipping_type,
+      `SELECT p.id, p.name, p.supplier_ref, p.description, p.price, p.currency, p.unit, p.moq, p.shipping_type,
               (SELECT pi.thumb_data FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.id LIMIT 1) AS cover_thumb
        FROM products p WHERE p.booth_id = ? ORDER BY p.name`, [booth.id]);
     const [[supplier]] = booth.supplier_id

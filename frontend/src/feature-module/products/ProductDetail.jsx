@@ -251,7 +251,7 @@ export default function ProductDetail() {
             </dl>
             <div className="info-price">
               <span>Prix<div className="sc-label">{product.shipping_type ? `Base ${product.shipping_type}` : 'Sans incoterm'}</div></span>
-              <span><span className="info-price-value">{formatPrice(product.price)}</span>{product.price != null && product.unit ? <small> / {product.unit}</small> : ''}</span>
+              <span><span className="info-price-value">{formatPrice(product.price, product.currency)}</span>{product.price != null && product.unit ? <small> / {product.unit}</small> : ''}</span>
             </div>
             <dl className="info-list">
               <dt>Incoterm</dt>

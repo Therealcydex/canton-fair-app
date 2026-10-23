@@ -15,7 +15,7 @@ import { useAuth } from '../../context/AuthContext';
 import { isAdmin, isViewer } from '../../utils/access';
 
 const PHASES = [1, 2, 3].map((n) => ({ value: n, label: `Phase ${n}` }));
-const HALLS = Array.from({ length: 18 }, (_, i) => ({ value: i + 1, label: `Hall ${i + 1}` })); // D56: halls 1-18
+const HALLS = Array.from({ length: 21 }, (_, i) => ({ value: i + 1, label: `Hall ${i + 1}` })); // D67: halls 1-21
 
 // "Guangdong 广东", as the buyers read the province on the fair's documents.
 const provinceName = (p) => [p.name_en, p.name_zh].filter(Boolean).join(' ');

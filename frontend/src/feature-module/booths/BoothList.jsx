@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
-import { Alert, App, Button, Empty, Popconfirm, Spin, Table, Tag, Tooltip } from 'antd';
+import { Alert, App, Button, Collapse, Empty, Popconfirm, Spin, Table, Tag, Tooltip } from 'antd';
 import { CheckOutlined, LinkOutlined, PlusOutlined } from '@ant-design/icons';
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
@@ -34,15 +34,22 @@ const byPhaseHall = (rows) => {
 };
 
 // The booths grouped by phase and hall, as walked on the fair floor, with each hall's progress.
+// D67: phases start closed; tap a phase to open its halls and booths.
 function BoothChecklist({ rows, loading, saving, onToggle }) {
   if (loading && !rows.length) return <div className="text-center py-5"><Spin /></div>;
   if (!rows.length) return <Empty description="Aucun booth à visiter" className="py-4" />;
   return (
     <div className="booth-check">
-      {byPhaseHall(rows).map((p) => (
-        <section key={p.phase} className="mb-4">
-          <h2 className="h5 mb-2">Phase {p.phase}</h2>
-          {p.halls.map((h) => {
+      <Collapse bordered={false} defaultActiveKey={[]}
+        items={byPhaseHall(rows).map((p) => ({
+          key: String(p.phase),
+          label: (
+            <span className="d-flex flex-wrap justify-content-between align-items-center gap-2 w-100 pe-2">
+              <span className="h5 m-0">Phase {p.phase}</span>
+              <Progress rows={p.rows} />
+            </span>
+          ),
+          children: p.halls.map((h) => {
             const list = h.rows;
             const done = list.filter((b) => b.visited).length;
             return (
@@ -69,9 +76,8 @@ function BoothChecklist({ rows, loading, saving, onToggle }) {
                 ))}
               </section>
             );
-          })}
-        </section>
-      ))}
+          }),
+        }))} />
     </div>
   );
 }
@@ -96,29 +102,33 @@ function BoothGroups({ rows, loading, columns }) {
   if (loading && !rows.length) return <div className="text-center py-5"><Spin /></div>;
   if (!rows.length) return <Empty description="Aucun booth à visiter" className="py-4" />;
   const shown = columns.filter((c) => !['hall', 'zone'].includes(c.dataIndex));
-  return byPhaseHall(rows).map((p) => (
-    <section key={p.phase} className="sc-panel p-3 mb-3">
-      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-        <h2 className="h5 m-0">Phase {p.phase}</h2>
-        <span className="d-inline-flex flex-wrap align-items-center gap-3">
-          <span className="small text-secondary">{plural(p.rows.length, 'booth')} · {plural(p.halls.length, 'hall')}</span>
-          <Progress rows={p.rows} />
-        </span>
-      </div>
-      {p.halls.map((h) => (
-        <div key={h.hall} className="mb-3">
-          <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-1">
-            <span className="sc-label">{hallLabel(h)} · {plural(h.rows.length, 'booth')}</span>
-            <Progress rows={h.rows} />
+  return (
+    <Collapse bordered={false} defaultActiveKey={[]} className="booth-phase-fold"
+      items={byPhaseHall(rows).map((p) => ({
+        key: String(p.phase),
+        label: (
+          <span className="d-flex flex-wrap justify-content-between align-items-center gap-2 w-100 pe-2">
+            <span className="h5 m-0">Phase {p.phase}</span>
+            <span className="d-inline-flex flex-wrap align-items-center gap-3">
+              <span className="small text-secondary">{plural(p.rows.length, 'booth')} · {plural(p.halls.length, 'hall')}</span>
+              <Progress rows={p.rows} />
+            </span>
+          </span>
+        ),
+        children: p.halls.map((h) => (
+          <div key={h.hall} className="mb-3">
+            <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-1">
+              <span className="sc-label">{hallLabel(h)} · {plural(h.rows.length, 'booth')}</span>
+              <Progress rows={h.rows} />
+            </div>
+            <Table rowKey="id" columns={shown} size="small" pagination={false}
+              dataSource={[...h.rows.filter((b) => !b.visited), ...h.rows.filter((b) => b.visited)]}
+              rowClassName={(b) => (b.visited ? 'opacity-50' : '')}
+              className="sc-table" scroll={{ x: 'max-content' }} />
           </div>
-          <Table rowKey="id" columns={shown} size="small" pagination={false}
-            dataSource={[...h.rows.filter((b) => !b.visited), ...h.rows.filter((b) => b.visited)]}
-            rowClassName={(b) => (b.visited ? 'opacity-50' : '')}
-            className="sc-table" scroll={{ x: 'max-content' }} />
-        </div>
-      ))}
-    </section>
-  ));
+        )),
+      }))} />
+  );
 }
 
 // Table of booths for the given API filters (D49: laid out like the Stitch "Booths" screen), with

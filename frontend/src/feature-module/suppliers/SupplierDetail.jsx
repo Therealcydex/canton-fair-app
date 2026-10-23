@@ -52,7 +52,7 @@ const viewerProductColumns = [
   },
   {
     title: 'Prix', dataIndex: 'price', align: 'right',
-    render: (v, p) => <span className="text-nowrap">{formatPrice(v)}{p.unit ? <span className="text-muted"> / {p.unit}</span> : null}</span>,
+    render: (v, p) => <span className="text-nowrap">{formatPrice(v, p.currency)}{p.unit ? <span className="text-muted"> / {p.unit}</span> : null}</span>,
   },
   { title: 'MOQ', dataIndex: 'moq', align: 'right', render: (v) => (v === null || v === undefined ? '—' : Number(v).toLocaleString('fr-FR')) },
   { title: 'Expédition', dataIndex: 'shipping_type', responsive: ['md'], render: (v, p) => (v ? <Tag color="geekblue" className="m-0" title={p.shipping_name}>{v}</Tag> : '—') },

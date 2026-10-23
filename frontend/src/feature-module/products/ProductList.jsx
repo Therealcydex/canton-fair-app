@@ -18,7 +18,7 @@ export function NewProductModal({ open, supplierId, onClose }) {
   const navigate = useNavigate();
   return (
     <FormModal open={open} title="Nouveau produit" width={720}
-      initialValues={{ supplier_id: supplierId, shipping_type: 'FOB', photos: photosValue(null) }}
+      initialValues={{ supplier_id: supplierId, shipping_type: 'FOB', currency: 'USD', photos: photosValue(null) }}
       onCancel={onClose}
       onSubmit={(values) => axios.post(`${API_BASE_URL}/products`, productPayload(values))}
       onSaved={(res) => {
@@ -103,7 +103,7 @@ export default function ProductList({ filters, supplierId, onChanged }) {
     },
     {
       title: 'Prix', dataIndex: 'price', align: 'right',
-      render: (v, p) => <span className="text-nowrap">{formatPrice(v)}{p.unit ? <span className="text-muted"> / {p.unit}</span> : null}</span>,
+      render: (v, p) => <span className="text-nowrap">{formatPrice(v, p.currency)}{p.unit ? <span className="text-muted"> / {p.unit}</span> : null}</span>,
     },
     { title: 'MOQ', dataIndex: 'moq', width: 90, align: 'right', render: (v) => (v === null || v === undefined ? '—' : Number(v).toLocaleString('fr-FR')) },
     {

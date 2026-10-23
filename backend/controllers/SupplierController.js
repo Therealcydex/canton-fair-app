@@ -100,7 +100,7 @@ exports.list = handle('Supplier list', async (req, res) => {
     params.push(provinceId);
   }
   const booth = [];
-  for (const [key, max] of [['phase', 3], ['hall', 18]]) {
+  for (const [key, max] of [['phase', 3], ['hall', 21]]) {
     if (req.query[key] === undefined || req.query[key] === '') continue;
     const n = toId(req.query[key]);
     if (!n || n > max) return fail(res, 400, `Filtre ${key} invalide`);
@@ -140,7 +140,7 @@ exports.getById = handle('Supplier getById', async (req, res) => {
   const data = { ...withShareIds(supplier), contacts };
   if (viewer) {
     [data.products] = await db.query(
-      `SELECT p.id, p.name, p.supplier_ref, p.description, p.price, p.unit, p.moq, p.shipping_type, st.name AS shipping_name,
+      `SELECT p.id, p.name, p.supplier_ref, p.description, p.price, p.currency, p.unit, p.moq, p.shipping_type, st.name AS shipping_name,
               p.booth_id, b.booth_code, b.phase AS booth_phase,
               (SELECT pi.thumb_data FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.id LIMIT 1) AS cover_thumb
        FROM products p

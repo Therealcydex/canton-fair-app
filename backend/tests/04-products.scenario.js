@@ -39,6 +39,11 @@ module.exports = async (ctx) => {
   const p2 = expect('product without supplier, shipping type by default', await api('POST', '/products', { token: B, body: { name: `${PREFIX} Vase` } }), 200);
   const got2 = await api('GET', `/products/${p2.body.data.id}`, { token: B });
   check('default shipping type is FOB', got2.body.data.shipping_type === 'FOB' && got2.body.data.supplier_id === null);
+  check('default currency is USD', got.body.data.currency === 'USD' && got2.body.data.currency === 'USD');
+  expect('unknown currency', await api('POST', '/products', { token: A, body: { name: `${PREFIX} X`, currency: 'EUR' } }), 400);
+  expect('currency TND', await api('PUT', `/products/${id}`, { token: A, body: { currency: 'TND' } }), 200);
+  check('TND stored', (await api('GET', `/products/${id}`, { token: A })).body.data.currency === 'TND');
+  expect('currency CNY', await api('PUT', `/products/${id}`, { token: A, body: { currency: 'CNY' } }), 200);
 
   expect('update keeps the rules', await api('PUT', `/products/${id}`, { token: B, body: { moq: -1 } }), 400);
   expect('update product', await api('PUT', `/products/${id}`, { token: B, body: { price: '13.99' } }), 200);

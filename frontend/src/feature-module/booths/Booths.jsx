@@ -11,7 +11,7 @@ import { isViewer } from '../../utils/access';
 import { boothLabel } from '../../utils/format';
 
 const ZONES = Object.entries(ZONE_HALLS).map(([zone, halls]) => ({ zone, halls }));
-const HALLS = Array.from({ length: 18 }, (_, i) => i + 1); // D56: halls 1-18
+const HALLS = Array.from({ length: 21 }, (_, i) => i + 1); // D67: halls 1-21
 const plural = (n, word) => `${n} ${word}${n > 1 ? 's' : ''}`;
 
 // The booths shown, as a CSV file for Excel (";" and a BOM, so accents and columns open right).

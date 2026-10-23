@@ -112,7 +112,7 @@ export default function BoothDetail() {
     { title: 'Réf. fournisseur', dataIndex: 'supplier_ref', render: (v) => v || '—' },
     {
       title: 'Prix', dataIndex: 'price', align: 'right',
-      render: (v, p) => <strong className="text-nowrap">{formatPrice(v)}{v != null && p.unit ? ` / ${p.unit}` : ''}</strong>,
+      render: (v, p) => <strong className="text-nowrap">{formatPrice(v, p.currency)}{v != null && p.unit ? ` / ${p.unit}` : ''}</strong>,
     },
     { title: 'Incoterm', dataIndex: 'shipping_type', align: 'center', render: (v) => (v ? <Tag className="m-0">{v}</Tag> : '—') },
     !viewer && {

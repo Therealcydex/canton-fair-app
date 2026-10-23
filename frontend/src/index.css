@@ -1277,6 +1277,26 @@ code {
   word-break: break-all;
 }
 
+/* D67: À visiter phases start closed; click the phase to see its halls and booths. */
+.booth-phase-fold.ant-collapse,
+.booth-check .ant-collapse {
+  background: transparent;
+}
+
+.booth-phase-fold > .ant-collapse-item,
+.booth-check .ant-collapse > .ant-collapse-item {
+  margin-bottom: 12px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--sc-border) !important;
+  border-radius: 8px !important;
+}
+
+.booth-phase-fold .ant-collapse-header,
+.booth-check .ant-collapse-header {
+  align-items: center !important;
+}
+
 /* "À visiter" on a phone: one card per booth, with a big round ✓. */
 .booth-check-row {
   display: flex;

@@ -10,7 +10,7 @@ import FormModal from '../../components/FormModal';
 import SupplierFormFields, { newSupplierContact } from '../suppliers/SupplierFormFields';
 import { supplierPayload } from '../suppliers/SupplierDetail';
 
-// Fields of the booth form. The server checks the same rules (phase 1-3, hall 1-18, floor 0-4 (D56), letter A-Z,
+// Fields of the booth form. The server checks the same rules (phase 1-3, hall 1-21 (D67), floor 0-4, letter A-Z,
 // letter and number together (D32), a category of the booth's phase) and refuses a booth that
 // overlaps another one (D26).
 
@@ -157,7 +157,7 @@ export default function BoothFormFields({ lockSupplier, withSupplier = true }) {
         </Col>
         <Col xs={12} sm={8}>
           <Form.Item name="hall" label="Hall" rules={[{ required: true, message: 'Hall obligatoire' }]}>
-            <InputNumber min={1} max={18} className="w-100" />
+            <InputNumber min={1} max={21} className="w-100" />
           </Form.Item>
         </Col>
         <Col xs={12} sm={8}>

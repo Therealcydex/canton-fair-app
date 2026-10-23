@@ -19,12 +19,15 @@ const DECISION_FIELDS = {
   note: { label: 'Note', type: 'text', max: 500 },
 };
 const DEFAULT_SHIPPING_TYPE = 'FOB';
+const DEFAULT_CURRENCY = 'USD';
+const CURRENCIES = ['USD', 'TND', 'CNY'];
 
 const PRODUCT_FIELDS = {
   name: { label: 'Nom', type: 'string', required: true, max: 200 },
   supplier_ref: { label: 'Référence fournisseur', type: 'string', max: 100 },
   description: { label: 'Description', type: 'text', max: 10000 },
   price: { label: 'Prix', type: 'decimal', precision: 12, scale: 2 },
+  currency: { label: 'Devise', type: 'enum', values: CURRENCIES },
   unit: { label: 'Unité', type: 'string', max: 30 },
   moq: { label: 'MOQ', type: 'int', min: 1, maxValue: 2147483647 },
   shipping_type: { label: 'Type d\'expédition', type: 'string', max: 3, upper: true },
@@ -47,6 +50,7 @@ async function validateProduct(req, existing) {
   p.shipping_type = p.shipping_type || DEFAULT_SHIPPING_TYPE;
   const [[st]] = await db.query('SELECT code FROM shipping_types WHERE code = ?', [p.shipping_type]);
   if (!st) return { status: 400, message: "Type d'expédition inconnu (EXW, FOB, CIF…)" };
+  p.currency = p.currency || DEFAULT_CURRENCY;
 
   const body = req.body || {};
   const supplierRaw = body.supplier_id !== undefined ? body.supplier_id : existing?.supplier_id;
@@ -203,9 +207,9 @@ exports.create = handle('Product create', async (req, res) => {
   if (!img.images) return fail(res, 400, img.message);
   const p = v.values;
   const w = await writeProduct(
-    `INSERT INTO products (supplier_id, booth_id, supplier_ref, name, description, price, unit, moq, shipping_type, created_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [p.supplier_id, p.booth_id, p.supplier_ref, p.name, p.description, p.price, p.unit, p.moq, p.shipping_type, req.user.id],
+    `INSERT INTO products (supplier_id, booth_id, supplier_ref, name, description, price, currency, unit, moq, shipping_type, created_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [p.supplier_id, p.booth_id, p.supplier_ref, p.name, p.description, p.price, p.currency, p.unit, p.moq, p.shipping_type, req.user.id],
     null, img.images, []);
   if (!w.id) return fail(res, w.status, w.message);
   res.json({ success: true, data: { id: w.id } });
@@ -224,8 +228,8 @@ exports.update = handle('Product update', async (req, res) => {
   const p = v.values;
   const w = await writeProduct(
     `UPDATE products SET supplier_id = ?, booth_id = ?, supplier_ref = ?, name = ?, description = ?, price = ?,
-            unit = ?, moq = ?, shipping_type = ? WHERE id = ?`,
-    [p.supplier_id, p.booth_id, p.supplier_ref, p.name, p.description, p.price, p.unit, p.moq, p.shipping_type, r.row.id],
+            currency = ?, unit = ?, moq = ?, shipping_type = ? WHERE id = ?`,
+    [p.supplier_id, p.booth_id, p.supplier_ref, p.name, p.description, p.price, p.currency, p.unit, p.moq, p.shipping_type, r.row.id],
     r.row.id, img.images, rm.ids);
   if (!w.id) return fail(res, w.status, w.message);
   res.json({ success: true, data: { id: r.row.id } });

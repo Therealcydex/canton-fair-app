@@ -46,7 +46,7 @@ module.exports = async (ctx) => {
   check('phase 2 and hall 16 finds the other', (await ids('phase=2&hall=16')).join() === String(other));
   check('phase 1 finds none', (await ids('phase=1')).length === 0);
   expect('phase 4', await api('GET', '/suppliers?phase=4', { token: A }), 400);
-  expect('hall 19', await api('GET', '/suppliers?hall=19', { token: A }), 400);
+  expect('hall 22', await api('GET', '/suppliers?hall=22', { token: A }), 400);
   const used = expect('provinces in use', await api('GET', '/suppliers/provinces', { token: A }), 200).body.data;
   check('the province of a supplier is in use', used.some((p) => p.id === province));
   check('only provinces in use', used.length < provinces.length);

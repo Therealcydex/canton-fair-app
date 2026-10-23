@@ -19,7 +19,8 @@
     "db:update-level-floor": "node sql/update_level_floor.js",
     "db:update-boss-fixes": "node sql/update_boss_fixes.js",
     "db:update-booth-edition": "node sql/update_booth_edition.js",
-    "db:update-supplier-shares": "node sql/update_supplier_shares.js"
+    "db:update-supplier-shares": "node sql/update_supplier_shares.js",
+    "db:update-product-currency": "node sql/update_product_currency.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

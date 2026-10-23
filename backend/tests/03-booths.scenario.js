@@ -19,7 +19,8 @@ module.exports = async (ctx) => {
   expect('letter is a digit', await api('POST', '/booths', { token: A, body: { ...base, letter: '1' } }), 400);
   expect('two letters', await api('POST', '/booths', { token: A, body: { ...base, letter: 'AB' } }), 400);
   expect('hall missing', await api('POST', '/booths', { token: A, body: { ...base, hall: '' } }), 400);
-  expect('hall 19 (D56: halls 1-18)', await api('POST', '/booths', { token: A, body: { ...base, hall: 19 } }), 400);
+  expect('hall 22 (D67: halls 1-21)', await api('POST', '/booths', { token: A, body: { ...base, hall: 22 } }), 400);
+  expect('hall 19 of zone D', await api('POST', '/booths', { token: A, body: { ...base, hall: 19, comment: `${PREFIX} hall 19` } }), 200);
   expect('hall 0', await api('POST', '/booths', { token: A, body: { ...base, hall: 0 } }), 400);
   expect('end before start', await api('POST', '/booths', { token: A, body: { ...base, num_end: 9 } }), 400);
   expect('unknown supplier', await api('POST', '/booths', { token: A, body: { ...base, supplier_id: 999999 } }), 400);

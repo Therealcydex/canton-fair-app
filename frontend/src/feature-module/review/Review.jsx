@@ -17,7 +17,7 @@ import { boothLabel, formatPrice } from '../../utils/format';
 import PageHeader from '../../components/PageHeader';
 
 const priceLine = (p) => [
-  `${formatPrice(p.price)}${p.unit ? ` / ${p.unit}` : ''}`,
+  `${formatPrice(p.price, p.currency)}${p.unit ? ` / ${p.unit}` : ''}`,
   p.moq && `MOQ ${p.moq}`,
   p.shipping_type,
 ].filter(Boolean).join(' · ');
@@ -263,7 +263,7 @@ function BossQueue({ review, reload, decided, onShowDecided }) {
               <div className="review-price">
                 <div>
                   <div className="sc-label">Prix</div>
-                  <div className="review-price-value">{formatPrice(product.price)}{product.unit && <span> / {product.unit}</span>}</div>
+                  <div className="review-price-value">{formatPrice(product.price, product.currency)}{product.unit && <span> / {product.unit}</span>}</div>
                 </div>
                 {product.moq && (
                   <div className="review-price-item">

@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS booths (
     edition       SMALLINT NOT NULL DEFAULT 140,         -- D64: the session of the fair (the 140th by default)
     CONSTRAINT chk_booths_edition CHECK (edition BETWEEN 1 AND 999),
     phase         TINYINT  NOT NULL CHECK (phase BETWEEN 1 AND 3),
-    hall          TINYINT  NOT NULL,                     -- D56: 1-18, checked by the API
+    hall          TINYINT  NOT NULL,                     -- D67: 1-21, checked by the API
     floor         TINYINT  NOT NULL,
     CONSTRAINT chk_booths_floor CHECK (floor BETWEEN 0 AND 4),  -- D56: floor 0 (ground level)
     letter        CHAR(1)  NULL CHECK (letter BETWEEN 'A' AND 'Z'),  -- NULL with num_start: only hall.floor known
@@ -137,6 +137,8 @@ CREATE TABLE IF NOT EXISTS products (
     name           VARCHAR(200) NOT NULL,
     description    TEXT,
     price          DECIMAL(12,2),
+    currency       CHAR(3) NOT NULL DEFAULT 'USD', -- D67: USD, TND or CNY
+    CONSTRAINT chk_product_currency CHECK (currency IN ('USD', 'TND', 'CNY')),
     unit           VARCHAR(30),
     moq            INT,
     shipping_type  CHAR(3) DEFAULT 'FOB',         -- picked from shipping_types
@@ -240,7 +242,7 @@ LEFT JOIN china_province p ON p.id = s.province_id;
 
 -- Products with shipping name, the decision (D38) and the booth (D43); D62: no longer shared
 CREATE OR REPLACE VIEW v_products AS
-SELECT pr.id, pr.supplier_id, pr.supplier_ref, pr.name, pr.description, pr.price, pr.unit,
+SELECT pr.id, pr.supplier_id, pr.supplier_ref, pr.name, pr.description, pr.price, pr.currency, pr.unit,
        pr.moq, pr.shipping_type, st.name AS shipping_name,
        pr.status, pr.decision_note, pr.decided_at, pr.decided_by, du.name AS decided_by_name,
        pr.created_at, pr.created_by, cu.name AS created_by_name,

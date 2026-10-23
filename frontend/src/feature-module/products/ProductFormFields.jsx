@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Col, Form, Input, InputNumber, Row, Select } from 'antd';
 import { API_BASE_URL } from '../../config/config';
 import { useList } from '../../utils/lists';
-import { boothLabel } from '../../utils/format';
+import { boothLabel, CURRENCIES } from '../../utils/format';
 import PhotosField from './PhotosField';
 
 // Fields of the product form. The server checks the same rules (price with 2 decimals at most,
@@ -64,6 +64,11 @@ export default function ProductFormFields({ lockSupplier, showBooth = true }) {
           </Form.Item>
         </Col>
         <Col xs={24} sm={12}>
+          <Form.Item name="currency" label="Devise" rules={[{ required: true, message: 'Devise obligatoire' }]}>
+            <Select options={CURRENCIES} />
+          </Form.Item>
+        </Col>
+        <Col xs={24} sm={12}>
           <Form.Item name="shipping_type" label="Type d'expédition (Incoterm)">
             <Select options={shippingTypes.map((s) => ({ value: s.code, label: `${s.code} — ${s.name}` }))} />
           </Form.Item>
@@ -93,5 +98,6 @@ export const productPayload = ({ photos, images: _images, ...v }) => ({
   supplier_id: v.supplier_id ?? null,
   booth_id: v.booth_id ?? null,
   price: v.price ? String(v.price).replace(',', '.') : null,
+  currency: v.currency || 'USD',
   moq: v.moq ?? null,
 });
