@@ -9,7 +9,7 @@ const { deleteImages } = require('../utils/upload');
 const BASE = `http://localhost:${process.env.PORT || 3000}/api`;
 const PREFIX = 'TEST';
 const TABLES = [
-  'companies', 'users', 'suppliers', 'contacts', 'booths', 'products', 'product_images', 'product_shares', 'supplier_shares', 'user_companies', 'section_halls',
+  'companies', 'users', 'suppliers', 'contacts', 'booths', 'products', 'product_images', 'product_shares', 'supplier_shares', 'categories_suppliers', 'categories_products', 'user_companies', 'section_halls',
 ];
 
 let failures = 0;
@@ -88,6 +88,8 @@ async function cleanup(conn) {
   await conn.query(`DELETE FROM products WHERE ${productWhere}`, [like, like]);
   await conn.query(`DELETE FROM booths WHERE comment LIKE ? OR supplier_id IN (${supplierIds})`, [like, like]);
   await conn.query('DELETE FROM suppliers WHERE name LIKE ?', [like]);
+  await conn.query('DELETE FROM categories_suppliers WHERE name LIKE ?', [like]); // D69
+  await conn.query('DELETE FROM categories_products WHERE name LIKE ?', [like]); // D70
   await conn.query('DELETE FROM section_halls WHERE halls LIKE ?', [like]); // D42: test halls
   await conn.query('DELETE FROM users WHERE username LIKE ?', [like]);
   await conn.query('DELETE FROM companies WHERE name LIKE ?', [like]);

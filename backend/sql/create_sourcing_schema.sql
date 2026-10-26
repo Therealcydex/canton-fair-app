@@ -52,8 +52,21 @@ CREATE TABLE IF NOT EXISTS suppliers (
     province_id  INT,                                   -- list from china_province
     rating       TINYINT CHECK (rating BETWEEN 1 AND 5),
     notes        TEXT,
+    categories_suppliers TEXT,                          -- D69: JSON array of names from categories_suppliers, or NULL
     KEY ix_suppliers_name (name),                       -- D24: search by name
     FOREIGN KEY (province_id) REFERENCES china_province(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- D69: the list of supplier categories. One column, the name. A supplier stores the names
+-- it uses in suppliers.categories_suppliers (several allowed). Existing suppliers start with none.
+CREATE TABLE IF NOT EXISTS categories_suppliers (
+    name  VARCHAR(150) NOT NULL PRIMARY KEY
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- D70: the list of product categories. One column, the name. A product stores the names it
+-- uses in products.categories_products. Existing products start with none.
+CREATE TABLE IF NOT EXISTS categories_products (
+    name  VARCHAR(150) NOT NULL PRIMARY KEY
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------- Contacts ----------
@@ -142,6 +155,7 @@ CREATE TABLE IF NOT EXISTS products (
     unit           VARCHAR(30),
     moq            INT,
     shipping_type  CHAR(3) DEFAULT 'FOB',         -- picked from shipping_types
+    categories_products TEXT,                     -- D70: JSON array of names from categories_products, or NULL
     -- D38: the decision on the product, taken by the admin (the boss) at the evening review.
     -- update_product_decision.js adds these columns to an existing table.
     status         VARCHAR(20) NOT NULL DEFAULT 'A_ETUDIER',
@@ -233,7 +247,7 @@ LEFT JOIN suppliers s            ON s.id = b.supplier_id;
 -- Suppliers with Nbr Booths and Booth Visit %
 CREATE OR REPLACE VIEW v_suppliers AS
 SELECT s.id, s.name, s.phone, s.email, s.website, s.address, s.province_id, s.rating, s.notes,
-       s.cantonfair_url, p.name_en AS province,
+       s.cantonfair_url, s.categories_suppliers, p.name_en AS province,
        (SELECT COUNT(*) FROM booths b WHERE b.supplier_id = s.id) AS nbr_booths,
        (SELECT ROUND(100 * SUM(b.visited) / NULLIF(COUNT(*), 0))
           FROM booths b WHERE b.supplier_id = s.id) AS booth_visit_pct
@@ -243,7 +257,7 @@ LEFT JOIN china_province p ON p.id = s.province_id;
 -- Products with shipping name, the decision (D38) and the booth (D43); D62: no longer shared
 CREATE OR REPLACE VIEW v_products AS
 SELECT pr.id, pr.supplier_id, pr.supplier_ref, pr.name, pr.description, pr.price, pr.currency, pr.unit,
-       pr.moq, pr.shipping_type, st.name AS shipping_name,
+       pr.moq, pr.shipping_type, pr.categories_products, st.name AS shipping_name,
        pr.status, pr.decision_note, pr.decided_at, pr.decided_by, du.name AS decided_by_name,
        pr.created_at, pr.created_by, cu.name AS created_by_name,
        pr.booth_id, bo.booth_code, bo.phase AS booth_phase

@@ -7,7 +7,8 @@ import { apiError } from '../../utils/apiError';
 import { categoryIdOf, categoryOptions, categoryPath, useList } from '../../utils/lists';
 import { hallsOf, useFairPlan } from '../../utils/fairPlan';
 import FormModal from '../../components/FormModal';
-import SupplierFormFields, { newSupplierContact } from '../suppliers/SupplierFormFields';
+import SupplierFormFields from '../suppliers/SupplierFormFields';
+import { saveDraftContacts } from '../suppliers/SupplierContacts';
 import { supplierPayload } from '../suppliers/SupplierDetail';
 
 // Fields of the booth form. The server checks the same rules (phase 1-3, hall 1-21 (D67), floor 0-4, letter A-Z,
@@ -96,6 +97,7 @@ export default function BoothFormFields({ lockSupplier, withSupplier = true }) {
   const { message } = App.useApp();
   const form = Form.useFormInstance();
   const [creatingSupplier, setCreatingSupplier] = useState(false);
+  const [draftContacts, setDraftContacts] = useState([]);
   const [supplierListKey, setSupplierListKey] = useState(0);
   const categories = useList('canton-categories');
   const phase = Form.useWatch('phase');
@@ -112,18 +114,8 @@ export default function BoothFormFields({ lockSupplier, withSupplier = true }) {
   const createSupplier = async (values) => {
     const res = await axios.post(`${API_BASE_URL}/suppliers`, supplierPayload(values));
     const id = res.data.data.id;
-    const contact = newSupplierContact(values);
-    if (contact) {
-      try {
-        const { wechat_qr: wechatQr, ...fields } = contact;
-        const created = await axios.post(`${API_BASE_URL}/suppliers/${id}/contacts`, fields);
-        if (wechatQr) {
-          await axios.put(`${API_BASE_URL}/suppliers/${id}/contacts/${created.data.data.id}/wechat-qr`, { content: wechatQr });
-        }
-      } catch (err) {
-        message.warning(`Fournisseur enregistré, mais pas tout le contact : ${apiError(err, 'erreur')}`);
-      }
-    }
+    const failed = await saveDraftContacts(id, draftContacts);
+    if (failed) message.warning(`Fournisseur enregistré, mais pas tous les contacts : ${apiError(failed, 'erreur')}`);
     return { id, name: values.name };
   };
 
@@ -138,7 +130,7 @@ export default function BoothFormFields({ lockSupplier, withSupplier = true }) {
               </Form.Item>
             </div>
             {!lockSupplier && (
-              <Button icon={<PlusOutlined />} onClick={() => setCreatingSupplier(true)}>Nouveau</Button>
+              <Button icon={<PlusOutlined />} onClick={() => { setDraftContacts([]); setCreatingSupplier(true); }}>Nouveau</Button>
             )}
           </div>
         </Form.Item>
@@ -199,16 +191,17 @@ export default function BoothFormFields({ lockSupplier, withSupplier = true }) {
       </Form.Item>
       <Form.Item name="visited" label="Visité" valuePropName="checked"><Switch /></Form.Item>
       <Form.Item name="comment" label="Commentaire" className="mb-0"><Input.TextArea rows={3} /></Form.Item>
-      <FormModal open={creatingSupplier} title="Nouveau fournisseur" width={640} zIndex={1100}
-        onCancel={() => setCreatingSupplier(false)}
+      <FormModal open={creatingSupplier} title="Nouveau fournisseur" width={880} zIndex={1100}
+        onCancel={() => { setCreatingSupplier(false); setDraftContacts([]); }}
         onSubmit={createSupplier}
         onSaved={({ id }) => {
           form.setFieldsValue({ supplier_id: id });
           setSupplierListKey((n) => n + 1);
           setCreatingSupplier(false);
+          setDraftContacts([]);
           message.success('Fournisseur créé et sélectionné');
         }}>
-        <SupplierFormFields withContact />
+        <SupplierFormFields withContact contacts={draftContacts} onContacts={setDraftContacts} />
       </FormModal>
     </>
   );

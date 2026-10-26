@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Alert, App, Button, Form, Input, Popconfirm, Select, Table } from 'antd';
@@ -12,6 +12,7 @@ import ContactFormFields, { contactPayload } from './ContactFormFields';
 import ContactCard, { openCardOnClick } from './ContactCard';
 import ContactAvatar from '../../components/ContactAvatar';
 import useDebounced from '../../utils/useDebounced';
+import { useResetPage, useStickyState } from '../../utils/place';
 
 const two = (n) => String(n).padStart(2, '0');
 
@@ -42,20 +43,28 @@ export default function Contacts() {
   const [rows, setRows] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   // Opened from a supplier page: /contacts?supplier_id=3 starts filtered on that supplier.
-  const [filters, setFilters] = useState(() => {
-    const supplierId = Number(urlParams.get('supplier_id'));
-    return Number.isInteger(supplierId) && supplierId > 0 ? { supplier_id: supplierId } : {};
-  });
+  const [filters, setFilters] = useStickyState('filters:contacts', {});
+  const urlSupplier = Number(urlParams.get('supplier_id'));
+  const urlApplied = useRef(false);
+  useEffect(() => {
+    if (urlApplied.current) return;
+    urlApplied.current = true;
+    if (Number.isInteger(urlSupplier) && urlSupplier > 0) {
+      setFilters((current) => (current.supplier_id === urlSupplier ? current : { ...current, supplier_id: urlSupplier }));
+    }
+  }, [urlSupplier, setFilters]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [editing, setEditing] = useState(null); // null = closed, {} = new, row = edit
   const [viewing, setViewing] = useState(null); // D63: the contact shown in its card
   const [exporting, setExporting] = useState(false);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useStickyState('search:contacts', '');
   const q = useDebounced(search.trim()); // D60: the search applies as you type
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useStickyState('page-size:contacts', 20);
+  const [page, setPage] = useStickyState('page:contacts', 1);
 
   const query = JSON.stringify(contactParams({ ...filters, q }));
+  useResetPage(query, setPage);
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
@@ -231,7 +240,8 @@ export default function Contacts() {
         }}
         scroll={{ x: 'max-content' }}
         pagination={{
-          pageSize, showSizeChanger: true, pageSizeOptions: [10, 20, 50, 100], onShowSizeChange: (_, size) => setPageSize(size),
+          current: page, pageSize, showSizeChanger: true, pageSizeOptions: [10, 20, 50, 100],
+          onChange: (p, size) => { setPage(p); setPageSize(size); },
           showTotal: (total, [from, to]) => <>Fournisseurs <strong>{from} à {to}</strong> sur <strong>{total}</strong></>,
         }}
         locale={{ emptyText: 'Aucun contact' }} />

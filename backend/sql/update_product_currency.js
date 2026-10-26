@@ -39,7 +39,12 @@ async function main() {
       await step('add chk_product_currency',
         `ALTER TABLE products ADD CONSTRAINT chk_product_currency CHECK (currency IN ('USD', 'TND', 'CNY'))`);
     }
-    await conn.query(VIEW);
+    let view = VIEW;
+    if (!(await one(`SELECT 1 AS x FROM information_schema.COLUMNS
+                     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'products' AND COLUMN_NAME = 'categories_products'`, []))) {
+      view = view.replace('pr.categories_products, ', '');
+    }
+    await conn.query(view);
 
     console.log(run
       ? `update_product_currency: ${run} step(s) run on ${dbName}`

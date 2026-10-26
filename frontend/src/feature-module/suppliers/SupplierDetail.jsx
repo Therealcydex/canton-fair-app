@@ -33,6 +33,10 @@ export const supplierInitialValues = (s, admin) => s && {
   ...s, ...(admin ? { share_company_ids: s.shared_company_ids || [] } : {}),
 };
 
+export async function saveSupplier(id, values) {
+  await axios.put(`${API_BASE_URL}/suppliers/${id}`, supplierPayload(values));
+}
+
 // D66: a viewer's products, sent with its supplier (no decision, no product page).
 const viewerProductColumns = [
   { title: 'Photo', dataIndex: 'cover_thumb', width: 64, render: (src) => <ProductThumb src={src} /> },
@@ -72,6 +76,7 @@ export default function SupplierDetail() {
   const [loadError, setLoadError] = useState(null);
   const [editing, setEditing] = useState(false);
   const [creatingProduct, setCreatingProduct] = useState(false);
+  const [productsKey, setProductsKey] = useState(0);
   const [viewing, setViewing] = useState(null); // D63: the contact shown in its card
   const [companies, setCompanies] = useState([]);
   useEffect(() => {
@@ -148,7 +153,7 @@ export default function SupplierDetail() {
       children: viewer
         ? <Table rowKey="id" size="middle" columns={viewerProductColumns} dataSource={supplier.products}
             scroll={{ x: true }} pagination={{ pageSize: 30, hideOnSinglePage: true }} locale={{ emptyText: 'Aucun produit' }} />
-        : <ProductList supplierId={supplier.id} onChanged={load} />,
+        : <ProductList supplierId={supplier.id} onChanged={load} reloadKey={productsKey} />,
     },
   ];
   const sharedWith = (supplier.shared_company_ids || []).map((cid) => companies.find((c) => c.id === cid)).filter(Boolean);
@@ -178,6 +183,12 @@ export default function SupplierDetail() {
         <Descriptions size="small" column={{ xs: 1, md: 2, xl: 3 }}
           items={[
             { key: 'province', label: 'Province', children: supplier.province || '—' },
+            {
+              key: 'categories', label: 'Catégories',
+              children: supplier.categories_suppliers?.length
+                ? supplier.categories_suppliers.map((n) => <Tag key={n}>{n}</Tag>)
+                : '—',
+            },
             { key: 'phone', label: 'Téléphone', children: supplier.phone || '—' },
             {
               key: 'website', label: 'Site web',
@@ -192,7 +203,7 @@ export default function SupplierDetail() {
                 ? <a href={supplier.cantonfair_url} target="_blank" rel="noreferrer">Ouvrir sur cantonfair.org.cn ↗</a>
                 : '—',
             },
-            { key: 'rating', label: 'Note', children: supplier.rating ? <Rate disabled value={supplier.rating} style={{ fontSize: 14 }} /> : 'Non noté' },
+            { key: 'rating', label: 'Évaluation', children: supplier.rating ? <Rate disabled value={supplier.rating} style={{ fontSize: 14 }} /> : 'Non noté' },
             { key: 'booths', label: 'Booths visités', children: booths ? `${visited} / ${booths}` : 'Aucun booth' },
             { key: 'address', label: 'Adresse', span: 'filled', children: supplier.address || '—' },
             { key: 'notes', label: 'Notes', span: 'filled', children: <span style={{ whiteSpace: 'pre-wrap' }}>{supplier.notes || '—'}</span> },
@@ -219,13 +230,14 @@ export default function SupplierDetail() {
 
       {!viewer && (
         <>
-          <NewProductModal open={creatingProduct} supplierId={supplier.id} onClose={() => setCreatingProduct(false)} />
+          <NewProductModal open={creatingProduct} supplierId={supplier.id} onClose={() => setCreatingProduct(false)}
+            onCreated={() => { setProductsKey((n) => n + 1); load(); }} />
 
-          <FormModal open={editing} title="Modifier le fournisseur" width={640} initialValues={supplierInitialValues(supplier, admin)}
+          <FormModal open={editing} title="Modifier le fournisseur" width={880} initialValues={supplierInitialValues(supplier, admin)}
             onCancel={() => setEditing(false)}
-            onSubmit={(values) => axios.put(`${API_BASE_URL}/suppliers/${id}`, supplierPayload(values))}
+            onSubmit={(values) => saveSupplier(id, values)}
             onSaved={() => { setEditing(false); message.success('Fournisseur modifié'); load(); }}>
-            <SupplierFormFields />
+            <SupplierFormFields withContact supplierId={supplier.id} contacts={supplier.contacts || []} onContacts={load} />
           </FormModal>
         </>
       )}

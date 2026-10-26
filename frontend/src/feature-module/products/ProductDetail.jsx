@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Alert, App, Button, Col, Image, Input, Popconfirm, Row, Spin, Tag, Upload } from 'antd';
 import {
   BankOutlined, CheckCircleOutlined, DeleteOutlined, EditOutlined, EnvironmentOutlined, FileTextOutlined, HistoryOutlined,
-  InboxOutlined, PictureOutlined, PlusOutlined, SolutionOutlined,
+  InboxOutlined, LeftOutlined, PictureOutlined, PlusOutlined, RightOutlined, SolutionOutlined,
 } from '@ant-design/icons';
 import { API_BASE_URL } from '../../config/config';
 import { ACCEPTED_IMAGES, toProductPhoto } from '../../utils/image';
@@ -84,11 +84,16 @@ export default function ProductDetail() {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const [search] = useSearchParams();
+  const from = search.get('from');
   const fromSupplier = Number(search.get('supplier'));
-  // Opened from a supplier's product list: deleting returns there, on the Produits tab.
-  const backTo = Number.isInteger(fromSupplier) && fromSupplier > 0
-    ? `/fournisseurs/${fromSupplier}?tab=products`
-    : '/produits';
+  // D68: Retour goes to the screen the fiche was opened from (supplier, revue, gallery, or the catalogue).
+  const backTo = from === 'galerie' ? '/galerie'
+    : Number.isInteger(fromSupplier) && fromSupplier > 0 ? `/fournisseurs/${fromSupplier}?tab=products`
+      : '/produits';
+  const backLabel = from === 'galerie' ? 'Galerie'
+    : backTo.startsWith('/fournisseurs/') ? 'Produits du fournisseur'
+      : 'Produits';
+  const [nav, setNav] = useState([]); // product ids, in the order of the list this fiche was opened from
   const [product, setProduct] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [editing, setEditing] = useState(false);
@@ -105,7 +110,23 @@ export default function ProductDetail() {
     }
   }, [id]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { setProduct(null); setPhoto(0); load(); }, [load]);
+
+  // D68: Précédent / Suivant follow the list the fiche was opened from.
+  useEffect(() => {
+    let live = true;
+    const apply = (ids) => { if (live) setNav(ids.map(Number).filter((n) => n > 0)); };
+    if (from === 'galerie') {
+      try { apply(JSON.parse(sessionStorage.getItem('galerie-products') || '[]')); } catch { apply([]); }
+      return () => { live = false; };
+    }
+    const params = {};
+    if (fromSupplier) params.supplier_id = fromSupplier;
+    axios.get(`${API_BASE_URL}/products`, { params })
+      .then((r) => apply(r.data.data.map((p) => p.id)))
+      .catch(() => apply([]));
+    return () => { live = false; };
+  }, [from, fromSupplier]);
 
   const call = async (request, success, fallback) => {
     try {
@@ -153,6 +174,8 @@ export default function ProductDetail() {
   const images = product.images;
   const current = images[Math.min(photo, images.length - 1)];
   const facts = [product.shipping_type, product.moq != null && `MOQ ${product.moq}`].filter(Boolean).join(' · ');
+  const index = nav.indexOf(Number(id));
+  const step = (nextId) => navigate(`/produits/${nextId}${search.toString() ? `?${search}` : ''}`);
 
   const dropZone = (
     <Upload.Dragger accept={ACCEPTED_IMAGES} multiple showUploadList={false} disabled={uploading} className="photo-drop"
@@ -170,7 +193,7 @@ export default function ProductDetail() {
   return (
     <>
       <nav className="booth-crumb">
-        <Link to={backTo}><InboxOutlined /> {backTo.startsWith('/fournisseurs/') ? 'Produits du fournisseur' : 'Produits'}</Link>
+        <Link to={backTo}>{from === 'galerie' ? <PictureOutlined /> : <InboxOutlined />} {backLabel}</Link>
         <span className="mx-2 text-secondary">/</span>
         <strong>{product.name}</strong>
         {product.supplier_ref && <span className="page-chip ms-2">{product.supplier_ref}</span>}
@@ -190,6 +213,14 @@ export default function ProductDetail() {
           </div>
         </div>
         <div className="d-flex flex-wrap gap-2">
+          {nav.length > 1 && index >= 0 && (
+            <>
+              <Button icon={<LeftOutlined />} disabled={index <= 0} onClick={() => step(nav[index - 1])}>Précédent</Button>
+              <Button disabled={index < 0 || index >= nav.length - 1} onClick={() => step(nav[index + 1])}>
+                Suivant <RightOutlined />
+              </Button>
+            </>
+          )}
           <Button type="primary" icon={<EditOutlined />} onClick={() => setEditing(true)}>Modifier</Button>
           <Popconfirm title="Supprimer ce produit ?" description="Ses photos seront supprimées."
             okText="Supprimer" okButtonProps={{ danger: true }} cancelText="Annuler" onConfirm={remove}>
@@ -260,6 +291,8 @@ export default function ProductDetail() {
               <dd className="fw-semibold">{product.moq ?? '—'}</dd>
               <dt>Réf. fournisseur</dt>
               <dd>{product.supplier_ref || '—'}</dd>
+              <dt>Catégories</dt>
+              <dd>{product.categories_products?.length ? product.categories_products.map((n) => <Tag key={n}>{n}</Tag>) : '—'}</dd>
             </dl>
           </Panel>
 

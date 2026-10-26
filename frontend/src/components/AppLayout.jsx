@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import { useScrollPlace } from '../utils/place';
 import { Nav, Offcanvas } from 'react-bootstrap';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   ApartmentOutlined, AuditOutlined, BankOutlined, ContactsOutlined, FlagOutlined, HomeOutlined,
-  InboxOutlined, LogoutOutlined, MenuOutlined, ShopOutlined, TeamOutlined,
+  InboxOutlined, LogoutOutlined, MenuOutlined, PictureOutlined, ShopOutlined, TeamOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
 import { isAdmin, isViewer } from '../utils/access';
@@ -19,6 +20,7 @@ const MENU = [
   { to: '/booths', label: 'Booths', icon: <ShopOutlined /> },
   { to: '/produits', label: 'Produits', icon: <InboxOutlined /> },
   { to: '/revue', label: 'Revue du soir', icon: <AuditOutlined /> }, // D38
+  { to: '/galerie', label: 'Galerie', icon: <PictureOutlined /> }, // D68
 ];
 // D52: on a phone, the screens used on the fair floor stay one tap away at the bottom.
 const TABS = [
@@ -42,6 +44,7 @@ const initials = (name) => (name || '?').split(/\s+/).filter(Boolean).slice(0, 2
 // Side bar, page and footer (D49): on large screens it shows when the pointer reaches the left edge,
 // on small ones it is a drawer opened from the top bar.
 export default function AppLayout() {
+  useScrollPlace();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);

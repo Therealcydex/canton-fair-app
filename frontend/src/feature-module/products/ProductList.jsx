@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Alert, App, Button, Popconfirm, Space, Table, Tag, Tooltip } from 'antd';
 import { DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { API_BASE_URL } from '../../config/config';
@@ -11,20 +11,21 @@ import FormModal from '../../components/FormModal';
 import ProductFormFields, { productPayload } from './ProductFormFields';
 import { photosValue } from './PhotosField';
 import ProductThumb from '../../components/ProductThumb';
+import { useResetPage, useStickyState } from '../../utils/place';
 
-// "New product", opened from the page headers (products page, supplier page, booth page: boothId).
-export function NewProductModal({ open, supplierId, onClose }) {
+// "New product", opened from the page headers (products page, supplier page). D68: saving stays
+// on that list; it does not open the new fiche.
+export function NewProductModal({ open, supplierId, onClose, onCreated }) {
   const { message } = App.useApp();
-  const navigate = useNavigate();
   return (
     <FormModal open={open} title="Nouveau produit" width={720}
       initialValues={{ supplier_id: supplierId, shipping_type: 'FOB', currency: 'USD', photos: photosValue(null) }}
       onCancel={onClose}
       onSubmit={(values) => axios.post(`${API_BASE_URL}/products`, productPayload(values))}
-      onSaved={(res) => {
+      onSaved={() => {
         onClose();
         message.success('Produit créé');
-        navigate(`/produits/${res.data.data.id}`);
+        onCreated?.();
       }}>
       <ProductFormFields lockSupplier={!!supplierId} showBooth={false} />
     </FormModal>
@@ -33,14 +34,16 @@ export function NewProductModal({ open, supplierId, onClose }) {
 
 // Table of products for the given API filters, with "Modifier" on each row. D62: products are no
 // longer shared, so the rows are not selectable any more.
-export default function ProductList({ filters, supplierId, onChanged }) {
+export default function ProductList({ filters, supplierId, onChanged, reloadKey = 0 }) {
   const { message } = App.useApp();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [editing, setEditing] = useState(null); // the product being edited
+  const [page, setPage] = useStickyState(`page:products:${supplierId || 'all'}`, 1);
 
   const query = JSON.stringify({ ...filters, supplier_id: supplierId });
+  useResetPage(query, setPage);
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
@@ -54,7 +57,7 @@ export default function ProductList({ filters, supplierId, onChanged }) {
     }
   }, [query]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); }, [load, reloadKey]);
 
   const remove = async (product) => {
     try {
@@ -90,6 +93,10 @@ export default function ProductList({ filters, supplierId, onChanged }) {
       ),
     },
     !supplierId && { title: 'Fournisseur', dataIndex: 'supplier_name', responsive: ['md'], render: (v) => v || '—' },
+    {
+      title: 'Catégories', dataIndex: 'categories_products',
+      render: (names) => (names?.length ? names.map((n) => <Tag key={n}>{n}</Tag>) : '—'),
+    },
     {
       title: 'Booth', dataIndex: 'booth_code', width: 140, responsive: ['md'],
       render: (v, p) => (v ? <Link to={`/booths/${p.booth_id}`}>{boothLabel(p.booth_phase, v)}</Link> : '—'),
@@ -130,7 +137,7 @@ export default function ProductList({ filters, supplierId, onChanged }) {
     <>
       {loadError && <Alert type="error" message={loadError} showIcon className="mb-3" />}
       <Table rowKey="id" columns={columns} dataSource={rows} loading={loading} size="middle"
-        scroll={{ x: true }} pagination={{ pageSize: 30 }} locale={{ emptyText: 'Aucun produit' }} />
+        scroll={{ x: true }} pagination={{ current: page, pageSize: 30, onChange: setPage }} locale={{ emptyText: 'Aucun produit' }} />
 
       <FormModal open={!!editing} title="Modifier le produit" width={720} initialValues={editing}
         onCancel={() => setEditing(null)}

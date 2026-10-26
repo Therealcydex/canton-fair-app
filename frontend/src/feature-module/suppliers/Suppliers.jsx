@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
-import { Alert, App, Button, Input, Rate, Select, Table, Tag } from 'antd';
+import { Alert, App, Button, Input, Rate, Select, Table, Tag, Tooltip } from 'antd';
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import FormModal from '../../components/FormModal';
-import SupplierFormFields, { newSupplierContact } from './SupplierFormFields';
-import { supplierInitialValues, supplierPayload } from './SupplierDetail';
+import SupplierFormFields from './SupplierFormFields';
+import { supplierInitialValues, supplierPayload, saveSupplier } from './SupplierDetail';
+import { saveDraftContacts } from './SupplierContacts';
 import { companyLabel } from '../../utils/lists';
 import { EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import PageHeader from '../../components/PageHeader';
 import useDebounced from '../../utils/useDebounced';
+import { useResetPage, useStickyState } from '../../utils/place';
 import { useAuth } from '../../context/AuthContext';
 import { isAdmin, isViewer } from '../../utils/access';
 
@@ -30,17 +32,26 @@ export default function Suppliers() {
   const [rows, setRows] = useState([]);
   // D66: only the provinces of at least one supplier, reloaded with the list (a new supplier can add one).
   const [provinces, setProvinces] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [companies, setCompanies] = useState([]);
   // D60: the search applies as you type; "Réinitialiser" and each clear (×) empty the filters at once.
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useStickyState('search:suppliers', '');
   const q = useDebounced(search.trim());
-  const [filters, setFilters] = useState({}); // province_id, phase, hall (D66: through the booths)
+  const [filters, setFilters] = useStickyState('filters:suppliers', {}); // province_id, phase, hall (D66: through the booths)
+  const [page, setPage] = useStickyState('page:suppliers', 1);
+  useResetPage(`${q}|${filters.province_id || ''}|${filters.phase || ''}|${filters.hall || ''}|${(filters.categories_suppliers || []).join(',')}`, setPage);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [creating, setCreating] = useState(false);
+  const [draftContacts, setDraftContacts] = useState([]);
   const [editing, setEditing] = useState(null); // the supplier being edited
 
-  const query = JSON.stringify({ q: q || undefined, ...filters });
+  const { categories_suppliers: categoryNames, ...restFilters } = filters;
+  const query = JSON.stringify({
+    q: q || undefined,
+    ...restFilters,
+    categories_suppliers: categoryNames?.length ? categoryNames.join(',') : undefined,
+  });
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
@@ -59,31 +70,29 @@ export default function Suppliers() {
   }, [query]);
 
   useEffect(() => { load(); }, [load]);
+  const loadCategories = useCallback(() => {
+    axios.get(`${API_BASE_URL}/suppliers/categories`).then((r) => setCategories(r.data.data)).catch(() => {});
+  }, []);
+  useEffect(() => { loadCategories(); }, [loadCategories]);
   useEffect(() => {
     if (admin) axios.get(`${API_BASE_URL}/companies`).then((r) => setCompanies(r.data.data)).catch(() => {});
   }, [admin]);
 
   const set = (key) => (value) => setFilters((f) => ({ ...f, [key]: value ?? undefined }));
 
-  // The supplier, then its contact and the contact's WeChat QR code when the form has them (D52).
-  // Once the supplier is saved, a refused contact does not undo it: the message says what is
-  // missing, and the supplier page opens to finish it.
+  // The supplier, then the contacts added in the form. A refused contact does not undo the supplier.
   const createSupplier = async (values) => {
     const res = await axios.post(`${API_BASE_URL}/suppliers`, supplierPayload(values));
     const id = res.data.data.id;
-    const contact = newSupplierContact(values);
-    if (contact) {
-      try {
-        const { wechat_qr: wechatQr, ...fields } = contact;
-        const created = await axios.post(`${API_BASE_URL}/suppliers/${id}/contacts`, fields);
-        if (wechatQr) {
-          await axios.put(`${API_BASE_URL}/suppliers/${id}/contacts/${created.data.data.id}/wechat-qr`, { content: wechatQr });
-        }
-      } catch (err) {
-        message.warning(`Fournisseur enregistré, mais pas tout le contact : ${apiError(err, 'erreur')}`);
-      }
-    }
+    const failed = await saveDraftContacts(id, draftContacts);
+    if (failed) message.warning(`Fournisseur enregistré, mais pas tous les contacts : ${apiError(failed, 'erreur')}`);
     return id;
+  };
+
+  const reloadEditing = async () => {
+    if (!editing?.id) return;
+    const { data } = await axios.get(`${API_BASE_URL}/suppliers/${editing.id}`);
+    setEditing(data.data);
   };
 
   const visitPct = (r) => (r.booth_visit_pct === null ? -1 : Number(r.booth_visit_pct));
@@ -104,8 +113,18 @@ export default function Suppliers() {
     },
     { title: 'Téléphone', dataIndex: 'phone', responsive: ['md'], render: (v) => v || '—' },
     {
-      title: 'Note', dataIndex: 'rating', width: 150, sorter: (a, b) => (a.rating || 0) - (b.rating || 0),
+      title: 'Catégories', dataIndex: 'categories_suppliers',
+      render: (names) => (names?.length ? names.map((n) => <Tag key={n}>{n}</Tag>) : '—'),
+    },
+    {
+      title: 'Évaluation', dataIndex: 'rating', width: 150, sorter: (a, b) => (a.rating || 0) - (b.rating || 0),
       render: (v) => (v ? <Rate disabled value={v} style={{ fontSize: 14 }} /> : <span className="text-muted small">Non noté</span>),
+    },
+    {
+      title: 'Notes', dataIndex: 'notes', width: 220, ellipsis: true,
+      render: (v) => (v
+        ? <Tooltip title={v}><span className="d-inline-block text-truncate" style={{ maxWidth: 200 }}>{v}</span></Tooltip>
+        : '—'),
     },
     { title: 'Booths', dataIndex: 'nbr_booths', width: 80, align: 'right', responsive: ['lg'] },
     {
@@ -129,7 +148,16 @@ export default function Suppliers() {
     },
     !viewer && {
       title: '', key: 'actions', width: 110, align: 'right',
-      render: (_, r) => <Button size="small" icon={<EditOutlined />} onClick={() => setEditing(r)}>Modifier</Button>,
+      render: (_, r) => (
+        <Button size="small" icon={<EditOutlined />} onClick={async () => {
+          try {
+            const { data } = await axios.get(`${API_BASE_URL}/suppliers/${r.id}`);
+            setEditing(data.data);
+          } catch (err) {
+            message.error(apiError(err, 'Erreur lors du chargement du fournisseur'));
+          }
+        }}>Modifier</Button>
+      ),
     },
   ].filter(Boolean);
 
@@ -139,7 +167,7 @@ export default function Suppliers() {
         subtitle={viewer
           ? 'Les fournisseurs partagés avec vos sociétés, leurs contacts, booths et produits (lecture seule)'
           : 'Fournisseurs du groupe, leurs contacts, booths et produits'}
-        actions={viewer ? null : <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>Nouveau fournisseur</Button>} />
+        actions={viewer ? null : <Button type="primary" icon={<PlusOutlined />} onClick={() => { setDraftContacts([]); setCreating(true); }}>Nouveau fournisseur</Button>} />
       <div className="sc-filters">
         <Input prefix={<SearchOutlined />} placeholder="Rechercher par nom ou téléphone" allowClear style={{ width: 280 }}
           value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -151,6 +179,9 @@ export default function Suppliers() {
           value={filters.phase} onChange={set('phase')} options={PHASES} />
         <Select prefix={<span className="sc-label">Hall :</span>} placeholder="Tous" allowClear showSearch optionFilterProp="label"
           style={{ width: 170 }} value={filters.hall} onChange={set('hall')} options={HALLS} />
+        <Select prefix={<span className="sc-label">Catégories :</span>} placeholder="Toutes" allowClear mode="multiple"
+          showSearch optionFilterProp="label" style={{ minWidth: 220 }} value={filters.categories_suppliers} onChange={set('categories_suppliers')}
+          options={categories.map((c) => ({ value: c.name, label: c.name }))} />
         <Button type="link" icon={<ReloadOutlined />} className="fw-semibold px-1"
           onClick={() => { setSearch(''); setFilters({}); }}>Réinitialiser</Button>
         {!loading && !loadError && (
@@ -162,26 +193,28 @@ export default function Suppliers() {
       )}
       {loadError && <Alert type="error" message={loadError} showIcon className="mb-3" />}
       <Table rowKey="id" columns={columns} dataSource={rows} loading={loading} size="middle"
-        scroll={{ x: true }} pagination={{ pageSize: 20 }} />
+        scroll={{ x: true }} pagination={{ current: page, pageSize: 20, onChange: setPage }} />
 
       {!viewer && (
         <>
-          <FormModal open={!!editing} title="Modifier le fournisseur" width={640} initialValues={supplierInitialValues(editing, admin)}
+          <FormModal open={!!editing} title="Modifier le fournisseur" width={880} initialValues={supplierInitialValues(editing, admin)}
             onCancel={() => setEditing(null)}
-            onSubmit={(values) => axios.put(`${API_BASE_URL}/suppliers/${editing.id}`, supplierPayload(values))}
-            onSaved={() => { setEditing(null); message.success('Fournisseur modifié'); load(); }}>
-            <SupplierFormFields />
+            onSubmit={(values) => saveSupplier(editing.id, values)}
+            onSaved={() => { setEditing(null); message.success('Fournisseur modifié'); load(); loadCategories(); }}>
+            <SupplierFormFields withContact supplierId={editing?.id} contacts={editing?.contacts || []} onContacts={reloadEditing} />
           </FormModal>
 
-          <FormModal open={creating} title="Nouveau fournisseur" width={640}
-            onCancel={() => setCreating(false)}
+          <FormModal open={creating} title="Nouveau fournisseur" width={880}
+            onCancel={() => { setCreating(false); setDraftContacts([]); }}
             onSubmit={createSupplier}
             onSaved={(id) => {
               setCreating(false);
+              setDraftContacts([]);
               message.success('Fournisseur créé');
+              loadCategories();
               navigate(`/fournisseurs/${id}`);
             }}>
-            <SupplierFormFields withContact />
+            <SupplierFormFields withContact contacts={draftContacts} onContacts={setDraftContacts} />
           </FormModal>
         </>
       )}

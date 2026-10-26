@@ -5,6 +5,7 @@ const { loadSupplier, loadCompanyIds, idList } = require('../utils/scope');
 const { deleteImages, imageExtension, saveImages } = require('../utils/upload');
 const { parseDataImage } = require('../utils/dataImage');
 const { isAdmin, isViewer, sharedWithViewer } = require('../utils/access');
+const { parseCategories, storedCategories, readCategoryNames, categoryMatch, listCategories, addCategory } = require('../utils/categories');
 
 // D63: the contact's photo, resized by the app to about 256 px.
 const MAX_AVATAR_BYTES = 100 * 1024;
@@ -40,6 +41,7 @@ const qrFiles = (rows) => rows.map((r) => r.wechat_qr).filter(isQrPhoto);
 // D66: shared_company_ids, the companies the supplier is shared with, for the buyers and the
 // admin only (a viewer does not learn which other companies read it). A subquery, so
 // v_suppliers keeps no GROUP BY (D23).
+// D69: categories_suppliers is a JSON array of names (or NULL) on the supplier row.
 const supplierSelect = (viewer) => `
   SELECT v.*,
          (SELECT COUNT(*) FROM suppliers s2 WHERE s2.id <= v.id) AS supplier_no,
@@ -49,6 +51,7 @@ const supplierSelect = (viewer) => `
              FROM supplier_shares ss WHERE ss.supplier_id = v.id) AS shared_company_ids`}
   FROM v_suppliers v`;
 const withShareIds = (row) => (row.shared_company_ids === undefined ? row : { ...row, shared_company_ids: idList(row.shared_company_ids) });
+const present = (row) => ({ ...withShareIds(row), categories_suppliers: parseCategories(row.categories_suppliers) });
 
 // D42: the exhibitor's page on the fair's site, only an http(s) address of cantonfair.org.cn
 // (or cantonfair.org): the apps open it as a link.
@@ -108,8 +111,12 @@ exports.list = handle('Supplier list', async (req, res) => {
     params.push(n);
   }
   if (booth.length) where += ` AND EXISTS (SELECT 1 FROM booths b WHERE b.supplier_id = v.id AND ${booth.join(' AND ')})`;
+  const categories = await categoryMatch(db, 'categories_suppliers', 'v.categories_suppliers', req.query.categories_suppliers);
+  if (categories.error) return fail(res, 400, 'Filtre categories_suppliers invalide');
+  where += categories.sql;
+  params.push(...categories.params);
   const [rows] = await db.query(`${supplierSelect(isViewer(req.user))} WHERE ${where} ORDER BY v.name LIMIT 500`, params);
-  res.json({ success: true, data: rows.map(withShareIds) });
+  res.json({ success: true, data: rows.map(present) });
 });
 
 // D66: the provinces of at least one supplier (of the viewer's shared suppliers for a viewer),
@@ -121,6 +128,17 @@ exports.provinces = handle('Supplier provinces', async (req, res) => {
      WHERE EXISTS (SELECT 1 FROM suppliers v WHERE v.province_id = p.id${scope.where})
      ORDER BY p.name_en`, scope.params);
   res.json({ success: true, data: rows });
+});
+
+// D69: the supplier categories (the list the forms and the filter use).
+exports.listCategories = handle('Supplier categories', async (req, res) => {
+  res.json({ success: true, data: await listCategories(db, 'categories_suppliers') });
+});
+
+exports.addCategory = handle('Supplier category create', async (req, res) => {
+  const r = await addCategory(db, 'categories_suppliers', req.body?.name);
+  if (r.status) return fail(res, r.status, r.message);
+  res.json({ success: true, data: r.data });
 });
 
 // D66: a viewer only opens a supplier shared with one of its companies (404 otherwise, as if it
@@ -137,7 +155,7 @@ exports.getById = handle('Supplier getById', async (req, res) => {
     'SELECT id, name, phone, email, wechat_qr, avatar FROM contacts WHERE supplier_id = ? ORDER BY name',
     [r.row.id]
   );
-  const data = { ...withShareIds(supplier), contacts };
+  const data = { ...present(supplier), contacts };
   if (viewer) {
     [data.products] = await db.query(
       `SELECT p.id, p.name, p.supplier_ref, p.description, p.price, p.currency, p.unit, p.moq, p.shipping_type, st.name AS shipping_name,
@@ -159,6 +177,12 @@ async function readShares(req) {
   if (!isAdmin(req.user)) return { status: 403, message: "Seul l'administrateur partage un fournisseur" };
   const r = await loadCompanyIds(raw, 'Partager avec');
   return r.ids ? r : { status: 400, message: r.message };
+}
+
+// D69: categories_suppliers, the names taken from the category list. Missing from the body: the
+// column stays as it is. Returns { names } (the names as stored) or { status, message }.
+async function readCategories(req) {
+  return readCategoryNames(db, 'categories_suppliers', req.body?.categories_suppliers);
 }
 
 // Writes the supplier and, when given, its shares in one transaction. Returns its id.
@@ -190,11 +214,13 @@ exports.create = handle('Supplier create', async (req, res) => {
   if (!v.values) return fail(res, 400, v.message);
   const shares = await readShares(req);
   if (shares.status) return fail(res, shares.status, shares.message);
+  const categories = await readCategories(req);
+  if (categories.status) return fail(res, categories.status, categories.message);
   const s = v.values;
   const id = await writeSupplier(req, shares.ids,
-    `INSERT INTO suppliers (name, phone, email, website, cantonfair_url, address, province_id, rating, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [s.name, s.phone, s.email, s.website, s.cantonfair_url, s.address, s.province_id, s.rating, s.notes]
+    `INSERT INTO suppliers (name, phone, email, website, cantonfair_url, address, province_id, rating, notes, categories_suppliers)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [s.name, s.phone, s.email, s.website, s.cantonfair_url, s.address, s.province_id, s.rating, s.notes, storedCategories(categories.names)]
   );
   res.json({ success: true, data: { id, name: s.name } });
 });
@@ -206,11 +232,14 @@ exports.update = handle('Supplier update', async (req, res) => {
   if (!v.values) return fail(res, 400, v.message);
   const shares = await readShares(req);
   if (shares.status) return fail(res, shares.status, shares.message);
+  const categories = await readCategories(req);
+  if (categories.status) return fail(res, categories.status, categories.message);
   const s = v.values;
+  const stored = categories.names === null ? r.row.categories_suppliers : storedCategories(categories.names);
   await writeSupplier(req, shares.ids,
     `UPDATE suppliers SET name = ?, phone = ?, email = ?, website = ?, cantonfair_url = ?, address = ?,
-            province_id = ?, rating = ?, notes = ? WHERE id = ?`,
-    [s.name, s.phone, s.email, s.website, s.cantonfair_url, s.address, s.province_id, s.rating, s.notes, r.row.id],
+            province_id = ?, rating = ?, notes = ?, categories_suppliers = ? WHERE id = ?`,
+    [s.name, s.phone, s.email, s.website, s.cantonfair_url, s.address, s.province_id, s.rating, s.notes, stored, r.row.id],
     r.row.id
   );
   res.json({ success: true, data: { id: r.row.id } });

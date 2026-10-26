@@ -7,13 +7,13 @@ import { CANTON_FAIR_URL } from '../../utils/fairPlan';
 import { useAuth } from '../../context/AuthContext';
 import { isAdmin } from '../../utils/access';
 import { CardScan } from '../contacts/ContactFormFields';
-import { QrPicker } from './WechatQr';
+import SupplierContacts from './SupplierContacts';
+import CategorySelect from '../../components/CategorySelect';
 
 // Fields of the supplier form; the server checks the same rules (name required, 1-5 rating…).
-// `withContact` (new supplier, D52): the business card scan and the first contact, as on the fair
-// floor: the company and the website go to the supplier, the person to the contact.
-// D66: the admin's form also has "Partager avec", the companies whose viewers read the supplier.
-export default function SupplierFormFields({ withContact = false }) {
+// `withContact`: the business card scan, and the supplier's contacts as a table. "Ajouter contact"
+// opens the same "Nouveau contact" form. D66: the admin's form also has "Partager avec".
+export default function SupplierFormFields({ withContact = false, supplierId, contacts, onContacts }) {
   const provinces = useList('provinces');
   const form = Form.useFormInstance();
   const { user } = useAuth();
@@ -25,7 +25,7 @@ export default function SupplierFormFields({ withContact = false }) {
   return (
     <>
       {withContact && (
-        <CardScan prefix="contact_" onRead={(card, now) => {
+        <CardScan onRead={(card, now) => {
           const fill = {};
           if (card.company && !now.name) fill.name = card.company;
           if (card.website && !now.website) fill.website = card.website;
@@ -60,8 +60,9 @@ export default function SupplierFormFields({ withContact = false }) {
         <Input maxLength={255} placeholder="https://www.cantonfair.org.cn/…" />
       </Form.Item>
       <Form.Item name="address" label="Adresse"><Input.TextArea rows={2} /></Form.Item>
-      <Form.Item name="rating" label="Note"><Rate allowClear /></Form.Item>
+      <Form.Item name="rating" label="Évaluation"><Rate allowClear /></Form.Item>
       <Form.Item name="notes" label="Notes"><Input.TextArea rows={3} /></Form.Item>
+      <CategorySelect name="categories_suppliers" listPath="/suppliers/categories" />
       {admin && (
         <Form.Item name="share_company_ids" label="Partager avec"
           extra="Les lecteurs de ces sociétés verront ce fournisseur, ses contacts, booths et produits, en lecture seule.">
@@ -69,29 +70,7 @@ export default function SupplierFormFields({ withContact = false }) {
             options={companies.map((c) => ({ value: c.id, label: companyLabel(c) }))} />
         </Form.Item>
       )}
-      {withContact && (
-        <>
-          <h3 className="h6 mt-2">Contact <span className="fw-normal small text-secondary">(facultatif)</span></h3>
-          <Form.Item name="contact_name" label="Nom du contact"><Input maxLength={150} /></Form.Item>
-          <Row gutter={12}>
-            <Col xs={24} sm={12}>
-              <Form.Item name="contact_phone" label="Téléphone mobile"><Input maxLength={50} inputMode="tel" /></Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item name="contact_email" label="E-mail" rules={[{ type: 'email', message: 'Adresse e-mail invalide' }]}>
-                <Input maxLength={150} inputMode="email" />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Form.Item name="contact_wechat_qr" label="QR code WeChat" className="mb-0"><QrPicker /></Form.Item>
-        </>
-      )}
+      {withContact && <SupplierContacts supplierId={supplierId} contacts={contacts} onContacts={onContacts} />}
     </>
   );
 }
-
-// The contact typed in a new supplier's form, or null when it is empty.
-export const newSupplierContact = (v) => {
-  const contact = { name: v.contact_name || null, phone: v.contact_phone || null, email: v.contact_email || null };
-  return contact.name || contact.phone || contact.email || v.contact_wechat_qr ? { ...contact, wechat_qr: v.contact_wechat_qr || null } : null;
-};

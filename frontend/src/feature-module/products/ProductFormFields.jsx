@@ -5,6 +5,7 @@ import { API_BASE_URL } from '../../config/config';
 import { useList } from '../../utils/lists';
 import { boothLabel, CURRENCIES } from '../../utils/format';
 import PhotosField from './PhotosField';
+import CategorySelect from '../../components/CategorySelect';
 
 // Fields of the product form. The server checks the same rules (price with 2 decimals at most,
 // a shipping type of the list) and explains a refusal.
@@ -81,6 +82,7 @@ export default function ProductFormFields({ lockSupplier, showBooth = true }) {
         </Col>
       </Row>
       <Form.Item name="description" label="Description"><Input.TextArea rows={4} /></Form.Item>
+      <CategorySelect name="categories_products" listPath="/products/categories" />
       {/* D61: the photos are sent with the product, resized, stored as Base64. */}
       <Form.Item name="photos" label="Photos" className="mb-0" extra="JPG, PNG ou WebP, 10 au plus : elles sont réduites avant l'envoi.">
         <PhotosField />

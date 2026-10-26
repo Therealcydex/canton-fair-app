@@ -54,6 +54,17 @@ async function main() {
       if (!needed[step.name]) throw new Error(`unknown step "${step.name}" in update_fair_plan.sql`);
       if (!(await needed[step.name]())) continue;
       await conn.query(step.sql);
+      if (step.name === 'view' && await hasColumn('suppliers', 'categories_suppliers')) {
+        // D69: the step above is the view from before the supplier category column. Put it back.
+        await conn.query(`CREATE OR REPLACE VIEW v_suppliers AS
+          SELECT s.id, s.name, s.phone, s.email, s.website, s.address, s.province_id, s.rating, s.notes,
+                 s.cantonfair_url, s.categories_suppliers, p.name_en AS province,
+                 (SELECT COUNT(*) FROM booths b WHERE b.supplier_id = s.id) AS nbr_booths,
+                 (SELECT ROUND(100 * SUM(b.visited) / NULLIF(COUNT(*), 0))
+                    FROM booths b WHERE b.supplier_id = s.id) AS booth_visit_pct
+          FROM suppliers s
+          LEFT JOIN china_province p ON p.id = s.province_id`);
+      }
       if (step.name !== 'view') {
         console.log(`  ${step.name}`);
         run++;

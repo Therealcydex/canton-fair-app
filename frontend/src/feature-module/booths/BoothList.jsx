@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthContext';
 import { isViewer } from '../../utils/access';
 import { categoryParent, useList } from '../../utils/lists';
 import { boothLabel } from '../../utils/format';
+import { useResetPage, useStickyState } from '../../utils/place';
 
 const two = (n) => String(n).padStart(2, '0'); // D50: booth numbers on 2 digits, as on the badges
 export const boothNumber = (b) => (b.num_start == null ? '—' : `${two(b.num_start)}${b.num_end == null ? '' : `-${two(b.num_end)}`}`);
@@ -138,7 +139,7 @@ function BoothGroups({ rows, loading, columns }) {
 // receives the rows, for the page's counters.
 // `checklist` (D52, "À visiter" on a phone): the booths as cards grouped by hall, each with a big ✓
 // that marks it visited (tap again to undo); the visited booths go to the bottom of their hall.
-export default function BoothList({ filters, supplierId, planning, checklist, onChanged, createOpen, onCreateOpenChange, onLoaded }) {
+export default function BoothList({ filters, supplierId, planning, checklist, onChanged, createOpen, onCreateOpenChange, onLoaded, pageKey }) {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
@@ -149,11 +150,16 @@ export default function BoothList({ filters, supplierId, planning, checklist, on
   const setCreating = onCreateOpenChange ?? setOwnCreating;
   const [editing, setEditing] = useState(null); // the booth being edited
   const [pageSize, setPageSize] = useState(20);
+  const [savedPage, setSavedPage] = useStickyState(pageKey || 'page:booths-unused', 1);
+  const [localPage, setLocalPage] = useState(1);
+  const page = pageKey ? savedPage : localPage;
+  const setPage = pageKey ? setSavedPage : setLocalPage;
   const categories = useList('canton-categories');
   const { user } = useAuth();
   const viewer = isViewer(user); // D66: read-only, the booths of its shared suppliers
 
   const query = JSON.stringify({ ...filters, supplier_id: supplierId });
+  useResetPage(query, setPage);
   // Only the answer to the latest request is shown: when the filters change quickly (the page
   // switches to the phone checklist right after its first render), an older answer can come last.
   const latest = useRef(0);
@@ -284,7 +290,8 @@ export default function BoothList({ filters, supplierId, planning, checklist, on
         <Table rowKey="id" columns={columns} dataSource={rows} loading={loading} size="middle" className="sc-table"
           scroll={{ x: 'max-content' }}
           pagination={{
-            pageSize, showSizeChanger: true, pageSizeOptions: [20, 50, 100], onShowSizeChange: (_, size) => setPageSize(size),
+            current: page, pageSize, showSizeChanger: true, pageSizeOptions: [20, 50, 100],
+            onChange: (p, size) => { setPage(p); setPageSize(size); },
             showTotal: (total, [from, to]) => <>Affichage de <strong>{from} à {to}</strong> sur <strong>{total}</strong> booth{total > 1 ? 's' : ''}</>,
           }}
           locale={{ emptyText: planning ? 'Aucun booth à visiter' : 'Aucun booth' }} />

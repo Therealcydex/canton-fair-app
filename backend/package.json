@@ -20,7 +20,9 @@
     "db:update-boss-fixes": "node sql/update_boss_fixes.js",
     "db:update-booth-edition": "node sql/update_booth_edition.js",
     "db:update-supplier-shares": "node sql/update_supplier_shares.js",
-    "db:update-product-currency": "node sql/update_product_currency.js"
+    "db:update-product-currency": "node sql/update_product_currency.js",
+    "db:update-supplier-categories": "node sql/update_supplier_categories.js",
+    "db:update-product-categories": "node sql/update_product_categories.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

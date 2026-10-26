@@ -7,6 +7,7 @@ import BoothList, { boothNumber } from './BoothList';
 import PageHeader from '../../components/PageHeader';
 import { useAuth } from '../../context/AuthContext';
 import useDebounced from '../../utils/useDebounced';
+import { useStickyState } from '../../utils/place';
 import { isViewer } from '../../utils/access';
 import { boothLabel } from '../../utils/format';
 
@@ -32,8 +33,9 @@ export default function Booths({ planning = false }) {
   const categories = useList('canton-categories');
   const screens = Grid.useBreakpoint();
   const checklist = planning && screens.md === false; // a phone's width
-  const [filters, setFilters] = useState({});
-  const [search, setSearch] = useState('');
+  const place = planning ? 'a-visiter' : 'booths';
+  const [filters, setFilters] = useStickyState(`filters:${place}`, {});
+  const [search, setSearch] = useStickyState(`search:${place}`, '');
   const q = useDebounced(search.trim()); // D60: the search applies as you type
   const [rows, setRows] = useState([]);
   const [creating, setCreating] = useState(false);
@@ -85,7 +87,7 @@ export default function Booths({ planning = false }) {
 
       {/* D52, D66: "À visiter" keeps the visited booths (to count them and undo a tap). */}
       <BoothList filters={{ ...filters, q: q || undefined, category_path: undefined, visited: planning ? undefined : filters.visited }}
-        planning={planning} checklist={checklist}
+        planning={planning} checklist={checklist} pageKey={`page:${place}`}
         createOpen={creating} onCreateOpenChange={setCreating} onLoaded={setRows} />
 
       <Row gutter={[16, 16]} className="mt-3">

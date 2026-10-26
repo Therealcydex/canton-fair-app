@@ -22,13 +22,13 @@ export function CardScan({ prefix = '', onRead }) {
 
 // Fields of the contact form, used by the supplier page and the contacts page. The server checks
 // the same rules (at least a name, a phone or an e-mail; a valid e-mail) and explains a refusal.
-// `suppliers` (optional) adds the supplier choice and the business card scan, for a new contact.
-// D49: laid out like the Stitch "Nouveau contact" form.
-export default function ContactFormFields({ suppliers }) {
+// `suppliers` (optional) adds the supplier choice, for a new contact on the contacts page.
+// `scan` shows the business-card scan without that choice (the supplier form already knows who).
+export default function ContactFormFields({ suppliers, scan = false }) {
   const name = Form.useWatch('name');
   return (
     <>
-      {suppliers && <CardScan />}
+      {(suppliers || scan) && <CardScan />}
       {suppliers && (
         <Form.Item name="supplier_id" label="Fournisseur rattaché" rules={[{ required: true, message: 'Choisissez le fournisseur' }]}>
           <Select showSearch optionFilterProp="label" placeholder="Sélectionner un fournisseur…"

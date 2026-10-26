@@ -61,6 +61,32 @@ module.exports = async (ctx) => {
   const updated = await api('GET', `/suppliers/${id}`, { token: A });
   check('update kept the name and cleared the province',
     updated.body.data.name === `${PREFIX} Shenzhen 100%_Lighting` && updated.body.data.province_id === null && updated.body.data.rating === 5);
+  check('a new supplier has no category', Array.isArray(updated.body.data.categories_suppliers) && updated.body.data.categories_suppliers.length === 0);
+
+  // D69: the category list is names only; a supplier stores the chosen names on its own row.
+  expect('category without a name', await api('POST', '/suppliers/categories', { token: A, body: {} }), 400);
+  expect('categories need a token', await api('POST', '/suppliers/categories', { body: { name: `${PREFIX} Lighting` } }), 401);
+  const cat = expect('create a category', await api('POST', '/suppliers/categories', { token: A, body: { name: `${PREFIX} Lighting` } }), 200);
+  const again = expect('the same category name', await api('POST', '/suppliers/categories', { token: B, body: { name: `${PREFIX} Lighting` } }), 200);
+  check('the same name is the same category', again.body.data.name === cat.body.data.name && cat.body.data.id === undefined);
+  const other = expect('a second category', await api('POST', '/suppliers/categories', { token: A, body: { name: `${PREFIX} Hardware` } }), 200);
+  expect('unknown category', await api('PUT', `/suppliers/${id}`, { token: A, body: { categories_suppliers: [`${PREFIX} Missing`] } }), 400);
+  expect('categories must be a list', await api('PUT', `/suppliers/${id}`, { token: A, body: { categories_suppliers: cat.body.data.name } }), 400);
+  expect('invalid category filter', await api('GET', '/suppliers?categories_suppliers=,', { token: A }), 400);
+  expect('set the categories', await api('PUT', `/suppliers/${id}`, { token: A, body: { categories_suppliers: [cat.body.data.name, other.body.data.name] } }), 200);
+  const filed = await api('GET', `/suppliers/${id}`, { token: A });
+  check('both categories on the supplier',
+    filed.body.data.categories_suppliers.length === 2 && filed.body.data.categories_suppliers.includes(`${PREFIX} Lighting`));
+  const byCategory = expect('filter by category', await api('GET', `/suppliers?categories_suppliers=${encodeURIComponent(cat.body.data.name)}`, { token: A }), 200);
+  check('the filter keeps the supplier', byCategory.body.data.some((x) => x.id === id));
+  const miss = expect('filter by a category it does not have', await api('POST', '/suppliers/categories', { token: A, body: { name: `${PREFIX} Unused` } }), 200);
+  const empty = expect('that filter is empty for it', await api('GET', `/suppliers?categories_suppliers=${encodeURIComponent(miss.body.data.name)}`, { token: A }), 200);
+  check('the supplier is left out', !empty.body.data.some((x) => x.id === id));
+  expect('a later edit keeps the categories', await api('PUT', `/suppliers/${id}`, { token: B, body: { notes: 'kept' } }), 200);
+  const kept = await api('GET', `/suppliers/${id}`, { token: A });
+  check('categories stayed', kept.body.data.categories_suppliers.length === 2 && kept.body.data.notes === 'kept');
+  expect('clear the categories', await api('PUT', `/suppliers/${id}`, { token: A, body: { categories_suppliers: [] } }), 200);
+
   expect('unknown supplier', await api('GET', '/suppliers/999999', { token: A }), 404);
   expect('invalid id', await api('GET', '/suppliers/abc', { token: A }), 400);
 

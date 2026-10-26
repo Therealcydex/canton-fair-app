@@ -85,11 +85,13 @@ module.exports = async (ctx) => {
   expect('viewer edits the supplier', await api('PUT', `/suppliers/${shared}`, { token: V, body: { notes: 'x' } }), 403);
   expect('viewer deletes the supplier', await api('DELETE', `/suppliers/${shared}`, { token: V }), 403);
   expect('viewer creates a supplier', await api('POST', '/suppliers', { token: V, body: { name: `${PREFIX} x` } }), 403);
+  expect('viewer reads the supplier categories', await api('GET', '/suppliers/categories', { token: V }), 200);
+  expect('viewer adds a category', await api('POST', '/suppliers/categories', { token: V, body: { name: `${PREFIX} x` } }), 403);
   expect('viewer reads the contacts route', await api('GET', `/suppliers/${shared}/contacts`, { token: V }), 403);
   expect('viewer adds a contact', await api('POST', `/suppliers/${shared}/contacts`, { token: V, body: { name: 'x' } }), 403);
   expect('viewer edits the booth', await api('PUT', `/booths/${sharedBooth}`, { token: V, body: { comment: 'x' } }), 403);
   expect('viewer marks it visited', await api('PATCH', `/booths/${sharedBooth}/visited`, { token: V, body: { visited: true } }), 403);
-  for (const url of ['/products', '/contacts', '/dashboard', '/companies', '/users', '/fair-plan']) {
+  for (const url of ['/products', '/products/categories', '/products/gallery', '/contacts', '/dashboard', '/companies', '/users', '/fair-plan']) {
     expect(`viewer reads ${url}`, await api('GET', url, { token: V }), 403);
   }
   expect('viewer reads the reference lists', await api('GET', '/lists/provinces', { token: V }), 200);
