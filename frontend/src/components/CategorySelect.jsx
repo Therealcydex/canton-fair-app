@@ -7,7 +7,7 @@ import { apiError } from '../utils/apiError';
 // A multi-select of names from a one-column category list. "Nouvelle catégorie" adds the name
 // to that list and selects it. The button runs on mouse down: a click inside the open list is
 // otherwise swallowed before "Ajouter" can run, and the field never receives what was typed.
-export default function CategorySelect({ name, listPath }) {
+export default function CategorySelect({ name, listPath, multiple = true }) {
   const { message } = App.useApp();
   const form = Form.useFormInstance();
   const busy = useRef(false);
@@ -27,8 +27,12 @@ export default function CategorySelect({ name, listPath }) {
       setOptions((rows) => (rows.some((r) => r.name === saved)
         ? rows
         : [...rows, { name: saved }].sort((a, b) => a.name.localeCompare(b.name, 'fr'))));
-      const current = form.getFieldValue(name) || [];
-      if (!current.includes(saved)) form.setFieldsValue({ [name]: [...current, saved] });
+      if (multiple) {
+        const current = form.getFieldValue(name) || [];
+        if (!current.includes(saved)) form.setFieldsValue({ [name]: [...current, saved] });
+      } else {
+        form.setFieldsValue({ [name]: saved });
+      }
       setAdding('');
       message.success('Catégorie ajoutée');
     } catch (err) {
@@ -39,8 +43,9 @@ export default function CategorySelect({ name, listPath }) {
   };
 
   return (
-    <Form.Item name={name} label="Catégories">
-      <Select mode="multiple" allowClear showSearch optionFilterProp="label" placeholder="Aucune catégorie"
+    <Form.Item name={name} label={multiple ? 'Catégories' : 'Catégorie'}>
+      <Select mode={multiple ? 'multiple' : undefined} allowClear showSearch optionFilterProp="label"
+        placeholder={multiple ? 'Aucune catégorie' : 'Aucune catégorie'}
         options={options.map((c) => ({ value: c.name, label: c.name }))}
         popupRender={(menu) => (
           <>

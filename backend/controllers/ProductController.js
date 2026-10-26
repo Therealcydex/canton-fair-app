@@ -3,7 +3,7 @@ const { fail, handle, toId, clean, likeContains } = require('../utils/http');
 const { validate } = require('../utils/validate');
 const { loadProduct } = require('../utils/scope');
 const { parseDataImage } = require('../utils/dataImage');
-const { parseCategories, storedCategories, readCategoryNames, categoryMatch, listCategories, addCategory } = require('../utils/categories');
+const { readCategoryName, categoryIn, listCategories, addCategory } = require('../utils/categories');
 
 // D61: the photos are stored as Base64 in the database, resized by the app before sending
 // (about 1280 px for the photo, 200 px for the thumbnail shown in the lists).
@@ -42,7 +42,7 @@ const PRODUCT_SELECT = `
   FROM v_products v
   LEFT JOIN suppliers s ON s.id = v.supplier_id`;
 
-const present = (row) => (row ? { ...row, categories_products: parseCategories(row.categories_products) } : row);
+const present = (row) => (row ? { ...row, categories_products: row.categories_products || null } : row);
 
 // supplier_id (optional in v2) and shipping_type (a code of shipping_types) need the database.
 async function validateProduct(req, existing) {
@@ -88,13 +88,35 @@ async function validateProduct(req, existing) {
 // q (name, reference, description).
 // D68: the revue gallery. Thumbnails only — a full photo is loaded with the product when a
 // slide is opened. Newest products first, then each product's photos in the order they were added.
+// "1,2" from the gallery supplier filter. [] means no filter; null means the filter is invalid.
+function idFilter(raw) {
+  if (raw === undefined || raw === '' || raw === null) return [];
+  const parts = Array.isArray(raw) ? raw : String(raw).split(',');
+  const ids = [...new Set(parts.map(toId))];
+  if (ids.includes(null)) return null;
+  return ids;
+}
+
 exports.gallery = handle('Product gallery', async (req, res) => {
+  const params = [];
+  let where = '1=1';
+  const products = await categoryIn(db, 'p.categories_products', req.query.categories_products);
+  if (products.error) return fail(res, 400, 'Filtre categories_products invalide');
+  where += products.sql;
+  params.push(...products.params);
+  const supplierIds = idFilter(req.query.supplier_ids);
+  if (supplierIds === null) return fail(res, 400, 'Filtre supplier_ids invalide');
+  if (supplierIds.length) {
+    where += ' AND p.supplier_id IN (?)';
+    params.push(supplierIds);
+  }
   const [rows] = await db.query(`
     SELECT pi.id, pi.product_id, p.name, pi.thumb_data
     FROM product_images pi
     JOIN products p ON p.id = pi.product_id
+    WHERE ${where}
     ORDER BY p.id DESC, pi.id
-    LIMIT 1000`);
+    LIMIT 1000`, params);
   res.json({ success: true, data: rows });
 });
 
@@ -128,7 +150,7 @@ exports.list = handle('Product list', async (req, res) => {
     where += ' AND (v.name LIKE ? OR v.supplier_ref LIKE ? OR v.description LIKE ?)';
     params.push(likeContains(q), likeContains(q), likeContains(q));
   }
-  const categories = await categoryMatch(db, 'categories_products', 'v.categories_products', req.query.categories_products);
+  const categories = await categoryIn(db, 'v.categories_products', req.query.categories_products);
   if (categories.error) return fail(res, 400, 'Filtre categories_products invalide');
   where += categories.sql;
   params.push(...categories.params);
@@ -155,6 +177,21 @@ exports.addCategory = handle('Product category create', async (req, res) => {
   const r = await addCategory(db, 'categories_products', req.body?.name);
   if (r.status) return fail(res, r.status, r.message);
   res.json({ success: true, data: r.data });
+});
+
+// D71: the same categories on every selected product. The list replaces what each product had.
+exports.assignCategories = handle('Product assign categories', async (req, res) => {
+  const rawIds = req.body?.ids;
+  if (!Array.isArray(rawIds) || !rawIds.length) return fail(res, 400, 'Produits : sélectionnez au moins un produit');
+  const ids = [...new Set(rawIds.map(toId))];
+  if (ids.includes(null) || ids.length > 500) return fail(res, 400, 'Produits : produit invalide');
+  const category = await readCategoryName(db, req.body?.categories_products);
+  if (category.status) return fail(res, category.status, category.message);
+  if (category.name === undefined) return fail(res, 400, 'Catégorie : une seule catégorie');
+  const [found] = await db.query('SELECT id FROM products WHERE id IN (?)', [ids]);
+  if (found.length !== ids.length) return fail(res, 404, 'Produit introuvable');
+  await db.query('UPDATE products SET categories_products = ? WHERE id IN (?)', [category.name, ids]);
+  res.json({ success: true, data: { ids, categories_products: category.name } });
 });
 
 // D61: the photos of a request body, [{ data, thumb }] in images_add, checked one by one.
@@ -234,13 +271,13 @@ exports.create = handle('Product create', async (req, res) => {
   if (!v.values) return fail(res, v.status, v.message);
   const img = readImages(req.body?.images_add);
   if (!img.images) return fail(res, 400, img.message);
-  const categories = await readCategoryNames(db, 'categories_products', req.body?.categories_products);
-  if (categories.status) return fail(res, categories.status, categories.message);
+  const category = await readCategoryName(db, req.body?.categories_products);
+  if (category.status) return fail(res, category.status, category.message);
   const p = v.values;
   const w = await writeProduct(
     `INSERT INTO products (supplier_id, booth_id, supplier_ref, name, description, price, currency, unit, moq, shipping_type, categories_products, created_by)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [p.supplier_id, p.booth_id, p.supplier_ref, p.name, p.description, p.price, p.currency, p.unit, p.moq, p.shipping_type, storedCategories(categories.names), req.user.id],
+    [p.supplier_id, p.booth_id, p.supplier_ref, p.name, p.description, p.price, p.currency, p.unit, p.moq, p.shipping_type, category.name || null, req.user.id],
     null, img.images, []);
   if (!w.id) return fail(res, w.status, w.message);
   res.json({ success: true, data: { id: w.id } });
@@ -256,10 +293,10 @@ exports.update = handle('Product update', async (req, res) => {
   if (!img.images) return fail(res, 400, img.message);
   const rm = await readRemovals(req.body?.images_remove, r.row.id);
   if (!rm.ids) return fail(res, rm.status, rm.message);
-  const categories = await readCategoryNames(db, 'categories_products', req.body?.categories_products);
-  if (categories.status) return fail(res, categories.status, categories.message);
+  const category = await readCategoryName(db, req.body?.categories_products);
+  if (category.status) return fail(res, category.status, category.message);
   const p = v.values;
-  const stored = categories.names === null ? r.row.categories_products : storedCategories(categories.names);
+  const stored = category.name === undefined ? r.row.categories_products : category.name;
   const w = await writeProduct(
     `UPDATE products SET supplier_id = ?, booth_id = ?, supplier_ref = ?, name = ?, description = ?, price = ?,
             currency = ?, unit = ?, moq = ?, shipping_type = ?, categories_products = ? WHERE id = ?`,

@@ -52,19 +52,13 @@ CREATE TABLE IF NOT EXISTS suppliers (
     province_id  INT,                                   -- list from china_province
     rating       TINYINT CHECK (rating BETWEEN 1 AND 5),
     notes        TEXT,
-    categories_suppliers TEXT,                          -- D69: JSON array of names from categories_suppliers, or NULL
+    categories_suppliers TEXT,                          -- D72: several names from categories_products, separated by commas, or NULL
     KEY ix_suppliers_name (name),                       -- D24: search by name
     FOREIGN KEY (province_id) REFERENCES china_province(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- D69: the list of supplier categories. One column, the name. A supplier stores the names
--- it uses in suppliers.categories_suppliers (several allowed). Existing suppliers start with none.
-CREATE TABLE IF NOT EXISTS categories_suppliers (
-    name  VARCHAR(150) NOT NULL PRIMARY KEY
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- D70: the list of product categories. One column, the name. A product stores the names it
--- uses in products.categories_products. Existing products start with none.
+-- D72: one list of category names, used by suppliers (several) and products (one).
+-- Existing suppliers and products start with none.
 CREATE TABLE IF NOT EXISTS categories_products (
     name  VARCHAR(150) NOT NULL PRIMARY KEY
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -155,7 +149,7 @@ CREATE TABLE IF NOT EXISTS products (
     unit           VARCHAR(30),
     moq            INT,
     shipping_type  CHAR(3) DEFAULT 'FOB',         -- picked from shipping_types
-    categories_products TEXT,                     -- D70: JSON array of names from categories_products, or NULL
+    categories_products VARCHAR(150),             -- D72: one name from categories_products, or NULL
     -- D38: the decision on the product, taken by the admin (the boss) at the evening review.
     -- update_product_decision.js adds these columns to an existing table.
     status         VARCHAR(20) NOT NULL DEFAULT 'A_ETUDIER',

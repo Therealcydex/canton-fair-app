@@ -41,7 +41,7 @@ const qrFiles = (rows) => rows.map((r) => r.wechat_qr).filter(isQrPhoto);
 // D66: shared_company_ids, the companies the supplier is shared with, for the buyers and the
 // admin only (a viewer does not learn which other companies read it). A subquery, so
 // v_suppliers keeps no GROUP BY (D23).
-// D69: categories_suppliers is a JSON array of names (or NULL) on the supplier row.
+// D72: categories_suppliers holds several names from categories_products, separated by commas, or NULL.
 const supplierSelect = (viewer) => `
   SELECT v.*,
          (SELECT COUNT(*) FROM suppliers s2 WHERE s2.id <= v.id) AS supplier_no,
@@ -111,7 +111,7 @@ exports.list = handle('Supplier list', async (req, res) => {
     params.push(n);
   }
   if (booth.length) where += ` AND EXISTS (SELECT 1 FROM booths b WHERE b.supplier_id = v.id AND ${booth.join(' AND ')})`;
-  const categories = await categoryMatch(db, 'categories_suppliers', 'v.categories_suppliers', req.query.categories_suppliers);
+  const categories = await categoryMatch(db, 'categories_products', 'v.categories_suppliers', req.query.categories_suppliers);
   if (categories.error) return fail(res, 400, 'Filtre categories_suppliers invalide');
   where += categories.sql;
   params.push(...categories.params);
@@ -132,11 +132,11 @@ exports.provinces = handle('Supplier provinces', async (req, res) => {
 
 // D69: the supplier categories (the list the forms and the filter use).
 exports.listCategories = handle('Supplier categories', async (req, res) => {
-  res.json({ success: true, data: await listCategories(db, 'categories_suppliers') });
+  res.json({ success: true, data: await listCategories(db, 'categories_products') });
 });
 
 exports.addCategory = handle('Supplier category create', async (req, res) => {
-  const r = await addCategory(db, 'categories_suppliers', req.body?.name);
+  const r = await addCategory(db, 'categories_products', req.body?.name);
   if (r.status) return fail(res, r.status, r.message);
   res.json({ success: true, data: r.data });
 });
@@ -182,7 +182,7 @@ async function readShares(req) {
 // D69: categories_suppliers, the names taken from the category list. Missing from the body: the
 // column stays as it is. Returns { names } (the names as stored) or { status, message }.
 async function readCategories(req) {
-  return readCategoryNames(db, 'categories_suppliers', req.body?.categories_suppliers);
+  return readCategoryNames(db, 'categories_products', req.body?.categories_suppliers);
 }
 
 // Writes the supplier and, when given, its shares in one transaction. Returns its id.

@@ -48,19 +48,28 @@ module.exports = async (ctx) => {
   expect('update keeps the rules', await api('PUT', `/products/${id}`, { token: B, body: { moq: -1 } }), 400);
   expect('update product', await api('PUT', `/products/${id}`, { token: B, body: { price: '13.99' } }), 200);
   check('update kept the other fields', (await api('GET', `/products/${id}`, { token: A })).body.data.supplier_ref === 'BW-1');
-  check('a new product has no category', (await api('GET', `/products/${id}`, { token: A })).body.data.categories_products.length === 0);
+  check('a new product has no category', (await api('GET', `/products/${id}`, { token: A })).body.data.categories_products === null);
 
-  // D70: product categories, the same list-and-column as the suppliers.
+  // D72: one category per product, from the shared categories_products list.
   expect('category without a name', await api('POST', '/products/categories', { token: A, body: {} }), 400);
   const cat = expect('create a product category', await api('POST', '/products/categories', { token: A, body: { name: `${PREFIX} Lighting` } }), 200);
   const again = expect('the same product category', await api('POST', '/products/categories', { token: B, body: { name: `${PREFIX} Lighting` } }), 200);
   check('the same name is the same category', again.body.data.name === cat.body.data.name);
-  expect('unknown product category', await api('PUT', `/products/${id}`, { token: A, body: { categories_products: [`${PREFIX} Missing`] } }), 400);
-  expect('set the product categories', await api('PUT', `/products/${id}`, { token: A, body: { categories_products: [cat.body.data.name] } }), 200);
+  expect('unknown product category', await api('PUT', `/products/${id}`, { token: A, body: { categories_products: `${PREFIX} Missing` } }), 400);
+  expect('a product has one category', await api('PUT', `/products/${id}`, { token: A, body: { categories_products: [cat.body.data.name] } }), 400);
+  expect('set the product category', await api('PUT', `/products/${id}`, { token: A, body: { categories_products: cat.body.data.name } }), 200);
   const byCategory = expect('filter products by category', await api('GET', `/products?categories_products=${encodeURIComponent(cat.body.data.name)}`, { token: A }), 200);
   check('the category filter keeps the product', byCategory.body.data.some((p) => p.id === id));
-  expect('a later edit keeps the product categories', await api('PUT', `/products/${id}`, { token: B, body: { price: '14.00' } }), 200);
-  check('product categories stayed', (await api('GET', `/products/${id}`, { token: A })).body.data.categories_products.length === 1);
+  expect('a later edit keeps the product category', await api('PUT', `/products/${id}`, { token: B, body: { price: '14.00' } }), 200);
+  check('product category stayed', (await api('GET', `/products/${id}`, { token: A })).body.data.categories_products === `${PREFIX} Lighting`);
+  expect('assign a category with no product', await api('PUT', '/products/assign-categories', { token: A, body: { ids: [], categories_products: null } }), 400);
+  expect('assign a category needs a token', await api('PUT', '/products/assign-categories', { body: { ids: [id], categories_products: null } }), 401);
+  expect('assign an unknown product', await api('PUT', '/products/assign-categories', { token: A, body: { ids: [999999], categories_products: cat.body.data.name } }), 404);
+  expect('assign the category to several products', await api('PUT', '/products/assign-categories', {
+    token: A, body: { ids: [id, p2.body.data.id], categories_products: cat.body.data.name },
+  }), 200);
+  check('the other product received the category',
+    (await api('GET', `/products/${p2.body.data.id}`, { token: A })).body.data.categories_products === `${PREFIX} Lighting`);
 
   // List and filters (BF12)
   const bySupplier = expect('filter by supplier', await api('GET', `/products?supplier_id=${supplier}`, { token: A }), 200);
@@ -89,6 +98,17 @@ module.exports = async (ctx) => {
   const gallery = expect('gallery of thumbnails', await api('GET', '/products/gallery', { token: A }), 200);
   const shot = gallery.body.data.find((img) => img.product_id === id);
   check('the gallery lists the photo, without the full image', shot && shot.thumb_data === img1.thumb_data && shot.image_data === undefined);
+  const byProductCategory = expect('gallery filtered by product category', await api('GET', `/products/gallery?categories_products=${encodeURIComponent(`${PREFIX} Lighting`)}`, { token: A }), 200);
+  check('the product category keeps the photo', byProductCategory.body.data.some((img) => img.product_id === id));
+  const otherCategory = expect('a product category the photo does not have', await api('POST', '/products/categories', { token: A, body: { name: `${PREFIX} Gallery other` } }), 200);
+  const missed = expect('gallery without that product category', await api('GET', `/products/gallery?categories_products=${encodeURIComponent(otherCategory.body.data.name)}`, { token: A }), 200);
+  check('the other product category leaves the photo out', !missed.body.data.some((img) => img.product_id === id));
+  const byGallerySupplier = expect('gallery filtered by supplier', await api('GET', `/products/gallery?supplier_ids=${supplier}`, { token: A }), 200);
+  check('the supplier keeps the photo', byGallerySupplier.body.data.some((img) => img.product_id === id));
+  const otherSupplier = expect('gallery of another supplier', await api('GET', '/products/gallery?supplier_ids=999999', { token: A }), 200);
+  check('another supplier leaves the photo out', !otherSupplier.body.data.some((img) => img.product_id === id));
+  expect('invalid gallery category filter', await api('GET', '/products/gallery?categories_products=,', { token: A }), 400);
+  expect('invalid gallery supplier filter', await api('GET', '/products/gallery?supplier_ids=x', { token: A }), 400);
   expect('delete a photo', await api('DELETE', `/products/${id}/images/${img1.id}`, { token: A }), 200);
   expect('delete it again', await api('DELETE', `/products/${id}/images/${img1.id}`, { token: A }), 404);
 

@@ -291,8 +291,8 @@ export default function ProductDetail() {
               <dd className="fw-semibold">{product.moq ?? '—'}</dd>
               <dt>Réf. fournisseur</dt>
               <dd>{product.supplier_ref || '—'}</dd>
-              <dt>Catégories</dt>
-              <dd>{product.categories_products?.length ? product.categories_products.map((n) => <Tag key={n}>{n}</Tag>) : '—'}</dd>
+              <dt>Catégorie</dt>
+              <dd>{product.categories_products ? <Tag>{product.categories_products}</Tag> : '—'}</dd>
             </dl>
           </Panel>
 

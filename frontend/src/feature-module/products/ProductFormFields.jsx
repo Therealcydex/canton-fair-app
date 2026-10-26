@@ -82,7 +82,7 @@ export default function ProductFormFields({ lockSupplier, showBooth = true }) {
         </Col>
       </Row>
       <Form.Item name="description" label="Description"><Input.TextArea rows={4} /></Form.Item>
-      <CategorySelect name="categories_products" listPath="/products/categories" />
+      <CategorySelect name="categories_products" listPath="/products/categories" multiple={false} />
       {/* D61: the photos are sent with the product, resized, stored as Base64. */}
       <Form.Item name="photos" label="Photos" className="mb-0" extra="JPG, PNG ou WebP, 10 au plus : elles sont réduites avant l'envoi.">
         <PhotosField />
@@ -101,5 +101,5 @@ export const productPayload = ({ photos, images: _images, ...v }) => ({
   booth_id: v.booth_id ?? null,
   price: v.price ? String(v.price).replace(',', '.') : null,
   currency: v.currency || 'USD',
-  moq: v.moq ?? null,
+  categories_products: v.categories_products ?? null,
 });

@@ -1,7 +1,7 @@
-// D69: supplier categories. categories_suppliers is the list, one column (the name).
-// suppliers.categories_suppliers stores the names a supplier uses (a JSON array, or NULL).
-// An earlier version of this script created an id column and a supplier_categories link table;
-// this run replaces that with the single column. Existing suppliers are left with none.
+// D69: suppliers.categories_suppliers stores the names a supplier uses (separated by commas, or NULL).
+// D72: those names come from categories_products. This script does not create a second list.
+// An earlier version created supplier_categories and categories_suppliers; the link table is
+// dropped here, and update_product_categories.js copies categories_suppliers then drops it.
 // Safe to run twice.
 // Usage (from backend/): node sql/update_supplier_categories.js
 const path = require('path');
@@ -17,10 +17,6 @@ SELECT s.id, s.name, s.phone, s.email, s.website, s.address, s.province_id, s.ra
           FROM booths b WHERE b.supplier_id = s.id) AS booth_visit_pct
 FROM suppliers s
 LEFT JOIN china_province p ON p.id = s.province_id`;
-
-const LIST = `CREATE TABLE categories_suppliers (
-  name VARCHAR(150) NOT NULL PRIMARY KEY
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
 
 async function main() {
   const dbName = process.env.DB_NAME;
@@ -52,22 +48,6 @@ async function main() {
       await conn.query('DROP TABLE supplier_categories');
       console.log('  drop supplier_categories');
       run++;
-    }
-    if (!(await exists('categories_suppliers'))) {
-      await conn.query(LIST);
-      console.log('  add categories_suppliers (name only)');
-      run++;
-    } else {
-      const cols = await columns('categories_suppliers');
-      if (cols.length !== 1 || cols[0] !== 'name') {
-        await conn.query(LIST.replace('categories_suppliers', 'categories_suppliers_new'));
-        await conn.query(`INSERT INTO categories_suppliers_new (name)
-          SELECT DISTINCT name FROM categories_suppliers WHERE name IS NOT NULL AND name <> ''`);
-        await conn.query('DROP TABLE categories_suppliers');
-        await conn.query('RENAME TABLE categories_suppliers_new TO categories_suppliers');
-        console.log('  categories_suppliers kept as the name only');
-        run++;
-      }
     }
     if (!(await columns('suppliers')).includes('categories_suppliers')) {
       await conn.query('ALTER TABLE suppliers ADD COLUMN categories_suppliers TEXT NULL');

@@ -21,7 +21,7 @@ const productIds = (items) => {
 // D68: "Galerie" under Revue du soir. Every product photo, full screen on a phone and a computer.
 // Swipe (or drag) moves to the next photo, like the phone's gallery. A click or a long press
 // opens that product; Retour on the fiche comes back to this same photo.
-export default function ProductGallery() {
+export default function ProductGallery({ categoriesProducts, supplierIds }) {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const [items, setItems] = useState(null);
@@ -33,14 +33,22 @@ export default function ProductGallery() {
   const drag = useRef(null);
   const hold = useRef(null);
   const held = useRef(false);
+  const query = JSON.stringify({
+    categories_products: categoriesProducts?.length ? categoriesProducts.join(',') : undefined,
+    supplier_ids: supplierIds?.length ? supplierIds.join(',') : undefined,
+  });
+  const filtered = Boolean(categoriesProducts?.length || supplierIds?.length);
 
   useEffect(() => {
     let live = true;
-    axios.get(`${API_BASE_URL}/products/gallery`)
+    setItems(null);
+    setError(null);
+    setView(null);
+    axios.get(`${API_BASE_URL}/products/gallery`, { params: JSON.parse(query) })
       .then((r) => { if (live) setItems(r.data.data); })
       .catch((err) => { if (live) setError(apiError(err, 'Erreur lors du chargement de la galerie')); });
     return () => { live = false; };
-  }, []);
+  }, [query]);
 
   // Coming back from a fiche reopens the same photo.
   useEffect(() => {
@@ -172,7 +180,9 @@ export default function ProductGallery() {
 
   if (error) return <Alert type="error" showIcon message={error} />;
   if (!items) return <div className="text-center py-5"><Spin /></div>;
-  if (items.length === 0) return <Empty description="Aucun produit n'a de photo." className="py-4" />;
+  if (items.length === 0) {
+    return <Empty description={filtered ? 'Aucune photo pour ce filtre.' : "Aucun produit n'a de photo."} className="py-4" />;
+  }
 
   const slide = view != null ? items[view] : null;
   const from = view == null ? 0 : Math.max(0, view - 8);

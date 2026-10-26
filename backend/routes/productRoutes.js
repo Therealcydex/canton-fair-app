@@ -13,6 +13,7 @@ router.get('/review', c.review); // before /:id
 router.get('/gallery', c.gallery); // D68: thumbnails for the revue gallery; before /:id
 router.get('/categories', c.listCategories); // D70, before /:id
 router.post('/categories', c.addCategory);
+router.put('/assign-categories', c.assignCategories); // D71, before /:id
 router.get('/:id', c.getById);
 router.put('/:id', c.update);
 router.delete('/:id', c.remove);

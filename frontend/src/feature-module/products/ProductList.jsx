@@ -34,7 +34,7 @@ export function NewProductModal({ open, supplierId, onClose, onCreated }) {
 
 // Table of products for the given API filters, with "Modifier" on each row. D62: products are no
 // longer shared, so the rows are not selectable any more.
-export default function ProductList({ filters, supplierId, onChanged, reloadKey = 0 }) {
+export default function ProductList({ filters, supplierId, onChanged, onRows, selectedRowKeys, onSelectedChange, reloadKey = 0 }) {
   const { message } = App.useApp();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,7 +42,10 @@ export default function ProductList({ filters, supplierId, onChanged, reloadKey 
   const [editing, setEditing] = useState(null); // the product being edited
   const [page, setPage] = useStickyState(`page:products:${supplierId || 'all'}`, 1);
 
-  const query = JSON.stringify({ ...filters, supplier_id: supplierId });
+  const query = JSON.stringify({
+    ...filters,
+    ...(supplierId ? { supplier_id: supplierId } : {}),
+  });
   useResetPage(query, setPage);
   const load = useCallback(async () => {
     setLoading(true);
@@ -58,6 +61,7 @@ export default function ProductList({ filters, supplierId, onChanged, reloadKey 
   }, [query]);
 
   useEffect(() => { load(); }, [load, reloadKey]);
+  useEffect(() => { onRows?.({ rows, loading, loadError }); }, [rows, loading, loadError, onRows]);
 
   const remove = async (product) => {
     try {
@@ -94,8 +98,14 @@ export default function ProductList({ filters, supplierId, onChanged, reloadKey 
     },
     !supplierId && { title: 'Fournisseur', dataIndex: 'supplier_name', responsive: ['md'], render: (v) => v || '—' },
     {
-      title: 'Catégories', dataIndex: 'categories_products',
-      render: (names) => (names?.length ? names.map((n) => <Tag key={n}>{n}</Tag>) : '—'),
+      title: 'Catégorie', dataIndex: 'categories_products',
+      render: (name) => (name ? <Tag>{name}</Tag> : '—'),
+    },
+    {
+      title: 'Description', dataIndex: 'description', width: 240,
+      render: (v) => (v
+        ? <Tooltip title={v}><span className="d-inline-block text-truncate" style={{ maxWidth: 220 }}>{v}</span></Tooltip>
+        : '—'),
     },
     {
       title: 'Booth', dataIndex: 'booth_code', width: 140, responsive: ['md'],
@@ -137,6 +147,11 @@ export default function ProductList({ filters, supplierId, onChanged, reloadKey 
     <>
       {loadError && <Alert type="error" message={loadError} showIcon className="mb-3" />}
       <Table rowKey="id" columns={columns} dataSource={rows} loading={loading} size="middle"
+        rowSelection={onSelectedChange ? {
+          selectedRowKeys: selectedRowKeys || [],
+          onChange: onSelectedChange,
+          preserveSelectedRowKeys: true,
+        } : undefined}
         scroll={{ x: true }} pagination={{ current: page, pageSize: 30, onChange: setPage }} locale={{ emptyText: 'Aucun produit' }} />
 
       <FormModal open={!!editing} title="Modifier le produit" width={720} initialValues={editing}
