@@ -111,7 +111,7 @@ exports.gallery = handle('Product gallery', async (req, res) => {
     params.push(supplierIds);
   }
   const [rows] = await db.query(`
-    SELECT pi.id, pi.product_id, p.name, pi.thumb_data
+    SELECT pi.id, pi.product_id, p.supplier_id, p.name, pi.thumb_data
     FROM product_images pi
     JOIN products p ON p.id = pi.product_id
     WHERE ${where}

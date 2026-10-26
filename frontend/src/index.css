@@ -1935,7 +1935,27 @@ code {
   gap: 6px;
 }
 
+.galerie-cell-wrap {
+  position: relative;
+}
+
+.galerie-check {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  background: #fff;
+  border-radius: 4px;
+  line-height: 1;
+  padding: 1px;
+}
+
+.galerie-cell-wrap.is-selected .galerie-cell {
+  box-shadow: inset 0 0 0 3px #002a81;
+}
+
 .galerie-cell {
+  width: 100%;
   aspect-ratio: 1;
   padding: 0;
   border: 0;

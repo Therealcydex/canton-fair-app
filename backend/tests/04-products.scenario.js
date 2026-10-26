@@ -97,7 +97,7 @@ module.exports = async (ctx) => {
   expect('gallery without token', await api('GET', '/products/gallery'), 401);
   const gallery = expect('gallery of thumbnails', await api('GET', '/products/gallery', { token: A }), 200);
   const shot = gallery.body.data.find((img) => img.product_id === id);
-  check('the gallery lists the photo, without the full image', shot && shot.thumb_data === img1.thumb_data && shot.image_data === undefined);
+  check('the gallery lists the photo, without the full image', shot && shot.thumb_data === img1.thumb_data && shot.image_data === undefined && shot.supplier_id === supplier);
   const byProductCategory = expect('gallery filtered by product category', await api('GET', `/products/gallery?categories_products=${encodeURIComponent(`${PREFIX} Lighting`)}`, { token: A }), 200);
   check('the product category keeps the photo', byProductCategory.body.data.some((img) => img.product_id === id));
   const otherCategory = expect('a product category the photo does not have', await api('POST', '/products/categories', { token: A, body: { name: `${PREFIX} Gallery other` } }), 200);

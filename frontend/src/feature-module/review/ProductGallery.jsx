@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { Alert, App, Button, Empty, Spin } from 'antd';
+import { Alert, App, Button, Checkbox, Empty, Spin } from 'antd';
 import { CloseOutlined, DownloadOutlined, LeftOutlined, PictureOutlined, RightOutlined } from '@ant-design/icons';
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
@@ -21,7 +21,7 @@ const productIds = (items) => {
 // D68: "Galerie" under Revue du soir. Every product photo, full screen on a phone and a computer.
 // Swipe (or drag) moves to the next photo, like the phone's gallery. A click or a long press
 // opens that product; Retour on the fiche comes back to this same photo.
-export default function ProductGallery({ categoriesProducts, supplierIds }) {
+export default function ProductGallery({ categoriesProducts, supplierIds, reloadKey = 0, onItems, selected = [], onToggle }) {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const [items, setItems] = useState(null);
@@ -48,7 +48,11 @@ export default function ProductGallery({ categoriesProducts, supplierIds }) {
       .then((r) => { if (live) setItems(r.data.data); })
       .catch((err) => { if (live) setError(apiError(err, 'Erreur lors du chargement de la galerie')); });
     return () => { live = false; };
-  }, [query]);
+  }, [query, reloadKey]);
+
+  useEffect(() => {
+    onItems?.({ items, error });
+  }, [items, error, onItems]);
 
   // Coming back from a fiche reopens the same photo.
   useEffect(() => {
@@ -196,7 +200,10 @@ export default function ProductGallery({ categoriesProducts, supplierIds }) {
       </p>
       <div className="galerie-grid">
         {items.map((item, index) => (
-          <button key={item.id} type="button" className="galerie-cell" title={item.name}
+          <div key={item.id} className={`galerie-cell-wrap${selected.includes(item.id) ? ' is-selected' : ''}`}>
+            <Checkbox className="galerie-check" checked={selected.includes(item.id)} aria-label={`Cocher ${item.name}`}
+              onClick={(e) => e.stopPropagation()} onChange={() => onToggle?.(item.id)} />
+            <button type="button" className="galerie-cell" title={item.name}
             onClick={() => {
               if (held.current) { held.current = false; return; }
               setView(index);
@@ -217,6 +224,7 @@ export default function ProductGallery({ categoriesProducts, supplierIds }) {
               ? <img src={item.thumb_data} alt={item.name} draggable={false} />
               : <PictureOutlined />}
           </button>
+          </div>
         ))}
       </div>
 
