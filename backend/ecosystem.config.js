@@ -2,8 +2,7 @@
 //   pm2 start ecosystem.config.js     (first time)
 //   pm2 reload sourcing-backend       (after a deployment)
 //   pm2 save                          (start again after a reboot, with `pm2 startup`)
-// One instance only: the login attempt counter (middleware/loginLimiter.js) is in memory and
-// photos are stored on this server's disk (uploads/).
+// One instance only: photos are stored on this server's disk (uploads/).
 module.exports = {
   apps: [
     {

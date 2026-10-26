@@ -1,18 +1,11 @@
-// Hardening (D21): login attempt limit, body size, headers.
+// Hardening (D21, D74): a wrong password can be tried again at once. Body size and headers stay.
 const { api, expect, check, PREFIX, BASE } = require('./lib');
-const { MAX_FAILURES } = require('../middleware/loginLimiter');
 
 module.exports = async (ctx) => {
-  // A username that does not exist: the limit applies per address + username.
-  const target = `${PREFIX}_bf${Date.now()}`; // new name each run: a block lasts 15 minutes
-  let all401 = true;
-  for (let i = 0; i < MAX_FAILURES; i++) {
-    const r = await api('POST', '/login', { body: { username: target, password: `essai${i}` } });
-    if (r.status !== 401) all401 = false;
-  }
-  check(`${MAX_FAILURES} failed logins answer 401`, all401);
-  expect('next attempt is refused (429)', await api('POST', '/login', { body: { username: target, password: 'x' } }), 429);
-  expect('other usernames are not blocked', await api('POST', '/login', { body: { username: `${PREFIX}_buyerA`, password: ctx.password } }), 200);
+  const target = `${PREFIX}_bf${Date.now()}`;
+  expect('a wrong password', await api('POST', '/login', { body: { username: target, password: 'essai' } }), 401);
+  expect('another wrong password is still accepted as an attempt', await api('POST', '/login', { body: { username: target, password: 'encore' } }), 401);
+  expect('a real login still works', await api('POST', '/login', { body: { username: `${PREFIX}_buyerA`, password: ctx.password } }), 200);
 
   const big = (mb) => JSON.stringify({ name: 'x'.repeat(mb * 1024 * 1024 + 10) });
   expect('JSON body over 1 MB', await api('POST', '/companies', { token: ctx.adminToken, body: big(1) }), 413);

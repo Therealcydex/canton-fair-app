@@ -48,7 +48,7 @@ shared helpers instead of rewriting them:
 - `utils/access.js`: `isAdmin`, `isViewer`, `ROLES`.
 - `utils/upload.js`: WeChat QR photo upload (older QR photos in `uploads/wechat/`, D33). It checks the file content against JPEG/PNG/WebP signatures, saves under random names and deletes files. Delete the files when you delete their rows (D28).
 - `utils/dataImage.js`: `parseDataImage(value, maxBytes, label)` checks a Base64 image (D61: product photos, contact avatars): format, real content, size.
-- `middleware/auth.js`: `requireAuth` (reloads the user on every request, refuses `is_active = 0`), `requireAdmin`, `refuseViewer` (D62: 403 for a LECTEUR; put it after `requireAuth` in every new route file). `middleware/loginLimiter.js` limits failed logins.
+- `middleware/auth.js`: `requireAuth` (reloads the user on every request, refuses `is_active = 0`), `requireAdmin`, `refuseViewer` (D62: 403 for a LECTEUR; put it after `requireAuth` in every new route file). Failed logins are not locked out (D74).
 - `utils/access.js` `sharedWithViewer(column)` (D66): the SQL condition that keeps a viewer to its shared suppliers (one parameter, `req.user.id`). `utils/scope.js` `loadCompanyIds(raw, label)` checks a list of company ids; `idList` turns a `GROUP_CONCAT` into an array.
 
 ## Data model (schema v2) and access rule

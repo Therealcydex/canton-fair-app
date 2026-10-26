@@ -6,8 +6,7 @@ const { fail, serverError } = require('./utils/http');
 const { UPLOAD_ROOT } = require('./utils/upload');
 const app = express();
 app.disable('x-powered-by');
-// Behind nginx (deploy/): TRUST_PROXY=1 makes req.ip the user's address, not nginx's, so the
-// login and sign-up limits (middleware/loginLimiter.js) count each user separately.
+// Behind nginx (deploy/): TRUST_PROXY=1 makes req.ip the user's address, not nginx's.
 if (process.env.TRUST_PROXY === '1') app.set('trust proxy', 1);
 
 // JWT_SECRET has no default (protected routes refuse every request without it); warn early.
