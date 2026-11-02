@@ -204,4 +204,21 @@ module.exports = async (ctx) => {
   check('phone number left as it is', lines.some((l) => l.includes('"+86 9"')));
 
   ctx.supplierId = id;
+
+  const pdf = `data:application/pdf;base64,${Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF').toString('base64')}`;
+  const photo = `data:image/png;base64,${PNG.toString('base64')}`;
+  expect('a catalogue that is not a PDF', await api('PUT', `/suppliers/${id}`, { token: A, body: { catalogs_add: [{ name: 'x.pdf', data: photo }] } }), 400);
+  expect('add a catalogue and an image', await api('PUT', `/suppliers/${id}`, {
+    token: A, body: { catalogs_add: [{ name: `${PREFIX} catalogue.pdf`, data: pdf }], images_add: [{ data: photo, thumb: photo }] },
+  }), 200);
+  const withFiles = (await api('GET', `/suppliers/${id}`, { token: A })).body.data;
+  check('the catalogue and the image are stored',
+    withFiles.catalogs.length === 1 && withFiles.catalogs[0].file_name === `${PREFIX} catalogue.pdf`
+    && withFiles.catalogs[0].file_data.startsWith('data:application/pdf;base64,')
+    && withFiles.images.length === 1 && withFiles.images[0].thumb_data.startsWith('data:image/png;base64,'));
+  expect('remove them', await api('PUT', `/suppliers/${id}`, {
+    token: A, body: { catalogs_remove: [withFiles.catalogs[0].id], images_remove: [withFiles.images[0].id] },
+  }), 200);
+  const cleared = (await api('GET', `/suppliers/${id}`, { token: A })).body.data;
+  check('catalogue and image removed', cleared.catalogs.length === 0 && cleared.images.length === 0);
 };

@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS suppliers (
     phone        VARCHAR(50),
     email        VARCHAR(150),
     website      VARCHAR(255),
-    cantonfair_url VARCHAR(255),                        -- D42: the exhibitor's page on cantonfair.org.cn
+    cantonfair_url VARCHAR(255),                        -- D75: any web address (http or https), or empty
     address      TEXT,
     province_id  INT,                                   -- list from china_province
     rating       TINYINT CHECK (rating BETWEEN 1 AND 5),
@@ -61,6 +61,23 @@ CREATE TABLE IF NOT EXISTS suppliers (
 -- Existing suppliers and products start with none.
 CREATE TABLE IF NOT EXISTS categories_products (
     name  VARCHAR(150) NOT NULL PRIMARY KEY
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- D75: catalogues (PDF) and photos of a supplier. Existing suppliers start with none.
+CREATE TABLE IF NOT EXISTS supplier_catalogs (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    supplier_id INT NOT NULL,
+    file_name   VARCHAR(200) NOT NULL,
+    file_data   LONGTEXT NOT NULL,                    -- data:application/pdf;base64,...
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS supplier_images (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    supplier_id INT NOT NULL,
+    image_data  MEDIUMTEXT NOT NULL,
+    thumb_data  MEDIUMTEXT NOT NULL,
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------- Contacts ----------

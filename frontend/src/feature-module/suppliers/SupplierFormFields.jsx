@@ -3,12 +3,13 @@ import axios from 'axios';
 import { Col, Form, Input, Rate, Row, Select } from 'antd';
 import { API_BASE_URL } from '../../config/config';
 import { companyLabel, useList } from '../../utils/lists';
-import { CANTON_FAIR_URL } from '../../utils/fairPlan';
 import { useAuth } from '../../context/AuthContext';
 import { isAdmin } from '../../utils/access';
 import { CardScan } from '../contacts/ContactFormFields';
 import SupplierContacts from './SupplierContacts';
 import CategorySelect from '../../components/CategorySelect';
+import PhotosField from '../products/PhotosField';
+import CatalogsField from './CatalogsField';
 
 // Fields of the supplier form; the server checks the same rules (name required, 1-5 rating…).
 // `withContact`: the business card scan, and the supplier's contacts as a table. "Ajouter contact"
@@ -54,14 +55,31 @@ export default function SupplierFormFields({ withContact = false, supplierId, co
           </Form.Item>
         </Col>
       </Row>
-      <Form.Item name="cantonfair_url" label="Page sur le site du salon"
-        extra="Copiez l'adresse de la page de l'exposant sur cantonfair.org.cn"
-        rules={[{ pattern: CANTON_FAIR_URL, message: 'Adresse du site cantonfair.org.cn attendue (https://…)' }]}>
-        <Input maxLength={255} placeholder="https://www.cantonfair.org.cn/…" />
+      <Form.Item name="cantonfair_url" label="Lien du salon"
+        extra="N'importe quelle adresse web : https://…, ou un site sans http."
+        rules={[{
+          validator: (_, value) => {
+            const text = String(value || '').trim();
+            if (!text) return Promise.resolve();
+            if (/^[a-z][a-z0-9+.-]*:/i.test(text) && !/^https?:\/\//i.test(text)) {
+              return Promise.reject(new Error('Adresse web attendue (https://…)'));
+            }
+            return Promise.resolve();
+          },
+        }]}>
+        <Input maxLength={255} placeholder="https://…" />
       </Form.Item>
       <Form.Item name="address" label="Adresse"><Input.TextArea rows={2} /></Form.Item>
       <Form.Item name="rating" label="Évaluation"><Rate allowClear /></Form.Item>
       <Form.Item name="notes" label="Notes"><Input.TextArea rows={3} /></Form.Item>
+      <Form.Item name="catalogs" label="Catalogues"
+        extra="PDF, 32 Mo chacun. Plusieurs fichiers à la fois.">
+        <CatalogsField />
+      </Form.Item>
+      <Form.Item name="images" label="Images"
+        extra="JPG, PNG ou WebP, 30 au plus : elles sont réduites avant l'envoi. Plusieurs fichiers à la fois.">
+        <PhotosField max={30} subject="fournisseur" />
+      </Form.Item>
       <CategorySelect name="categories_suppliers" listPath="/suppliers/categories" />
       {admin && (
         <Form.Item name="share_company_ids" label="Partager avec"

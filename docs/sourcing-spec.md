@@ -141,6 +141,7 @@ none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercas
 | D72 | **One category list for suppliers and products.** `categories_products` is the only list (one column, the name). A supplier keeps several of those names, separated by commas; a product keeps one. Galerie filters by that product category or by the supplier itself. `categories_suppliers` (the list) is copied into `categories_products` and dropped; the column `suppliers.categories_suppliers` stays | Asked by the user |
 | D73 | **Galerie counts and category on the ticked photos.** The Galerie subtitle shows how many products and how many suppliers the photos on screen belong to. Each photo can be ticked, and **Tout sélectionner** ticks every photo on screen (the ones left by the filters, for example one supplier). Affecter catégorie sets that one category on the products of the ticked photos; it replaces the category each of those products had | Asked by the user |
 | D74 | **No login lockout for now.** A wrong password can be tried again at once. `POST /api/login` no longer answers 429 after repeated failures | Asked by the user |
+| D75 | **Any salon link, catalogues and photos on the supplier.** `suppliers.cantonfair_url` takes any web address (`http` or `https`; without a scheme it is stored as `https`). `supplier_catalogs` stores the PDF catalogues of a supplier (no count cap, 32 MB each, `file_data` LONGTEXT) and `supplier_images` its photos (30 at most, the same checks as a product photo). They are sent with the supplier (`catalogs_add`/`catalogs_remove`, `images_add`/`images_remove`) and returned on `GET /api/suppliers/:id`. The fournisseur page has an Images tab and a Catalogue tab: several files are added or removed there, and also on the add and edit forms. JSON bodies on `/api/suppliers` are 90 MB | Asked by the user |
 
 ## 6. Changelog
 
@@ -176,6 +177,9 @@ none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercas
 | 2026-10-22 | D65: supplier on the new-booth form (pick, type a name, or full form); delete on a supplier's products; deleting that product returns there; no "Nouveau produit" on the booth page |
 | 2026-10-22 | D66: suppliers shared with several companies instead of booths; users in several companies; viewers read their shared suppliers with contacts, booths and products; phase/hall filters and provinces in use on Fournisseurs; contacts grouped by supplier; À visiter grouped by phase and hall |
 | 2026-10-26 | D68: Retour keeps the list place; a new product stays on the list; Précédent/Suivant on a product; revue gallery; supplier notes in the list |
+| 2026-11-02 | D75: a supplier has no catalogue count cap; each PDF can be 32 MB (`supplier_catalogs.file_data` is LONGTEXT) |
+| 2026-11-02 | D75: catalogues and photos are added and removed on the fournisseur page (30 photos), as well as on the form |
+| 2026-10-26 | D75: a supplier's salon link accepts any web address; catalogues (PDF) and photos are stored on the supplier |
 | 2026-10-26 | D74: the 15-minute lockout after failed logins is off |
 | 2026-10-26 | D73: Galerie shows the number of products and suppliers; Tout sélectionner ticks the photos on screen; Affecter catégorie applies to their products |
 | 2026-10-26 | D72: one category list (`categories_products`) for suppliers (several) and products (one); Galerie filters by product category or by supplier |

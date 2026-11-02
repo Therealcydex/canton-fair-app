@@ -4,18 +4,23 @@ const { validate } = require('../utils/validate');
 const { loadSupplier, loadCompanyIds, idList } = require('../utils/scope');
 const { deleteImages, imageExtension, saveImages } = require('../utils/upload');
 const { parseDataImage } = require('../utils/dataImage');
+const { parseDataPdf } = require('../utils/dataPdf');
 const { isAdmin, isViewer, sharedWithViewer } = require('../utils/access');
 const { parseCategories, storedCategories, readCategoryNames, categoryMatch, listCategories, addCategory } = require('../utils/categories');
 
 // D63: the contact's photo, resized by the app to about 256 px.
 const MAX_AVATAR_BYTES = 100 * 1024;
+const MAX_IMAGES = 30;
+const MAX_PHOTO_BYTES = 1.5 * 1024 * 1024;
+const MAX_THUMB_BYTES = 100 * 1024;
+const MAX_PDF_BYTES = 32 * 1024 * 1024;
 
 const SUPPLIER_FIELDS = {
   name: { label: 'Nom', type: 'string', required: true, max: 200 },
   phone: { label: 'Téléphone', type: 'string', max: 50 },
   email: { label: 'E-mail', type: 'email', max: 150 },
   website: { label: 'Site web', type: 'string', max: 255 },
-  cantonfair_url: { label: 'Page du salon', type: 'string', max: 255 },
+  cantonfair_url: { label: 'Lien du salon', type: 'string', max: 255 },
   address: { label: 'Adresse', type: 'text', max: 2000 },
   province_id: { label: 'Province', type: 'int', min: 1 },
   rating: { label: 'Note', type: 'int', min: 1, maxValue: 5 },
@@ -53,26 +58,32 @@ const supplierSelect = (viewer) => `
 const withShareIds = (row) => (row.shared_company_ids === undefined ? row : { ...row, shared_company_ids: idList(row.shared_company_ids) });
 const present = (row) => ({ ...withShareIds(row), categories_suppliers: parseCategories(row.categories_suppliers) });
 
-// D42: the exhibitor's page on the fair's site, only an http(s) address of cantonfair.org.cn
-// (or cantonfair.org): the apps open it as a link.
-function isCantonFairUrl(value) {
+// D75: any web address. A missing scheme is read as https. javascript: and other schemes are refused.
+function webUrl(value) {
+  if (!value) return { value: null };
+  const text = String(value).trim();
+  const candidate = /^[a-z][a-z0-9+.-]*:/i.test(text) ? text : `https://${text}`;
   let url;
   try {
-    url = new URL(value);
+    url = new URL(candidate);
   } catch {
-    return false;
+    return { message: 'Lien du salon : adresse web attendue (https://…)' };
   }
-  return ['http:', 'https:'].includes(url.protocol)
-    && /(^|\.)cantonfair\.org(\.cn)?$/i.test(url.hostname);
+  if (!['http:', 'https:'].includes(url.protocol) || !url.hostname.includes('.')) {
+    return { message: 'Lien du salon : adresse web attendue (https://…)' };
+  }
+  const stored = /^https?:\/\//i.test(text) ? text : `https://${text}`;
+  if (stored.length > 255) return { message: 'Lien du salon : 255 caractères au maximum' };
+  return { value: stored };
 }
 
 // Validates a supplier; province_id must be a row of china_province.
 async function validateSupplier(body, existing) {
   const v = validate(body, SUPPLIER_FIELDS, existing);
   if (!v.values) return v;
-  if (v.values.cantonfair_url && !isCantonFairUrl(v.values.cantonfair_url)) {
-    return { message: 'Page du salon : adresse du site cantonfair.org.cn attendue (https://…)' };
-  }
+  const link = webUrl(v.values.cantonfair_url);
+  if (link.message) return { message: link.message };
+  v.values.cantonfair_url = link.value;
   if (v.values.province_id) {
     const [[p]] = await db.query('SELECT id FROM china_province WHERE id = ?', [v.values.province_id]);
     if (!p) return { message: 'Province introuvable' };
@@ -155,7 +166,7 @@ exports.getById = handle('Supplier getById', async (req, res) => {
     'SELECT id, name, phone, email, wechat_qr, avatar FROM contacts WHERE supplier_id = ? ORDER BY name',
     [r.row.id]
   );
-  const data = { ...present(supplier), contacts };
+  const data = { ...present(supplier), contacts, ...(await filesOf(r.row.id)) };
   if (viewer) {
     [data.products] = await db.query(
       `SELECT p.id, p.name, p.supplier_ref, p.description, p.price, p.currency, p.unit, p.moq, p.shipping_type, st.name AS shipping_name,
@@ -179,14 +190,72 @@ async function readShares(req) {
   return r.ids ? r : { status: 400, message: r.message };
 }
 
-// D69: categories_suppliers, the names taken from the category list. Missing from the body: the
-// column stays as it is. Returns { names } (the names as stored) or { status, message }.
+// D75: catalogues (PDF) and photos sent with the supplier. Missing from the body: nothing changes.
+function readCatalogs(raw) {
+  if (raw === undefined || raw === null) return { items: [] };
+  if (!Array.isArray(raw)) return { status: 400, message: 'Catalogues : liste attendue' };
+  const items = [];
+  for (const [i, file] of raw.entries()) {
+    const pdf = parseDataPdf(file?.data, file?.name, MAX_PDF_BYTES, `Catalogue ${i + 1}`);
+    if (!pdf.value) return { status: 400, message: pdf.message };
+    items.push([pdf.name, pdf.value]);
+  }
+  return { items };
+}
+
+function readImages(raw) {
+  if (raw === undefined || raw === null) return { items: [] };
+  if (!Array.isArray(raw)) return { status: 400, message: 'Images : liste attendue' };
+  if (raw.length > MAX_IMAGES) return { status: 400, message: `Un fournisseur a au plus ${MAX_IMAGES} images` };
+  const items = [];
+  for (const [i, img] of raw.entries()) {
+    const label = `Image ${i + 1}`;
+    const data = parseDataImage(img?.data, MAX_PHOTO_BYTES, label);
+    if (!data.value) return { status: 400, message: data.message };
+    const thumb = parseDataImage(img?.thumb ?? img?.data, MAX_THUMB_BYTES, `${label} (vignette)`);
+    if (!thumb.value) return { status: 400, message: thumb.message };
+    items.push([data.value, thumb.value]);
+  }
+  return { items };
+}
+
+function readIdList(raw, label) {
+  if (raw === undefined || raw === null) return { ids: [] };
+  if (!Array.isArray(raw)) return { status: 400, message: `${label} : liste attendue` };
+  const ids = [...new Set(raw.map(toId))];
+  if (ids.includes(null)) return { status: 400, message: `${label} : identifiant invalide` };
+  return { ids };
+}
+
+async function filesOf(supplierId) {
+  const [catalogs] = await db.query(
+    'SELECT id, file_name, file_data FROM supplier_catalogs WHERE supplier_id = ? ORDER BY id', [supplierId]
+  );
+  const [images] = await db.query(
+    'SELECT id, image_data, thumb_data FROM supplier_images WHERE supplier_id = ? ORDER BY id', [supplierId]
+  );
+  return { catalogs, images };
+}
+
+async function readFiles(req) {
+  const catalogs = readCatalogs(req.body?.catalogs_add);
+  if (catalogs.status) return catalogs;
+  const catalogIds = readIdList(req.body?.catalogs_remove, 'Catalogues à retirer');
+  if (catalogIds.status) return catalogIds;
+  const images = readImages(req.body?.images_add);
+  if (images.status) return images;
+  const imageIds = readIdList(req.body?.images_remove, 'Images à retirer');
+  if (imageIds.status) return imageIds;
+  return { catalogs: catalogs.items, catalogIds: catalogIds.ids, images: images.items, imageIds: imageIds.ids };
+}
+
 async function readCategories(req) {
   return readCategoryNames(db, 'categories_products', req.body?.categories_suppliers);
 }
 
-// Writes the supplier and, when given, its shares in one transaction. Returns its id.
-async function writeSupplier(req, shares, sql, params, existingId) {
+// Writes the supplier, its shares, and the catalogues and photos, in one transaction.
+// Returns { id } or { status, message }.
+async function writeSupplier(req, shares, sql, params, existingId, files) {
   const conn = await db.getConnection();
   try {
     await conn.beginTransaction();
@@ -199,8 +268,41 @@ async function writeSupplier(req, shares, sql, params, existingId) {
           [shares.map((c) => [id, c, req.user.id])]);
       }
     }
+    if (files.catalogIds.length) {
+      const [found] = await conn.query(
+        'SELECT id FROM supplier_catalogs WHERE supplier_id = ? AND id IN (?)', [id, files.catalogIds]
+      );
+      if (found.length !== files.catalogIds.length) {
+        await conn.rollback();
+        return { status: 404, message: 'Catalogue introuvable' };
+      }
+      await conn.query('DELETE FROM supplier_catalogs WHERE supplier_id = ? AND id IN (?)', [id, files.catalogIds]);
+    }
+    if (files.catalogs.length) {
+      await conn.query('INSERT INTO supplier_catalogs (supplier_id, file_name, file_data) VALUES ?',
+        [files.catalogs.map(([name, data]) => [id, name, data])]);
+    }
+    if (files.imageIds.length) {
+      const [found] = await conn.query(
+        'SELECT id FROM supplier_images WHERE supplier_id = ? AND id IN (?)', [id, files.imageIds]
+      );
+      if (found.length !== files.imageIds.length) {
+        await conn.rollback();
+        return { status: 404, message: 'Image introuvable' };
+      }
+      await conn.query('DELETE FROM supplier_images WHERE supplier_id = ? AND id IN (?)', [id, files.imageIds]);
+    }
+    if (files.images.length) {
+      await conn.query('INSERT INTO supplier_images (supplier_id, image_data, thumb_data) VALUES ?',
+        [files.images.map(([data, thumb]) => [id, data, thumb])]);
+    }
+    const [[{ images }]] = await conn.query('SELECT COUNT(*) AS images FROM supplier_images WHERE supplier_id = ?', [id]);
+    if (images > MAX_IMAGES) {
+      await conn.rollback();
+      return { status: 409, message: `Un fournisseur a au plus ${MAX_IMAGES} images` };
+    }
     await conn.commit();
-    return id;
+    return { id };
   } catch (e) {
     await conn.rollback();
     throw e;
@@ -216,13 +318,17 @@ exports.create = handle('Supplier create', async (req, res) => {
   if (shares.status) return fail(res, shares.status, shares.message);
   const categories = await readCategories(req);
   if (categories.status) return fail(res, categories.status, categories.message);
+  const files = await readFiles(req);
+  if (files.status) return fail(res, files.status, files.message);
   const s = v.values;
-  const id = await writeSupplier(req, shares.ids,
+  const written = await writeSupplier(req, shares.ids,
     `INSERT INTO suppliers (name, phone, email, website, cantonfair_url, address, province_id, rating, notes, categories_suppliers)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [s.name, s.phone, s.email, s.website, s.cantonfair_url, s.address, s.province_id, s.rating, s.notes, storedCategories(categories.names)]
+    [s.name, s.phone, s.email, s.website, s.cantonfair_url, s.address, s.province_id, s.rating, s.notes, storedCategories(categories.names)],
+    null, files
   );
-  res.json({ success: true, data: { id, name: s.name } });
+  if (!written.id) return fail(res, written.status, written.message);
+  res.json({ success: true, data: { id: written.id, name: s.name } });
 });
 
 exports.update = handle('Supplier update', async (req, res) => {
@@ -234,14 +340,17 @@ exports.update = handle('Supplier update', async (req, res) => {
   if (shares.status) return fail(res, shares.status, shares.message);
   const categories = await readCategories(req);
   if (categories.status) return fail(res, categories.status, categories.message);
+  const files = await readFiles(req);
+  if (files.status) return fail(res, files.status, files.message);
   const s = v.values;
   const stored = categories.names === null ? r.row.categories_suppliers : storedCategories(categories.names);
-  await writeSupplier(req, shares.ids,
+  const written = await writeSupplier(req, shares.ids,
     `UPDATE suppliers SET name = ?, phone = ?, email = ?, website = ?, cantonfair_url = ?, address = ?,
             province_id = ?, rating = ?, notes = ?, categories_suppliers = ? WHERE id = ?`,
     [s.name, s.phone, s.email, s.website, s.cantonfair_url, s.address, s.province_id, s.rating, s.notes, stored, r.row.id],
-    r.row.id
+    r.row.id, files
   );
+  if (!written.id) return fail(res, written.status, written.message);
   res.json({ success: true, data: { id: r.row.id } });
 });
 

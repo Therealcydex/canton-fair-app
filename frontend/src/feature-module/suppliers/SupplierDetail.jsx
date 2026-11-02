@@ -12,6 +12,7 @@ import ContactAvatar from '../../components/ContactAvatar';
 import BoothList from '../booths/BoothList';
 import ProductList, { NewProductModal } from '../products/ProductList';
 import ProductThumb from '../../components/ProductThumb';
+import { SupplierCatalogs, SupplierImages } from './SupplierFiles';
 import { useAuth } from '../../context/AuthContext';
 import { isAdmin, isViewer } from '../../utils/access';
 import { boothLabel, formatPrice } from '../../utils/format';
@@ -21,16 +22,31 @@ import { companyLabel } from '../../utils/lists';
 // The contact fields of a new supplier's form (contact_…) are sent apart, to the contact route.
 // D66: share_company_ids only goes when the field was shown (the admin's form): a buyer's save
 // leaves the shares as they are (the server refuses them from a buyer, 403).
-export const supplierPayload = ({ share_company_ids: shares, shared_company_ids: _ids, ...values }) => ({
+export const supplierPayload = ({
+  share_company_ids: shares, shared_company_ids: _ids, catalogs, images, ...values
+}) => ({
   ...Object.fromEntries(Object.entries(values).filter(([key]) => !key.startsWith('contact_'))),
   ...(Array.isArray(shares) ? { share_company_ids: shares } : {}),
   rating: values.rating || null,
   province_id: values.province_id ?? null,
+  ...(catalogs ? { catalogs_add: catalogs.add || [], catalogs_remove: catalogs.removed || [] } : {}),
+  ...(images ? { images_add: images.add || [], images_remove: images.removed || [] } : {}),
 });
 
 // The edit form's starting values; the shares only for the admin, whose form shows them.
 export const supplierInitialValues = (s, admin) => s && {
-  ...s, ...(admin ? { share_company_ids: s.shared_company_ids || [] } : {}),
+  ...s,
+  ...(admin ? { share_company_ids: s.shared_company_ids || [] } : {}),
+  catalogs: {
+    existing: (s.catalogs || []).map(({ id, file_name }) => ({ id, file_name })),
+    removed: [],
+    add: [],
+  },
+  images: {
+    existing: (s.images || []).map(({ id, thumb_data }) => ({ id, thumb_data })),
+    removed: [],
+    add: [],
+  },
 };
 
 export async function saveSupplier(id, values) {
@@ -155,6 +171,16 @@ export default function SupplierDetail() {
             scroll={{ x: true }} pagination={{ pageSize: 30, hideOnSinglePage: true }} locale={{ emptyText: 'Aucun produit' }} />
         : <ProductList supplierId={supplier.id} onChanged={load} reloadKey={productsKey} />,
     },
+    {
+      key: 'images',
+      label: `Images (${supplier.images?.length || 0})`,
+      children: <SupplierImages supplier={supplier} viewer={viewer} onChanged={load} />,
+    },
+    {
+      key: 'catalogue',
+      label: `Catalogue (${supplier.catalogs?.length || 0})`,
+      children: <SupplierCatalogs supplier={supplier} viewer={viewer} onChanged={load} />,
+    },
   ];
   const sharedWith = (supplier.shared_company_ids || []).map((cid) => companies.find((c) => c.id === cid)).filter(Boolean);
 
@@ -170,7 +196,7 @@ export default function SupplierDetail() {
           <Space wrap>
             <Button onClick={() => setEditing(true)}>Modifier</Button>
             <Popconfirm title="Supprimer ce fournisseur ?"
-              description="Ses contacts, ses produits et leurs photos seront supprimés ; ses booths restent, sans fournisseur."
+              description="Ses contacts, ses catalogues, ses images, ses produits et leurs photos seront supprimés ; ses booths restent, sans fournisseur."
               okText="Supprimer" cancelText="Annuler" onConfirm={remove}>
               <Button danger>Supprimer</Button>
             </Popconfirm>
@@ -198,9 +224,9 @@ export default function SupplierDetail() {
             },
             { key: 'email', label: 'E-mail', children: supplier.email || '—' },
             {
-              key: 'cantonfair', label: 'Page du salon',
+              key: 'cantonfair', label: 'Lien du salon',
               children: supplier.cantonfair_url
-                ? <a href={supplier.cantonfair_url} target="_blank" rel="noreferrer">Ouvrir sur cantonfair.org.cn ↗</a>
+                ? <a href={supplier.cantonfair_url} target="_blank" rel="noreferrer">{supplier.cantonfair_url}</a>
                 : '—',
             },
             { key: 'rating', label: 'Évaluation', children: supplier.rating ? <Rate disabled value={supplier.rating} style={{ fontSize: 14 }} /> : 'Non noté' },
@@ -218,7 +244,7 @@ export default function SupplierDetail() {
 
       <Card size="small">
         <Tabs
-          activeKey={['contacts', 'booths', 'products'].includes(params.get('tab')) ? params.get('tab') : 'contacts'}
+          activeKey={['contacts', 'booths', 'products', 'images', 'catalogue'].includes(params.get('tab')) ? params.get('tab') : 'contacts'}
           onChange={(key) => {
             const next = new URLSearchParams(params);
             if (key === 'contacts') next.delete('tab');

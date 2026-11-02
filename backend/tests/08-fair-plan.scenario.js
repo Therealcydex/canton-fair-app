@@ -51,8 +51,10 @@ module.exports = async (ctx) => {
 
   // The supplier's page on the fair's site
   const page = 'https://www.cantonfair.org.cn/en-US/shops/451234#/';
-  expect('a page of another site', await api('POST', '/suppliers', { token: A, body: { name: `${PREFIX} Lien`, cantonfair_url: 'https://evil-cantonfair.org.cn.example.com/x' } }), 400);
-  expect('a look-alike host', await api('POST', '/suppliers', { token: A, body: { name: `${PREFIX} Lien`, cantonfair_url: 'https://xcantonfair.org/x' } }), 400);
+  const other = expect('a page of another site', await api('POST', '/suppliers', { token: A, body: { name: `${PREFIX} Lien`, cantonfair_url: 'https://example.com/stand' } }), 200);
+  check('any web address is kept', (await api('GET', `/suppliers/${other.body.data.id}`, { token: A })).body.data.cantonfair_url === 'https://example.com/stand');
+  expect('a site without http', await api('PUT', `/suppliers/${other.body.data.id}`, { token: A, body: { cantonfair_url: 'www.example.com/page' } }), 200);
+  check('the scheme is added', (await api('GET', `/suppliers/${other.body.data.id}`, { token: A })).body.data.cantonfair_url === 'https://www.example.com/page');
   expect('not a link', await api('POST', '/suppliers', { token: A, body: { name: `${PREFIX} Lien`, cantonfair_url: 'javascript:alert(1)' } }), 400);
   const s = expect('supplier with its fair page', await api('POST', '/suppliers', { token: A, body: { name: `${PREFIX} Lien`, cantonfair_url: page } }), 200);
   const got = (await api('GET', `/suppliers/${s.body.data.id}`, { token: A })).body.data;

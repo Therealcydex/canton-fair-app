@@ -7,7 +7,7 @@ export const MAX_PHOTOS = 10;
 
 // D61: the photos of the product form. Value: { existing: [{ id, thumb_data }], removed: [ids],
 // add: [{ data, thumb }] }; the photos are resized and sent with the product (productPayload).
-export default function PhotosField({ value, onChange }) {
+export default function PhotosField({ value, onChange, max = MAX_PHOTOS, subject = 'produit' }) {
   const { message } = App.useApp();
   const [reading, setReading] = useState(0);
   const v = { existing: [], removed: [], add: [], ...value };
@@ -46,14 +46,14 @@ export default function PhotosField({ value, onChange }) {
       showUploadList={{ showPreviewIcon: false }} onRemove={(f) => { remove(f); return false; }}
       beforeUpload={(file, files) => {
         // Only as many as the product can still take.
-        if (files.indexOf(file) >= MAX_PHOTOS - count) {
-          if (files.indexOf(file) === MAX_PHOTOS - count) message.warning(`Un produit a au plus ${MAX_PHOTOS} photos`);
+        if (files.indexOf(file) >= max - count) {
+          if (files.indexOf(file) === max - count) message.warning(`Un ${subject} a au plus ${max} photos`);
           return false;
         }
         add(file);
         return false;
       }}>
-      {count + reading < MAX_PHOTOS && (
+      {count + reading < max && (
         <div><PlusOutlined /><div className="small mt-1">{reading ? 'Lecture…' : 'Photo'}</div></div>
       )}
     </Upload>
