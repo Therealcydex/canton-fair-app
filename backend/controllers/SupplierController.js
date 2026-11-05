@@ -151,6 +151,53 @@ exports.addCategory = handle('Supplier category create', async (req, res) => {
   res.json({ success: true, data: r.data });
 });
 
+// "1,2" from the catalogues supplier filter. [] means no filter; null means the filter is invalid.
+function idFilter(raw) {
+  if (raw === undefined || raw === '' || raw === null) return [];
+  const parts = Array.isArray(raw) ? raw : String(raw).split(',');
+  const ids = [...new Set(parts.map(toId))];
+  if (ids.includes(null)) return null;
+  return ids.filter(Boolean);
+}
+
+// D76: every PDF catalogue of the group (of the viewer's shared suppliers for a viewer).
+// The list has no file_data; GET /catalogs/:id returns one PDF.
+exports.listCatalogs = handle('Supplier catalogs', async (req, res) => {
+  const scope = scopeOf(req);
+  const params = [...scope.params];
+  let where = `1=1${scope.where}`;
+  const supplierIds = idFilter(req.query.supplier_ids);
+  if (supplierIds === null) return fail(res, 400, 'Filtre supplier_ids invalide');
+  if (supplierIds.length) {
+    where += ' AND c.supplier_id IN (?)';
+    params.push(supplierIds);
+  }
+  const [rows] = await db.query(
+    `SELECT c.id, c.file_name, c.supplier_id, v.name AS supplier_name
+     FROM supplier_catalogs c
+     JOIN suppliers v ON v.id = c.supplier_id
+     WHERE ${where}
+     ORDER BY v.name, c.file_name, c.id`,
+    params
+  );
+  res.json({ success: true, data: rows });
+});
+
+exports.getCatalog = handle('Supplier catalog', async (req, res) => {
+  const catalogId = toId(req.params.catalogId);
+  if (!catalogId) return fail(res, 400, 'Identifiant invalide');
+  const scope = scopeOf(req);
+  const [[row]] = await db.query(
+    `SELECT c.id, c.file_name, c.file_data, c.supplier_id, v.name AS supplier_name
+     FROM supplier_catalogs c
+     JOIN suppliers v ON v.id = c.supplier_id
+     WHERE c.id = ?${scope.where}`,
+    [catalogId, ...scope.params]
+  );
+  if (!row) return fail(res, 404, 'Catalogue introuvable');
+  res.json({ success: true, data: row });
+});
+
 // D66: a viewer only opens a supplier shared with one of its companies (404 otherwise, as if it
 // did not exist). It cannot read the products routes, so its supplier comes with its products
 // (no decision, which stays internal).

@@ -216,6 +216,13 @@ module.exports = async (ctx) => {
     withFiles.catalogs.length === 1 && withFiles.catalogs[0].file_name === `${PREFIX} catalogue.pdf`
     && withFiles.catalogs[0].file_data.startsWith('data:application/pdf;base64,')
     && withFiles.images.length === 1 && withFiles.images[0].thumb_data.startsWith('data:image/png;base64,'));
+  const catalogs = expect('catalogues list', await api('GET', '/suppliers/catalogs', { token: A }), 200);
+  check('the new catalogue is listed', catalogs.body.data.some((c) => c.id === withFiles.catalogs[0].id && c.supplier_id === id && !c.file_data));
+  const one = expect('one catalogue', await api('GET', `/suppliers/catalogs/${withFiles.catalogs[0].id}`, { token: A }), 200);
+  check('the PDF is returned', one.body.data.file_data.startsWith('data:application/pdf;base64,'));
+  expect('catalogues filtered by supplier', await api('GET', `/suppliers/catalogs?supplier_ids=${id}`, { token: A }), 200);
+  expect('invalid catalogues filter', await api('GET', '/suppliers/catalogs?supplier_ids=x', { token: A }), 400);
+  expect('missing catalogue', await api('GET', '/suppliers/catalogs/999999', { token: A }), 404);
   expect('remove them', await api('PUT', `/suppliers/${id}`, {
     token: A, body: { catalogs_remove: [withFiles.catalogs[0].id], images_remove: [withFiles.images[0].id] },
   }), 200);

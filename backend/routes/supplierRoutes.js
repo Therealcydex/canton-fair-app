@@ -12,6 +12,8 @@ router.get('/', c.list);
 router.get('/provinces', c.provinces); // before /:id
 router.get('/categories', c.listCategories); // D69, before /:id
 router.post('/categories', refuseViewer, c.addCategory);
+router.get('/catalogs', c.listCatalogs); // D76, before /:id
+router.get('/catalogs/:catalogId', c.getCatalog);
 router.post('/', refuseViewer, c.create);
 router.get('/:id', c.getById);
 router.put('/:id', refuseViewer, c.update);

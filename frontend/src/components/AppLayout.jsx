@@ -3,8 +3,8 @@ import { useScrollPlace } from '../utils/place';
 import { Nav, Offcanvas } from 'react-bootstrap';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
-  ApartmentOutlined, AuditOutlined, BankOutlined, ContactsOutlined, FlagOutlined, HomeOutlined,
-  InboxOutlined, LogoutOutlined, MenuOutlined, PictureOutlined, ShopOutlined, TeamOutlined,
+  ApartmentOutlined, AuditOutlined, BankOutlined, ContactsOutlined, FilePdfOutlined, FlagOutlined,
+  HomeOutlined, InboxOutlined, LogoutOutlined, MenuOutlined, PictureOutlined, ShopOutlined, TeamOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
 import { isAdmin, isViewer } from '../utils/access';
@@ -21,6 +21,7 @@ const MENU = [
   { to: '/produits', label: 'Produits', icon: <InboxOutlined /> },
   { to: '/revue', label: 'Revue du soir', icon: <AuditOutlined /> }, // D38
   { to: '/galerie', label: 'Galerie', icon: <PictureOutlined /> }, // D68
+  { to: '/catalogues', label: 'Catalogues', icon: <FilePdfOutlined /> }, // D76
 ];
 // D52: on a phone, the screens used on the fair floor stay one tap away at the bottom.
 const TABS = [
