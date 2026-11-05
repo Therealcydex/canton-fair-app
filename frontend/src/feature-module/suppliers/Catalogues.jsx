@@ -1,19 +1,22 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
-import { Alert, Button, Empty, Select, Spin, Table } from 'antd';
+import { Alert, App, Button, Empty, Select, Spin, Table } from 'antd';
 import { DownloadOutlined, FilePdfOutlined, ReloadOutlined } from '@ant-design/icons';
-import { API_BASE_URL, fileUrl } from '../../config/config';
+import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import { useStickyState } from '../../utils/place';
 import PageHeader from '../../components/PageHeader';
+import { downloadCatalogFile } from './downloadCatalog';
 
 // D76/D77: every supplier PDF on disk, opened from the sidebar under Galerie.
 export default function Catalogues() {
+  const { message } = App.useApp();
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
   const [suppliers, setSuppliers] = useState([]);
   const [filters, setFilters] = useStickyState('filters:catalogues', {});
+  const [downloading, setDownloading] = useState(null);
 
   useEffect(() => {
     axios.get(`${API_BASE_URL}/suppliers`).then((r) => setSuppliers(r.data.data)).catch(() => {});
@@ -65,8 +68,12 @@ export default function Catalogues() {
             {
               title: '', key: 'actions', width: 140, align: 'right',
               render: (_, row) => (
-                <Button size="small" icon={<DownloadOutlined />} href={fileUrl(row.file_url)}
-                  download={row.file_name} target="_blank" rel="noreferrer">
+                <Button size="small" icon={<DownloadOutlined />} loading={downloading === row.id}
+                  onClick={async () => {
+                    setDownloading(row.id);
+                    await downloadCatalogFile(row, (msg) => message.error(msg));
+                    setDownloading(null);
+                  }}>
                   Télécharger
                 </Button>
               ),

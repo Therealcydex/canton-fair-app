@@ -57,7 +57,8 @@ acceptance), **Partiel** (started), **À faire**, **Remplacé** (by schema v2).
 | D75 | Lien du salon accepts any web address. Catalogue PDFs (no count or size cap) and supplier photos (30) are stored in `supplier_catalogs` and `supplier_images`. The Images and Catalogue tabs add and remove them; the form does too | À valider | Scenarios `02-suppliers` and `08-fair-plan` (not run: no local database). `db:update-supplier-files` creates the tables and widens `file_data` to LONGTEXT |
 | D76 | Sidebar entry Catalogues under Galerie. Page `/catalogues` lists every supplier PDF, filter by fournisseur, download one by one | À valider | Scenario `02-suppliers` catalogues list (not run: no local database). Not checked in the browser |
 | D77 | Catalogues uploaded as files (`uploads/catalogs/`, 200 Mo), not Base64 in the database or the page | À valider | Migration `db:update-supplier-catalog-files`. Scenario `02-suppliers` (not run: no local database) |
-| D78 | Large catalogues sent in 2 Mo chunks (`/catalogs/chunk`), assembled on the server | À valider | Not run on the server yet |
+| D78 | Large catalogues sent in 1 Mo chunks (`/catalogs/chunk`), assembled on the server | À valider | Upload works on production after chunk deploy |
+| D79 | Catalogue download through `GET /api/suppliers/catalogs/:id/file` (JWT stream), not bare `/uploads/` | À valider | 949 B download was HTML from nginx; fix needs frontend rebuild + pm2 reload |
 | Boss fix | "Add Fournisseur" and "Edit Fournisseur" checked | Fait | Browser (2026-10-17): new supplier with its first contact (supplier then contact saved, page opened), edit from the supplier page (phone emptied is stored as null, website set) and from the list (notes); API scenario `02-suppliers`. No defect found, no change |
 
 ## Not checked by hand yet

@@ -2,10 +2,11 @@ import { useRef, useState } from 'react';
 import axios from 'axios';
 import { App, Button, Image, Popconfirm, Progress, Upload } from 'antd';
 import { DeleteOutlined, FilePdfOutlined, PlusOutlined } from '@ant-design/icons';
-import { API_BASE_URL, fileUrl } from '../../config/config';
+import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import { ACCEPTED_IMAGES, toProductPhoto } from '../../utils/image';
 import { uploadCatalog } from './CatalogsField';
+import { downloadCatalogFile } from './downloadCatalog';
 
 function catalogError(err) {
   if (err?.code === 'ECONNABORTED') return 'Envoi trop long : le catalogue n\'a pas pu être envoyé à temps';
@@ -122,6 +123,7 @@ export function SupplierCatalogs({ supplier, viewer, onChanged }) {
   const catalogs = supplier.catalogs || [];
   const { busy, setBusy, run, message } = useSaver(supplier.id, onChanged);
   const [percent, setPercent] = useState(null);
+  const [downloading, setDownloading] = useState(null);
   const queue = useRef([]);
 
   const upload = async (files) => {
@@ -155,9 +157,15 @@ export function SupplierCatalogs({ supplier, viewer, onChanged }) {
         <ul className="list-unstyled mb-3">
           {catalogs.map((file) => (
             <li key={file.id} className="d-flex align-items-center gap-2 mb-2">
-              <a href={fileUrl(file.file_url)} download={file.file_name} target="_blank" rel="noreferrer">
-                <FilePdfOutlined className="me-2" />{file.file_name}
-              </a>
+              <Button type="link" className="p-0" icon={<FilePdfOutlined />}
+                loading={downloading === file.id}
+                onClick={async () => {
+                  setDownloading(file.id);
+                  await downloadCatalogFile(file, (msg) => message.error(msg));
+                  setDownloading(null);
+                }}>
+                {file.file_name}
+              </Button>
               {!viewer && (
                 <Popconfirm title="Supprimer ce catalogue ?" okText="Supprimer" cancelText="Annuler"
                   onConfirm={() => run({ catalogs_remove: [file.id] }, 'Catalogue supprimé')}>

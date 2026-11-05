@@ -159,6 +159,22 @@ function idFilter(raw) {
   return ids.filter(Boolean);
 }
 
+// Loads one catalogue row the caller may see (viewer: shared suppliers only).
+async function loadCatalogForUser(req, catalogId) {
+  const id = toId(catalogId);
+  if (!id) return { status: 400, message: 'Identifiant invalide' };
+  const scope = scopeOf(req);
+  const [[row]] = await db.query(
+    `SELECT c.id, c.file_name, c.file_url, c.supplier_id, v.name AS supplier_name
+     FROM supplier_catalogs c
+     JOIN suppliers v ON v.id = c.supplier_id
+     WHERE c.id = ?${scope.where}`,
+    [id, ...scope.params]
+  );
+  if (!row) return { status: 404, message: 'Catalogue introuvable' };
+  return { row };
+}
+
 // D76/D77: every PDF catalogue of the group (paths only; the file is under /uploads/catalogs/).
 exports.listCatalogs = handle('Supplier catalogs', async (req, res) => {
   const scope = scopeOf(req);
@@ -179,6 +195,23 @@ exports.listCatalogs = handle('Supplier catalogs', async (req, res) => {
     params
   );
   res.json({ success: true, data: rows });
+});
+
+// D79: stream the PDF through the API (Authorization header). Needed when nginx does not
+// expose /uploads/ next to the React app (custom deploy under /var/www/…).
+exports.downloadCatalog = handle('Supplier catalog download', async (req, res) => {
+  const r = await loadCatalogForUser(req, req.params.catalogId);
+  if (!r.row) return fail(res, r.status, r.message);
+  const path = require('path');
+  const fs = require('fs');
+  const { UPLOAD_ROOT } = require('../utils/upload');
+  const file = path.resolve(UPLOAD_ROOT, r.row.file_url.replace(/^\/uploads\//, ''));
+  if (!file.startsWith(UPLOAD_ROOT + path.sep) || !fs.existsSync(file)) {
+    return fail(res, 404, 'Fichier catalogue introuvable sur le serveur');
+  }
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${String(r.row.file_name).replace(/"/g, '')}"`);
+  fs.createReadStream(file).pipe(res);
 });
 
 // D77: one PDF uploaded as multipart (field « catalog »), written under uploads/catalogs/.
