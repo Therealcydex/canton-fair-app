@@ -1,11 +1,18 @@
 import { useRef, useState } from 'react';
 import axios from 'axios';
-import { App, Button, Image, Popconfirm, Upload } from 'antd';
+import { App, Button, Image, Popconfirm, Progress, Upload } from 'antd';
 import { DeleteOutlined, FilePdfOutlined, PlusOutlined } from '@ant-design/icons';
 import { API_BASE_URL, fileUrl } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import { ACCEPTED_IMAGES, toProductPhoto } from '../../utils/image';
 import { uploadCatalog } from './CatalogsField';
+
+function catalogError(err) {
+  if (err?.code === 'ECONNABORTED') return 'Envoi trop long : le catalogue n\'a pas pu être envoyé à temps';
+  if (err?.response?.status === 413) return 'Catalogue trop volumineux pour le serveur (200 Mo au maximum)';
+  if (!err?.response) return 'Envoi interrompu (réseau ou serveur). Réessayez après un déploiement à jour.';
+  return apiError(err, 'Erreur lors de l\'ajout du catalogue');
+}
 
 export const MAX_SUPPLIER_IMAGES = 30;
 
@@ -114,19 +121,22 @@ export function SupplierImages({ supplier, viewer, onChanged }) {
 export function SupplierCatalogs({ supplier, viewer, onChanged }) {
   const catalogs = supplier.catalogs || [];
   const { busy, setBusy, run, message } = useSaver(supplier.id, onChanged);
+  const [percent, setPercent] = useState(null);
   const queue = useRef([]);
 
   const upload = async (files) => {
     setBusy(true);
+    setPercent(0);
     let saved = 0;
     let failed = null;
     try {
       for (const file of files) {
         try {
-          await uploadCatalog(supplier.id, file);
+          setPercent(0);
+          await uploadCatalog(supplier.id, file, setPercent);
           saved += 1;
         } catch (err) {
-          failed = err.response ? apiError(err, 'Erreur lors de l\'ajout') : err.message;
+          failed = catalogError(err);
           break;
         }
       }
@@ -135,6 +145,7 @@ export function SupplierCatalogs({ supplier, viewer, onChanged }) {
       else if (saved) message.success(saved > 1 ? `${saved} catalogues ajoutés` : 'Catalogue ajouté');
     } finally {
       setBusy(false);
+      setPercent(null);
     }
   };
 
@@ -158,16 +169,19 @@ export function SupplierCatalogs({ supplier, viewer, onChanged }) {
         </ul>
       ) : <p className="text-secondary mb-3">Aucun catalogue.</p>}
       {!viewer && (
-        <Upload accept="application/pdf,.pdf" multiple showUploadList={false} disabled={busy}
-          beforeUpload={(file, files) => {
-            const chosen = takeFiles(file, files, files.length, queue, () => {});
-            if (chosen) upload(chosen);
-            return false;
-          }}>
-          <Button icon={<PlusOutlined />} loading={busy}>
-            Ajouter des catalogues
-          </Button>
-        </Upload>
+        <>
+          <Upload accept="application/pdf,.pdf" multiple showUploadList={false} disabled={busy}
+            beforeUpload={(file, files) => {
+              const chosen = takeFiles(file, files, files.length, queue, () => {});
+              if (chosen) upload(chosen);
+              return false;
+            }}>
+            <Button icon={<PlusOutlined />} loading={busy}>
+              {busy && percent != null ? `Envoi… ${percent} %` : 'Ajouter des catalogues'}
+            </Button>
+          </Upload>
+          {percent != null && <Progress percent={percent} size="small" className="mt-2" style={{ maxWidth: 280 }} />}
+        </>
       )}
     </>
   );

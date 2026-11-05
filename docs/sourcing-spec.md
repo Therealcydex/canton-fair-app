@@ -179,6 +179,7 @@ none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercas
 | 2026-10-22 | D65: supplier on the new-booth form (pick, type a name, or full form); delete on a supplier's products; deleting that product returns there; no "Nouveau produit" on the booth page |
 | 2026-10-22 | D66: suppliers shared with several companies instead of booths; users in several companies; viewers read their shared suppliers with contacts, booths and products; phase/hall filters and provinces in use on Fournisseurs; contacts grouped by supplier; À visiter grouped by phase and hall |
 | 2026-10-26 | D68: Retour keeps the list place; a new product stays on the list; Précédent/Suivant on a product; revue gallery; supplier notes in the list |
+| 2026-11-05 | D77: deploy raises nginx body size/timeouts for large catalogues; UI shows upload progress |
 | 2026-11-05 | D77: catalogues stored as files under `uploads/catalogs/` (multipart upload), not Base64 |
 | 2026-11-05 | D76: Catalogues page under Galerie in the sidebar (`/catalogues`, `GET /api/suppliers/catalogs`) |
 | 2026-11-05 | D75: no catalogue size cap on the PDF (only the HTTP body limit, 500 MB) |

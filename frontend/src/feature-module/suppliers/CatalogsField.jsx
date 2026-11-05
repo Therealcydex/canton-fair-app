@@ -1,20 +1,35 @@
 import { useRef, useState } from 'react';
 import axios from 'axios';
-import { App, Button, Upload } from 'antd';
+import { App, Button, Progress, Upload } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
+
+const UPLOAD_TIMEOUT_MS = 15 * 60 * 1000; // 15 min for a large PDF on a slow link
 
 function isPdf(file) {
   return !file.type || file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
 }
 
+function catalogError(err) {
+  if (err?.code === 'ECONNABORTED') return 'Envoi trop long : le catalogue n\'a pas pu être envoyé à temps';
+  if (err?.response?.status === 413) return 'Catalogue trop volumineux pour le serveur (200 Mo au maximum)';
+  if (!err?.response) return 'Envoi interrompu (réseau ou serveur). Réessayez, ou déployez la version fichiers si le site est encore à l\'ancienne.';
+  return apiError(err, 'Erreur lors de l\'ajout du catalogue');
+}
+
 // D77: upload one PDF as multipart (never Base64 — large files crash the browser).
-export async function uploadCatalog(supplierId, file) {
+export async function uploadCatalog(supplierId, file, onProgress) {
   if (!isPdf(file)) throw new Error(`« ${file.name} » n'est pas un PDF`);
   const body = new FormData();
   body.append('catalog', file, file.name);
-  const { data } = await axios.post(`${API_BASE_URL}/suppliers/${supplierId}/catalogs`, body);
+  const { data } = await axios.post(`${API_BASE_URL}/suppliers/${supplierId}/catalogs`, body, {
+    timeout: UPLOAD_TIMEOUT_MS,
+    onUploadProgress: (e) => {
+      if (!onProgress || !e.total) return;
+      onProgress(Math.min(100, Math.round((e.loaded / e.total) * 100)));
+    },
+  });
   return data.data;
 }
 
@@ -36,6 +51,7 @@ export async function saveDraftCatalogs(supplierId, files = []) {
 export default function CatalogsField({ value, onChange, supplierId }) {
   const { message } = App.useApp();
   const [busy, setBusy] = useState(0);
+  const [percent, setPercent] = useState(null);
   const v = { existing: [], removed: [], add: [], ...value };
   const kept = v.existing.filter((file) => !v.removed.includes(file.id));
   const latest = useRef(v);
@@ -58,18 +74,21 @@ export default function CatalogsField({ value, onChange, supplierId }) {
       return;
     }
     setBusy((n) => n + 1);
+    setPercent(0);
     try {
-      const saved = await uploadCatalog(supplierId, file);
+      const saved = await uploadCatalog(supplierId, file, setPercent);
       const next = {
         ...latest.current,
         existing: [...latest.current.existing, { id: saved.id, file_name: saved.file_name, file_url: saved.file_url }],
       };
       latest.current = next;
       onChange?.(next);
+      message.success('Catalogue ajouté');
     } catch (err) {
-      message.error(err.response ? apiError(err, 'Erreur lors de l\'ajout') : err.message);
+      message.error(catalogError(err));
     } finally {
       setBusy((n) => n - 1);
+      setPercent(null);
     }
   };
 
@@ -79,13 +98,16 @@ export default function CatalogsField({ value, onChange, supplierId }) {
   };
 
   return (
-    <Upload accept="application/pdf,.pdf" multiple fileList={fileList}
-      onRemove={(f) => { remove(f); return false; }}
-      beforeUpload={(file) => {
-        add(file);
-        return false;
-      }}>
-      <Button htmlType="button" icon={<PlusOutlined />} loading={busy > 0}>Catalogue PDF</Button>
-    </Upload>
+    <>
+      <Upload accept="application/pdf,.pdf" multiple fileList={fileList}
+        onRemove={(f) => { remove(f); return false; }}
+        beforeUpload={(file) => {
+          add(file);
+          return false;
+        }}>
+        <Button htmlType="button" icon={<PlusOutlined />} loading={busy > 0}>Catalogue PDF</Button>
+      </Upload>
+      {percent != null && <Progress percent={percent} size="small" className="mt-2" style={{ maxWidth: 280 }} />}
+    </>
   );
 }

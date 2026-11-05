@@ -42,12 +42,42 @@ chmod 750 "$APP/web"
 rm -f /tmp/web.tgz /tmp/backend.tgz
 cd "$APP/backend"
 sudo -u sourcing -H npm ci --omit=dev --no-audit --no-fund
+# D77: Base64 catalogues -> files on disk (safe if already done).
+sudo -u sourcing -H node sql/update_supplier_catalog_files.js || true
 if sudo -u sourcing -H pm2 describe sourcing-backend >/dev/null 2>&1; then
   sudo -u sourcing -H pm2 reload ecosystem.config.js
 else
   sudo -u sourcing -H pm2 start ecosystem.config.js
 fi
 sudo -u sourcing -H pm2 save
+# D77: raise nginx body size and timeouts without rewriting the certbot SSL blocks.
+NGINX=/etc/nginx/sites-available/sourcing
+if [[ -f "$NGINX" ]]; then
+  if grep -q 'client_max_body_size' "$NGINX"; then
+    sed -i -E 's/client_max_body_size[[:space:]]+[0-9]+[kKmMgG]?;/client_max_body_size 500m;/' "$NGINX"
+  else
+    sed -i '/server_name /a\    client_max_body_size 500m;' "$NGINX"
+  fi
+  if grep -q 'client_body_timeout' "$NGINX"; then
+    sed -i -E 's/client_body_timeout[[:space:]]+[0-9]+s;/client_body_timeout 600s;/' "$NGINX"
+  else
+    sed -i '/client_max_body_size/a\    client_body_timeout 600s;' "$NGINX"
+  fi
+  if grep -q 'proxy_read_timeout' "$NGINX"; then
+    sed -i -E 's/proxy_read_timeout[[:space:]]+[0-9]+s;/proxy_read_timeout 600s;/' "$NGINX"
+  else
+    sed -i '/proxy_pass http:\/\/127.0.0.1:3000;/a\        proxy_read_timeout 600s;' "$NGINX"
+  fi
+  if grep -q 'proxy_send_timeout' "$NGINX"; then
+    sed -i -E 's/proxy_send_timeout[[:space:]]+[0-9]+s;/proxy_send_timeout 600s;/' "$NGINX"
+  else
+    sed -i '/proxy_read_timeout/a\        proxy_send_timeout 600s;' "$NGINX"
+  fi
+  if ! grep -q 'proxy_request_buffering' "$NGINX"; then
+    sed -i '/proxy_send_timeout/a\        proxy_request_buffering off;' "$NGINX"
+  fi
+  nginx -t && systemctl reload nginx
+fi
 sleep 2
 curl -fsS http://127.0.0.1:3000/ && echo
 REMOTE
