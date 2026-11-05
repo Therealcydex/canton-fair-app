@@ -4,7 +4,6 @@ const { validate } = require('../utils/validate');
 const { loadSupplier, loadCompanyIds, idList } = require('../utils/scope');
 const { deleteImages, imageExtension, saveImages } = require('../utils/upload');
 const { parseDataImage } = require('../utils/dataImage');
-const { parseDataPdf } = require('../utils/dataPdf');
 const { isAdmin, isViewer, sharedWithViewer } = require('../utils/access');
 const { parseCategories, storedCategories, readCategoryNames, categoryMatch, listCategories, addCategory } = require('../utils/categories');
 
@@ -160,8 +159,7 @@ function idFilter(raw) {
   return ids.filter(Boolean);
 }
 
-// D76: every PDF catalogue of the group (of the viewer's shared suppliers for a viewer).
-// The list has no file_data; GET /catalogs/:id returns one PDF.
+// D76/D77: every PDF catalogue of the group (paths only; the file is under /uploads/catalogs/).
 exports.listCatalogs = handle('Supplier catalogs', async (req, res) => {
   const scope = scopeOf(req);
   const params = [...scope.params];
@@ -173,7 +171,7 @@ exports.listCatalogs = handle('Supplier catalogs', async (req, res) => {
     params.push(supplierIds);
   }
   const [rows] = await db.query(
-    `SELECT c.id, c.file_name, c.supplier_id, v.name AS supplier_name
+    `SELECT c.id, c.file_name, c.file_url, c.supplier_id, v.name AS supplier_name
      FROM supplier_catalogs c
      JOIN suppliers v ON v.id = c.supplier_id
      WHERE ${where}
@@ -183,19 +181,25 @@ exports.listCatalogs = handle('Supplier catalogs', async (req, res) => {
   res.json({ success: true, data: rows });
 });
 
-exports.getCatalog = handle('Supplier catalog', async (req, res) => {
-  const catalogId = toId(req.params.catalogId);
-  if (!catalogId) return fail(res, 400, 'Identifiant invalide');
-  const scope = scopeOf(req);
-  const [[row]] = await db.query(
-    `SELECT c.id, c.file_name, c.file_data, c.supplier_id, v.name AS supplier_name
-     FROM supplier_catalogs c
-     JOIN suppliers v ON v.id = c.supplier_id
-     WHERE c.id = ?${scope.where}`,
-    [catalogId, ...scope.params]
-  );
-  if (!row) return fail(res, 404, 'Catalogue introuvable');
-  res.json({ success: true, data: row });
+// D77: one PDF uploaded as multipart (field « catalog »), written under uploads/catalogs/.
+exports.addCatalog = handle('Supplier catalog create', async (req, res) => {
+  const r = await loadSupplier(req.params.id);
+  if (!r.row) {
+    if (req.catalog?.path) await deleteImages([req.catalog.file_url]);
+    return fail(res, r.status, r.message);
+  }
+  const file = req.catalog;
+  if (!file) return fail(res, 400, 'Envoyez un PDF (champ « catalog »)');
+  try {
+    const [ins] = await db.query(
+      'INSERT INTO supplier_catalogs (supplier_id, file_name, file_url) VALUES (?, ?, ?)',
+      [r.row.id, file.file_name, file.file_url]
+    );
+    res.json({ success: true, data: { id: ins.insertId, file_name: file.file_name, file_url: file.file_url } });
+  } catch (e) {
+    await deleteImages([file.file_url]);
+    throw e;
+  }
 });
 
 // D66: a viewer only opens a supplier shared with one of its companies (404 otherwise, as if it
@@ -236,19 +240,7 @@ async function readShares(req) {
   return r.ids ? r : { status: 400, message: r.message };
 }
 
-// D75: catalogues (PDF) and photos sent with the supplier. Missing from the body: nothing changes.
-function readCatalogs(raw) {
-  if (raw === undefined || raw === null) return { items: [] };
-  if (!Array.isArray(raw)) return { status: 400, message: 'Catalogues : liste attendue' };
-  const items = [];
-  for (const [i, file] of raw.entries()) {
-    const pdf = parseDataPdf(file?.data, file?.name, null, `Catalogue ${i + 1}`);
-    if (!pdf.value) return { status: 400, message: pdf.message };
-    items.push([pdf.name, pdf.value]);
-  }
-  return { items };
-}
-
+// D75/D77: photos still travel as Base64 with the supplier; catalogues are uploaded apart (POST …/catalogs).
 function readImages(raw) {
   if (raw === undefined || raw === null) return { items: [] };
   if (!Array.isArray(raw)) return { status: 400, message: 'Images : liste attendue' };
@@ -275,7 +267,7 @@ function readIdList(raw, label) {
 
 async function filesOf(supplierId) {
   const [catalogs] = await db.query(
-    'SELECT id, file_name, file_data FROM supplier_catalogs WHERE supplier_id = ? ORDER BY id', [supplierId]
+    'SELECT id, file_name, file_url FROM supplier_catalogs WHERE supplier_id = ? ORDER BY id', [supplierId]
   );
   const [images] = await db.query(
     'SELECT id, image_data, thumb_data FROM supplier_images WHERE supplier_id = ? ORDER BY id', [supplierId]
@@ -284,15 +276,13 @@ async function filesOf(supplierId) {
 }
 
 async function readFiles(req) {
-  const catalogs = readCatalogs(req.body?.catalogs_add);
-  if (catalogs.status) return catalogs;
   const catalogIds = readIdList(req.body?.catalogs_remove, 'Catalogues à retirer');
   if (catalogIds.status) return catalogIds;
   const images = readImages(req.body?.images_add);
   if (images.status) return images;
   const imageIds = readIdList(req.body?.images_remove, 'Images à retirer');
   if (imageIds.status) return imageIds;
-  return { catalogs: catalogs.items, catalogIds: catalogIds.ids, images: images.items, imageIds: imageIds.ids };
+  return { catalogIds: catalogIds.ids, images: images.items, imageIds: imageIds.ids };
 }
 
 async function readCategories(req) {
@@ -314,19 +304,17 @@ async function writeSupplier(req, shares, sql, params, existingId, files) {
           [shares.map((c) => [id, c, req.user.id])]);
       }
     }
+    let removedCatalogUrls = [];
     if (files.catalogIds.length) {
       const [found] = await conn.query(
-        'SELECT id FROM supplier_catalogs WHERE supplier_id = ? AND id IN (?)', [id, files.catalogIds]
+        'SELECT id, file_url FROM supplier_catalogs WHERE supplier_id = ? AND id IN (?)', [id, files.catalogIds]
       );
       if (found.length !== files.catalogIds.length) {
         await conn.rollback();
         return { status: 404, message: 'Catalogue introuvable' };
       }
+      removedCatalogUrls = found.map((row) => row.file_url);
       await conn.query('DELETE FROM supplier_catalogs WHERE supplier_id = ? AND id IN (?)', [id, files.catalogIds]);
-    }
-    if (files.catalogs.length) {
-      await conn.query('INSERT INTO supplier_catalogs (supplier_id, file_name, file_data) VALUES ?',
-        [files.catalogs.map(([name, data]) => [id, name, data])]);
     }
     if (files.imageIds.length) {
       const [found] = await conn.query(
@@ -348,6 +336,7 @@ async function writeSupplier(req, shares, sql, params, existingId, files) {
       return { status: 409, message: `Un fournisseur a au plus ${MAX_IMAGES} images` };
     }
     await conn.commit();
+    if (removedCatalogUrls.length) await deleteImages(removedCatalogUrls);
     return { id };
   } catch (e) {
     await conn.rollback();
@@ -406,8 +395,9 @@ exports.remove = handle('Supplier remove', async (req, res) => {
   const r = await loadSupplier(req.params.id);
   if (!r.row) return fail(res, r.status, r.message);
   const [contacts] = await db.query('SELECT wechat_qr FROM contacts WHERE supplier_id = ?', [r.row.id]);
+  const [catalogs] = await db.query('SELECT file_url FROM supplier_catalogs WHERE supplier_id = ?', [r.row.id]);
   await db.query('DELETE FROM suppliers WHERE id = ?', [r.row.id]);
-  await deleteImages(qrFiles(contacts)); // D61: product photos are in the database
+  await deleteImages([...qrFiles(contacts), ...catalogs.map((c) => c.file_url)]); // D61/D77
   res.json({ success: true, data: { id: r.row.id } });
 });
 

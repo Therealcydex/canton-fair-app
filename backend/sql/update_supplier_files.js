@@ -9,7 +9,7 @@ const CATALOGS = `CREATE TABLE supplier_catalogs (
   id INT AUTO_INCREMENT PRIMARY KEY,
   supplier_id INT NOT NULL,
   file_name VARCHAR(200) NOT NULL,
-  file_data LONGTEXT NOT NULL,
+  file_url VARCHAR(255) NOT NULL,
   FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
 
@@ -51,21 +51,10 @@ async function main() {
       console.log('  add supplier_images');
       run++;
     }
-    if (await exists('supplier_catalogs')) {
-      const [cols] = await conn.query(
-        `SELECT DATA_TYPE AS t FROM information_schema.COLUMNS
-         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'supplier_catalogs' AND COLUMN_NAME = 'file_data'`,
-        [dbName]
-      );
-      if (cols[0] && String(cols[0].t).toLowerCase() !== 'longtext') {
-        await conn.query('ALTER TABLE supplier_catalogs MODIFY file_data LONGTEXT NOT NULL');
-        console.log('  supplier_catalogs.file_data -> LONGTEXT');
-        run++;
-      }
-    }
     console.log(run
       ? `update_supplier_files: ${run} step(s) run on ${dbName}`
       : `supplier catalogues and photos already stored on ${dbName}: nothing to do`);
+    console.log('  (Base64 catalogues -> disk: npm run db:update-supplier-catalog-files)');
   } finally {
     await conn.end();
   }

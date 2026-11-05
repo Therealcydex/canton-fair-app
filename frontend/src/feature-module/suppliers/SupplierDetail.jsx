@@ -9,6 +9,7 @@ import SupplierFormFields from './SupplierFormFields';
 import { QrThumb } from './WechatQr';
 import ContactCard, { openCardOnClick } from '../contacts/ContactCard';
 import ContactAvatar from '../../components/ContactAvatar';
+import SupplierContacts from './SupplierContacts';
 import BoothList from '../booths/BoothList';
 import ProductList, { NewProductModal } from '../products/ProductList';
 import ProductThumb from '../../components/ProductThumb';
@@ -29,7 +30,8 @@ export const supplierPayload = ({
   ...(Array.isArray(shares) ? { share_company_ids: shares } : {}),
   rating: values.rating || null,
   province_id: values.province_id ?? null,
-  ...(catalogs ? { catalogs_add: catalogs.add || [], catalogs_remove: catalogs.removed || [] } : {}),
+  // Catalogues are uploaded with POST …/catalogs (D77); the form only removes them here.
+  ...(catalogs ? { catalogs_remove: catalogs.removed || [] } : {}),
   ...(images ? { images_add: images.add || [], images_remove: images.removed || [] } : {}),
 });
 
@@ -38,7 +40,7 @@ export const supplierInitialValues = (s, admin) => s && {
   ...s,
   ...(admin ? { share_company_ids: s.shared_company_ids || [] } : {}),
   catalogs: {
-    existing: (s.catalogs || []).map(({ id, file_name }) => ({ id, file_name })),
+    existing: (s.catalogs || []).map(({ id, file_name, file_url }) => ({ id, file_name, file_url })),
     removed: [],
     add: [],
   },
@@ -135,11 +137,12 @@ export default function SupplierDetail() {
     {
       key: 'contacts',
       label: `Contacts (${contacts.length})`,
-      children: (
+      // Buyers use the same Ajouter contact form as Nouveau / Modifier fournisseur.
+      children: viewer ? (
         <>
           <Table rowKey="id" size="middle" pagination={false} dataSource={contacts} scroll={{ x: true }}
             locale={{ emptyText: 'Aucun contact' }} className="sc-table-clickable"
-            onRow={openCardOnClick(setViewing)} // D63
+            onRow={openCardOnClick(setViewing)}
             columns={[
               { title: 'QR WeChat', dataIndex: 'wechat_qr', width: 110, render: (v) => <QrThumb value={v} size={72} /> },
               {
@@ -151,11 +154,10 @@ export default function SupplierDetail() {
               { title: 'Téléphone', dataIndex: 'phone', render: (v) => v || '—' },
               { title: 'E-mail', dataIndex: 'email', responsive: ['md'], render: (v) => v || '—' },
             ]} />
-          {/* Contacts are added and edited on the Contacts page, filtered on this supplier. */}
-          {!viewer && <div className="mt-2 small"><Link to={`/contacts?supplier_id=${supplier.id}`}>Ajouter ou modifier les contacts →</Link></div>}
-          <ContactCard contact={viewing} supplierName={supplier.name} onClose={() => setViewing(null)}
-            onEdit={viewer ? undefined : () => navigate(`/contacts?supplier_id=${supplier.id}`)} />
+          <ContactCard contact={viewing} supplierName={supplier.name} onClose={() => setViewing(null)} />
         </>
+      ) : (
+        <SupplierContacts supplierId={supplier.id} contacts={contacts} onContacts={load} />
       ),
     },
     {

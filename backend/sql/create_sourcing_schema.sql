@@ -63,12 +63,12 @@ CREATE TABLE IF NOT EXISTS categories_products (
     name  VARCHAR(150) NOT NULL PRIMARY KEY
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- D75: catalogues (PDF) and photos of a supplier. Existing suppliers start with none.
+-- D75/D77: catalogues (PDF on disk) and photos of a supplier. Existing suppliers start with none.
 CREATE TABLE IF NOT EXISTS supplier_catalogs (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     supplier_id INT NOT NULL,
     file_name   VARCHAR(200) NOT NULL,
-    file_data   LONGTEXT NOT NULL,                    -- data:application/pdf;base64,...
+    file_url    VARCHAR(255) NOT NULL,               -- /uploads/catalogs/<random>.pdf
     FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

@@ -2,10 +2,10 @@ import { useRef, useState } from 'react';
 import axios from 'axios';
 import { App, Button, Image, Popconfirm, Upload } from 'antd';
 import { DeleteOutlined, FilePdfOutlined, PlusOutlined } from '@ant-design/icons';
-import { API_BASE_URL } from '../../config/config';
+import { API_BASE_URL, fileUrl } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import { ACCEPTED_IMAGES, toProductPhoto } from '../../utils/image';
-import { readCatalogFile } from './CatalogsField';
+import { uploadCatalog } from './CatalogsField';
 
 export const MAX_SUPPLIER_IMAGES = 30;
 
@@ -123,8 +123,7 @@ export function SupplierCatalogs({ supplier, viewer, onChanged }) {
     try {
       for (const file of files) {
         try {
-          const pdf = await readCatalogFile(file);
-          await saveFiles(supplier.id, { catalogs_add: [pdf] });
+          await uploadCatalog(supplier.id, file);
           saved += 1;
         } catch (err) {
           failed = err.response ? apiError(err, 'Erreur lors de l\'ajout') : err.message;
@@ -145,7 +144,7 @@ export function SupplierCatalogs({ supplier, viewer, onChanged }) {
         <ul className="list-unstyled mb-3">
           {catalogs.map((file) => (
             <li key={file.id} className="d-flex align-items-center gap-2 mb-2">
-              <a href={file.file_data} download={file.file_name} target="_blank" rel="noreferrer">
+              <a href={fileUrl(file.file_url)} download={file.file_name} target="_blank" rel="noreferrer">
                 <FilePdfOutlined className="me-2" />{file.file_name}
               </a>
               {!viewer && (

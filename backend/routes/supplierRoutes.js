@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { requireAuth, refuseViewer } = require('../middleware/auth');
-const { parseImages } = require('../utils/upload');
+const { parseImages, parseCatalog } = require('../utils/upload');
 const c = require('../controllers/SupplierController');
 
 // Every route below requires a valid token; every buyer sees every supplier. D66: a viewer
@@ -13,11 +13,11 @@ router.get('/provinces', c.provinces); // before /:id
 router.get('/categories', c.listCategories); // D69, before /:id
 router.post('/categories', refuseViewer, c.addCategory);
 router.get('/catalogs', c.listCatalogs); // D76, before /:id
-router.get('/catalogs/:catalogId', c.getCatalog);
 router.post('/', refuseViewer, c.create);
 router.get('/:id', c.getById);
 router.put('/:id', refuseViewer, c.update);
 router.delete('/:id', refuseViewer, c.remove);
+router.post('/:id/catalogs', refuseViewer, parseCatalog, c.addCatalog); // D77
 
 router.use('/:id/contacts', refuseViewer); // the viewer gets the contacts with GET /:id
 router.get('/:id/contacts', c.listContacts);

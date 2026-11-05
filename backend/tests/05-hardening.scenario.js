@@ -10,7 +10,7 @@ module.exports = async (ctx) => {
   const big = (mb) => JSON.stringify({ name: 'x'.repeat(mb * 1024 * 1024 + 10) });
   expect('JSON body over 1 MB', await api('POST', '/companies', { token: ctx.adminToken, body: big(1) }), 413);
   // D61: larger bodies only where Base64 images travel.
-  expect('supplier body over 500 MB', await api('POST', '/suppliers', { token: ctx.tokens.buyerA, body: big(500) }), 413);
+  expect('supplier body over 55 MB', await api('POST', '/suppliers', { token: ctx.tokens.buyerA, body: big(55) }), 413);
   expect('product body over 25 MB', await api('POST', '/products', { token: ctx.tokens.buyerA, body: big(25) }), 413);
 
   const res = await fetch(`${BASE}/me`);

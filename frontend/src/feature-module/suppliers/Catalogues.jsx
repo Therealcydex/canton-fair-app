@@ -1,21 +1,19 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
-import { Alert, App, Button, Empty, Select, Spin, Table } from 'antd';
+import { Alert, Button, Empty, Select, Spin, Table } from 'antd';
 import { DownloadOutlined, FilePdfOutlined, ReloadOutlined } from '@ant-design/icons';
-import { API_BASE_URL } from '../../config/config';
+import { API_BASE_URL, fileUrl } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 import { useStickyState } from '../../utils/place';
 import PageHeader from '../../components/PageHeader';
 
-// D76: every supplier PDF, opened from the sidebar under Galerie.
+// D76/D77: every supplier PDF on disk, opened from the sidebar under Galerie.
 export default function Catalogues() {
-  const { message } = App.useApp();
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
   const [suppliers, setSuppliers] = useState([]);
   const [filters, setFilters] = useStickyState('filters:catalogues', {});
-  const [downloading, setDownloading] = useState(null);
 
   useEffect(() => {
     axios.get(`${API_BASE_URL}/suppliers`).then((r) => setSuppliers(r.data.data)).catch(() => {});
@@ -28,23 +26,6 @@ export default function Catalogues() {
       .then((r) => setRows(r.data.data))
       .catch((err) => { setRows([]); setError(apiError(err, 'Erreur lors du chargement des catalogues')); });
   }, [filters]);
-
-  const download = async (row) => {
-    setDownloading(row.id);
-    try {
-      const { data } = await axios.get(`${API_BASE_URL}/suppliers/catalogs/${row.id}`);
-      const file = data.data;
-      const a = document.createElement('a');
-      a.href = file.file_data;
-      a.download = file.file_name;
-      a.rel = 'noreferrer';
-      a.click();
-    } catch (err) {
-      message.error(apiError(err, 'Erreur lors du téléchargement'));
-    } finally {
-      setDownloading(null);
-    }
-  };
 
   const supplierCount = new Set((rows || []).map((r) => r.supplier_id)).size;
   const counts = rows
@@ -84,8 +65,8 @@ export default function Catalogues() {
             {
               title: '', key: 'actions', width: 140, align: 'right',
               render: (_, row) => (
-                <Button size="small" icon={<DownloadOutlined />} loading={downloading === row.id}
-                  onClick={() => download(row)}>
+                <Button size="small" icon={<DownloadOutlined />} href={fileUrl(row.file_url)}
+                  download={row.file_name} target="_blank" rel="noreferrer">
                   Télécharger
                 </Button>
               ),

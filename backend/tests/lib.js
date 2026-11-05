@@ -84,7 +84,10 @@ async function cleanup(conn) {
   const [qrs] = await conn.query(
     `SELECT wechat_qr FROM contacts WHERE wechat_qr LIKE '/uploads/%' AND supplier_id IN (${supplierIds})`, [like]
   );
-  await deleteImages(qrs.map((q) => q.wechat_qr)); // D61: product photos are rows, not files
+  const [catalogs] = await conn.query(
+    `SELECT file_url FROM supplier_catalogs WHERE supplier_id IN (${supplierIds})`, [like]
+  );
+  await deleteImages([...qrs.map((q) => q.wechat_qr), ...catalogs.map((c) => c.file_url)]); // D61/D77
   await conn.query(`DELETE FROM products WHERE ${productWhere}`, [like, like]);
   await conn.query(`DELETE FROM booths WHERE comment LIKE ? OR supplier_id IN (${supplierIds})`, [like, like]);
   await conn.query('DELETE FROM suppliers WHERE name LIKE ?', [like]);

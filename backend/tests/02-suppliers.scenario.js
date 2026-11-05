@@ -205,27 +205,32 @@ module.exports = async (ctx) => {
 
   ctx.supplierId = id;
 
-  const pdf = `data:application/pdf;base64,${Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF').toString('base64')}`;
+  const pdfBytes = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF');
   const photo = `data:image/png;base64,${PNG.toString('base64')}`;
-  expect('a catalogue that is not a PDF', await api('PUT', `/suppliers/${id}`, { token: A, body: { catalogs_add: [{ name: 'x.pdf', data: photo }] } }), 400);
-  expect('add a catalogue and an image', await api('PUT', `/suppliers/${id}`, {
-    token: A, body: { catalogs_add: [{ name: `${PREFIX} catalogue.pdf`, data: pdf }], images_add: [{ data: photo, thumb: photo }] },
+  const badCatalog = new FormData();
+  badCatalog.append('catalog', new Blob([PNG], { type: 'application/pdf' }), 'x.pdf');
+  expect('a catalogue that is not a PDF', await api('POST', `/suppliers/${id}/catalogs`, { token: A, form: badCatalog }), 400);
+  const catalogForm = new FormData();
+  catalogForm.append('catalog', new Blob([pdfBytes], { type: 'application/pdf' }), `${PREFIX} catalogue.pdf`);
+  expect('add a catalogue', await api('POST', `/suppliers/${id}/catalogs`, { token: A, form: catalogForm }), 200);
+  expect('add an image', await api('PUT', `/suppliers/${id}`, {
+    token: A, body: { images_add: [{ data: photo, thumb: photo }] },
   }), 200);
   const withFiles = (await api('GET', `/suppliers/${id}`, { token: A })).body.data;
   check('the catalogue and the image are stored',
     withFiles.catalogs.length === 1 && withFiles.catalogs[0].file_name === `${PREFIX} catalogue.pdf`
-    && withFiles.catalogs[0].file_data.startsWith('data:application/pdf;base64,')
+    && /^\/uploads\/catalogs\/[0-9a-f]{32}\.pdf$/.test(withFiles.catalogs[0].file_url)
+    && fs.existsSync(fileOf(withFiles.catalogs[0].file_url))
     && withFiles.images.length === 1 && withFiles.images[0].thumb_data.startsWith('data:image/png;base64,'));
   const catalogs = expect('catalogues list', await api('GET', '/suppliers/catalogs', { token: A }), 200);
-  check('the new catalogue is listed', catalogs.body.data.some((c) => c.id === withFiles.catalogs[0].id && c.supplier_id === id && !c.file_data));
-  const one = expect('one catalogue', await api('GET', `/suppliers/catalogs/${withFiles.catalogs[0].id}`, { token: A }), 200);
-  check('the PDF is returned', one.body.data.file_data.startsWith('data:application/pdf;base64,'));
+  check('the new catalogue is listed', catalogs.body.data.some((c) => c.id === withFiles.catalogs[0].id && c.supplier_id === id && c.file_url));
   expect('catalogues filtered by supplier', await api('GET', `/suppliers/catalogs?supplier_ids=${id}`, { token: A }), 200);
   expect('invalid catalogues filter', await api('GET', '/suppliers/catalogs?supplier_ids=x', { token: A }), 400);
-  expect('missing catalogue', await api('GET', '/suppliers/catalogs/999999', { token: A }), 404);
+  const catalogUrl = withFiles.catalogs[0].file_url;
   expect('remove them', await api('PUT', `/suppliers/${id}`, {
     token: A, body: { catalogs_remove: [withFiles.catalogs[0].id], images_remove: [withFiles.images[0].id] },
   }), 200);
   const cleared = (await api('GET', `/suppliers/${id}`, { token: A })).body.data;
   check('catalogue and image removed', cleared.catalogs.length === 0 && cleared.images.length === 0);
+  check('catalogue file deleted', !fs.existsSync(fileOf(catalogUrl)));
 };

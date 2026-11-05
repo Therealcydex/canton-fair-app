@@ -1,24 +1,41 @@
 import { useRef, useState } from 'react';
+import axios from 'axios';
 import { App, Button, Upload } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
+import { API_BASE_URL } from '../../config/config';
+import { apiError } from '../../utils/apiError';
 
-export function readCatalogFile(file) {
-  return new Promise((resolve, reject) => {
-    if (file.type && file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-      reject(new Error(`« ${file.name} » n'est pas un PDF`));
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => resolve({ name: file.name, data: reader.result });
-    reader.onerror = () => reject(new Error(`« ${file.name} » n'a pas pu être lu`));
-    reader.readAsDataURL(file);
-  });
+function isPdf(file) {
+  return !file.type || file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
 }
 
-// D75: the catalogues of the supplier form. Value: { existing: [{ id, file_name }], removed, add }.
-export default function CatalogsField({ value, onChange }) {
+// D77: upload one PDF as multipart (never Base64 — large files crash the browser).
+export async function uploadCatalog(supplierId, file) {
+  if (!isPdf(file)) throw new Error(`« ${file.name} » n'est pas un PDF`);
+  const body = new FormData();
+  body.append('catalog', file, file.name);
+  const { data } = await axios.post(`${API_BASE_URL}/suppliers/${supplierId}/catalogs`, body);
+  return data.data;
+}
+
+// Uploads the files chosen while creating a supplier. A refused one does not undo the supplier.
+export async function saveDraftCatalogs(supplierId, files = []) {
+  let failed = null;
+  for (const file of files) {
+    try {
+      await uploadCatalog(supplierId, file);
+    } catch (err) {
+      failed = err;
+    }
+  }
+  return failed;
+}
+
+// D75/D77: catalogues of the supplier form. Value: { existing: [{ id, file_name, file_url }],
+// removed: [ids], add: [File] }. With supplierId, a new PDF is uploaded at once.
+export default function CatalogsField({ value, onChange, supplierId }) {
   const { message } = App.useApp();
-  const [reading, setReading] = useState(0);
+  const [busy, setBusy] = useState(0);
   const v = { existing: [], removed: [], add: [], ...value };
   const kept = v.existing.filter((file) => !v.removed.includes(file.id));
   const latest = useRef(v);
@@ -30,16 +47,29 @@ export default function CatalogsField({ value, onChange }) {
   ];
 
   const add = async (file) => {
-    setReading((n) => n + 1);
+    if (!isPdf(file)) {
+      message.error(`« ${file.name} » n'est pas un PDF`);
+      return;
+    }
+    if (!supplierId) {
+      const next = { ...latest.current, add: [...latest.current.add, file] };
+      latest.current = next;
+      onChange?.(next);
+      return;
+    }
+    setBusy((n) => n + 1);
     try {
-      const pdf = await readCatalogFile(file);
-      const next = { ...latest.current, add: [...latest.current.add, pdf] };
+      const saved = await uploadCatalog(supplierId, file);
+      const next = {
+        ...latest.current,
+        existing: [...latest.current.existing, { id: saved.id, file_name: saved.file_name, file_url: saved.file_url }],
+      };
       latest.current = next;
       onChange?.(next);
     } catch (err) {
-      message.error(err.message);
+      message.error(err.response ? apiError(err, 'Erreur lors de l\'ajout') : err.message);
     } finally {
-      setReading((n) => n - 1);
+      setBusy((n) => n - 1);
     }
   };
 
@@ -55,7 +85,7 @@ export default function CatalogsField({ value, onChange }) {
         add(file);
         return false;
       }}>
-      <Button htmlType="button" icon={<PlusOutlined />} loading={reading > 0}>Catalogue PDF</Button>
+      <Button htmlType="button" icon={<PlusOutlined />} loading={busy > 0}>Catalogue PDF</Button>
     </Upload>
   );
 }

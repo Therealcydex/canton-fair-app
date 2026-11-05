@@ -23,6 +23,7 @@
     "db:update-product-currency": "node sql/update_product_currency.js",
     "db:update-supplier-categories": "node sql/update_supplier_categories.js",
     "db:update-supplier-files": "node sql/update_supplier_files.js",
+    "db:update-supplier-catalog-files": "node sql/update_supplier_catalog_files.js",
     "db:update-product-categories": "node sql/update_product_categories.js"
   },
   "dependencies": {

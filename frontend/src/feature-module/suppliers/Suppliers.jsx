@@ -8,6 +8,7 @@ import FormModal from '../../components/FormModal';
 import SupplierFormFields from './SupplierFormFields';
 import { supplierInitialValues, supplierPayload, saveSupplier } from './SupplierDetail';
 import { saveDraftContacts } from './SupplierContacts';
+import { saveDraftCatalogs } from './CatalogsField';
 import { companyLabel } from '../../utils/lists';
 import { EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import PageHeader from '../../components/PageHeader';
@@ -82,10 +83,13 @@ export default function Suppliers() {
 
   // The supplier, then the contacts added in the form. A refused contact does not undo the supplier.
   const createSupplier = async (values) => {
+    const catalogs = values.catalogs?.add || [];
     const res = await axios.post(`${API_BASE_URL}/suppliers`, supplierPayload(values));
     const id = res.data.data.id;
-    const failed = await saveDraftContacts(id, draftContacts);
-    if (failed) message.warning(`Fournisseur enregistré, mais pas tous les contacts : ${apiError(failed, 'erreur')}`);
+    const failedContacts = await saveDraftContacts(id, draftContacts);
+    if (failedContacts) message.warning(`Fournisseur enregistré, mais pas tous les contacts : ${apiError(failedContacts, 'erreur')}`);
+    const failedCatalogs = await saveDraftCatalogs(id, catalogs);
+    if (failedCatalogs) message.warning(`Fournisseur enregistré, mais pas tous les catalogues : ${apiError(failedCatalogs, 'erreur')}`);
     return id;
   };
 

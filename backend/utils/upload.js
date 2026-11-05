@@ -9,6 +9,10 @@ const { fail } = require('./http');
 const UPLOAD_ROOT = path.join(__dirname, '..', 'uploads');
 const MAX_FILE_SIZE = 8 * 1024 * 1024; // 8 MB per photo
 const MAX_FILES_PER_REQUEST = 10;
+// D77: catalogues are written to disk (not Base64). 200 Mo covers a large fair PDF without
+// loading it as text in the browser or in a JSON body.
+const MAX_CATALOG_BYTES = 200 * 1024 * 1024;
+const CATALOG_FOLDER = 'catalogs';
 
 // Signature of each accepted image type -> extension.
 const SIGNATURES = [
@@ -62,4 +66,55 @@ async function deleteImages(urls) {
   }
 }
 
-module.exports = { UPLOAD_ROOT, parseImages, imageExtension, saveImages, deleteImages, MAX_FILES_PER_REQUEST };
+const catalogParser = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const dir = path.join(UPLOAD_ROOT, CATALOG_FOLDER);
+      fs.mkdir(dir, { recursive: true }).then(() => cb(null, dir)).catch(cb);
+    },
+    filename: (req, file, cb) => cb(null, `${crypto.randomBytes(16).toString('hex')}.pdf`),
+  }),
+  limits: { fileSize: MAX_CATALOG_BYTES, files: 1 },
+}).single('catalog');
+
+// One PDF in the "catalog" field. Written under uploads/catalogs/ then checked (%PDF-).
+const parseCatalog = (req, res, next) => {
+  catalogParser(req, res, async (err) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return fail(res, 413, `Catalogue trop volumineux (${MAX_CATALOG_BYTES / 1024 / 1024} Mo au maximum)`);
+      }
+      if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+        return fail(res, 400, 'Envoyez un seul PDF dans le champ « catalog »');
+      }
+      return fail(res, 400, "Envoi du catalogue impossible");
+    }
+    const file = req.file;
+    if (!file) return fail(res, 400, 'Envoyez un PDF (champ « catalog »)');
+    try {
+      const fd = await fs.open(file.path, 'r');
+      const buf = Buffer.alloc(5);
+      await fd.read(buf, 0, 5, 0);
+      await fd.close();
+      if (buf.toString('latin1') !== '%PDF-') {
+        await fs.unlink(file.path).catch(() => {});
+        return fail(res, 400, 'Le contenu n\'est pas un PDF');
+      }
+    } catch (e) {
+      await fs.unlink(file.path).catch(() => {});
+      return fail(res, 400, "Envoi du catalogue impossible");
+    }
+    const rawName = (file.originalname || 'catalogue.pdf').replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 200);
+    req.catalog = {
+      file_name: rawName.toLowerCase().endsWith('.pdf') ? rawName || 'catalogue.pdf' : `${rawName || 'catalogue'}.pdf`,
+      file_url: `/uploads/${CATALOG_FOLDER}/${file.filename}`,
+      path: file.path,
+    };
+    return next();
+  });
+};
+
+module.exports = {
+  UPLOAD_ROOT, parseImages, parseCatalog, imageExtension, saveImages, deleteImages,
+  MAX_FILES_PER_REQUEST, MAX_CATALOG_BYTES, CATALOG_FOLDER,
+};
