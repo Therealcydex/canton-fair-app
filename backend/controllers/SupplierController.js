@@ -2,7 +2,7 @@ const db = require('../config/db');
 const { fail, handle, toId, clean, likeContains } = require('../utils/http');
 const { validate } = require('../utils/validate');
 const { loadSupplier, loadCompanyIds, idList } = require('../utils/scope');
-const { deleteImages, imageExtension, saveImages } = require('../utils/upload');
+const { deleteImages, imageExtension, saveImages, assembleCatalogChunks } = require('../utils/upload');
 const { parseDataImage } = require('../utils/dataImage');
 const { isAdmin, isViewer, sharedWithViewer } = require('../utils/access');
 const { parseCategories, storedCategories, readCategoryNames, categoryMatch, listCategories, addCategory } = require('../utils/categories');
@@ -198,6 +198,41 @@ exports.addCatalog = handle('Supplier catalog create', async (req, res) => {
     res.json({ success: true, data: { id: ins.insertId, file_name: file.file_name, file_url: file.file_url } });
   } catch (e) {
     await deleteImages([file.file_url]);
+    throw e;
+  }
+});
+
+// D78: one piece of a large PDF. When every piece is there, the server builds the file.
+exports.addCatalogChunk = handle('Supplier catalog chunk', async (req, res) => {
+  const r = await loadSupplier(req.params.id);
+  if (!r.row) {
+    if (req.catalogChunk?.path) {
+      const fs = require('fs/promises');
+      await fs.unlink(req.catalogChunk.path).catch(() => {});
+    }
+    return fail(res, r.status, r.message);
+  }
+  const piece = req.catalogChunk;
+  if (!piece) return fail(res, 400, 'Envoyez un morceau (champ « chunk »)');
+  const assembled = await assembleCatalogChunks(piece);
+  if (assembled.pending) {
+    return res.json({
+      success: true,
+      data: { pending: true, index: piece.index, total: piece.total },
+    });
+  }
+  if (assembled.status) return fail(res, assembled.status, assembled.message);
+  try {
+    const [ins] = await db.query(
+      'INSERT INTO supplier_catalogs (supplier_id, file_name, file_url) VALUES (?, ?, ?)',
+      [r.row.id, assembled.file_name, assembled.file_url]
+    );
+    res.json({
+      success: true,
+      data: { id: ins.insertId, file_name: assembled.file_name, file_url: assembled.file_url, pending: false },
+    });
+  } catch (e) {
+    await deleteImages([assembled.file_url]);
     throw e;
   }
 });

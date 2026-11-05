@@ -144,6 +144,7 @@ none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercas
 | D75 | **Any salon link, catalogues and photos on the supplier.** `suppliers.cantonfair_url` takes any web address (`http` or `https`; without a scheme it is stored as `https`). `supplier_catalogs` and `supplier_images` belong to the supplier. Photos still travel as Base64 (`images_add`/`images_remove`); catalogues moved to files on disk (D77). Returned on `GET /api/suppliers/:id`. The fournisseur page has an Images tab and a Catalogue tab. JSON bodies on `/api/suppliers` are 55 MB | Asked by the user |
 | D76 | **Catalogues page in the sidebar.** Under Galerie, a **Catalogues** entry opens `/catalogues`: every supplier PDF, filterable by fournisseur. `GET /api/suppliers/catalogs` lists them with `file_url` | Asked by the user |
 | D77 | **Catalogues as files on disk.** A large PDF as Base64 crashed the browser (out of memory). Catalogues are uploaded with `POST /api/suppliers/:id/catalogs` (multipart field `catalog`, up to 200 Mo), stored under `uploads/catalogs/`, and referenced by `supplier_catalogs.file_url`. The supplier JSON no longer carries the PDF | Asked by the user after a 150 Mo upload |
+| D78 | **Chunked catalogue upload.** Compressing a PDF barely reduces its size. Large catalogues are split into 2 Mo pieces (`POST /api/suppliers/:id/catalogs/chunk`) and assembled on the server, so a proxy that cuts a 150 Mo request mid-way no longer stops the upload around 25 % | Asked by the user after upload stuck at 25 % |
 
 ## 6. Changelog
 
@@ -179,6 +180,7 @@ none of its data. Its tables live next to the ERP's in `Smart360_copy` (lowercas
 | 2026-10-22 | D65: supplier on the new-booth form (pick, type a name, or full form); delete on a supplier's products; deleting that product returns there; no "Nouveau produit" on the booth page |
 | 2026-10-22 | D66: suppliers shared with several companies instead of booths; users in several companies; viewers read their shared suppliers with contacts, booths and products; phase/hall filters and provinces in use on Fournisseurs; contacts grouped by supplier; À visiter grouped by phase and hall |
 | 2026-10-26 | D68: Retour keeps the list place; a new product stays on the list; Précédent/Suivant on a product; revue gallery; supplier notes in the list |
+| 2026-11-05 | D78: catalogues uploaded in 2 Mo chunks and assembled on the server |
 | 2026-11-05 | D77: deploy raises nginx body size/timeouts for large catalogues; UI shows upload progress |
 | 2026-11-05 | D77: catalogues stored as files under `uploads/catalogs/` (multipart upload), not Base64 |
 | 2026-11-05 | D76: Catalogues page under Galerie in the sidebar (`/catalogues`, `GET /api/suppliers/catalogs`) |

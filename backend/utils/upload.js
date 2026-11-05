@@ -66,6 +66,10 @@ async function deleteImages(urls) {
   }
 }
 
+const CATALOG_TMP = path.join(UPLOAD_ROOT, CATALOG_FOLDER, '.tmp');
+const MAX_CHUNK_BYTES = 5 * 1024 * 1024; // each piece stays small so nginx does not cut the transfer
+const UPLOAD_ID_RE = /^[a-f0-9-]{8,64}$/i;
+
 const catalogParser = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
@@ -76,6 +80,40 @@ const catalogParser = multer({
   }),
   limits: { fileSize: MAX_CATALOG_BYTES, files: 1 },
 }).single('catalog');
+
+const catalogChunkParser = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const uploadId = String(req.body?.uploadId || '');
+      if (!UPLOAD_ID_RE.test(uploadId)) return cb(new Error('UPLOAD_ID'));
+      const dir = path.join(CATALOG_TMP, uploadId);
+      fs.mkdir(dir, { recursive: true }).then(() => cb(null, dir)).catch(cb);
+    },
+    filename: (req, file, cb) => {
+      const index = Number(req.body?.index);
+      if (!Number.isInteger(index) || index < 0 || index > 500) return cb(new Error('INDEX'));
+      cb(null, `${index}.part`);
+    },
+  }),
+  limits: { fileSize: MAX_CHUNK_BYTES, files: 1 },
+}).single('chunk');
+
+function cleanCatalogName(name) {
+  const rawName = (name || 'catalogue.pdf').replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 200);
+  return rawName.toLowerCase().endsWith('.pdf') ? rawName || 'catalogue.pdf' : `${rawName || 'catalogue'}.pdf`;
+}
+
+async function isPdfFile(filePath) {
+  const fd = await fs.open(filePath, 'r');
+  const buf = Buffer.alloc(5);
+  await fd.read(buf, 0, 5, 0);
+  await fd.close();
+  return buf.toString('latin1') === '%PDF-';
+}
+
+async function removeDir(dir) {
+  await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
+}
 
 // One PDF in the "catalog" field. Written under uploads/catalogs/ then checked (%PDF-).
 const parseCatalog = (req, res, next) => {
@@ -92,11 +130,7 @@ const parseCatalog = (req, res, next) => {
     const file = req.file;
     if (!file) return fail(res, 400, 'Envoyez un PDF (champ « catalog »)');
     try {
-      const fd = await fs.open(file.path, 'r');
-      const buf = Buffer.alloc(5);
-      await fd.read(buf, 0, 5, 0);
-      await fd.close();
-      if (buf.toString('latin1') !== '%PDF-') {
+      if (!(await isPdfFile(file.path))) {
         await fs.unlink(file.path).catch(() => {});
         return fail(res, 400, 'Le contenu n\'est pas un PDF');
       }
@@ -104,9 +138,8 @@ const parseCatalog = (req, res, next) => {
       await fs.unlink(file.path).catch(() => {});
       return fail(res, 400, "Envoi du catalogue impossible");
     }
-    const rawName = (file.originalname || 'catalogue.pdf').replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 200);
     req.catalog = {
-      file_name: rawName.toLowerCase().endsWith('.pdf') ? rawName || 'catalogue.pdf' : `${rawName || 'catalogue'}.pdf`,
+      file_name: cleanCatalogName(file.originalname),
       file_url: `/uploads/${CATALOG_FOLDER}/${file.filename}`,
       path: file.path,
     };
@@ -114,7 +147,74 @@ const parseCatalog = (req, res, next) => {
   });
 };
 
+// D78: one piece of a large PDF (field « chunk »). Assembled when the last index arrives.
+const parseCatalogChunk = (req, res, next) => {
+  catalogChunkParser(req, res, async (err) => {
+    if (err) {
+      if (err.message === 'UPLOAD_ID' || err.message === 'INDEX') {
+        return fail(res, 400, 'Identifiant d\'envoi invalide');
+      }
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return fail(res, 413, `Morceau trop volumineux (${MAX_CHUNK_BYTES / 1024 / 1024} Mo au maximum)`);
+      }
+      return fail(res, 400, "Envoi du catalogue impossible");
+    }
+    if (!req.file) return fail(res, 400, 'Envoyez un morceau (champ « chunk »)');
+    const uploadId = String(req.body.uploadId || '');
+    const index = Number(req.body.index);
+    const total = Number(req.body.total);
+    const fileName = cleanCatalogName(req.body.fileName);
+    if (!UPLOAD_ID_RE.test(uploadId) || !Number.isInteger(index) || !Number.isInteger(total)
+      || total < 1 || total > 500 || index < 0 || index >= total) {
+      await fs.unlink(req.file.path).catch(() => {});
+      return fail(res, 400, 'Paramètres d\'envoi invalides');
+    }
+    req.catalogChunk = { uploadId, index, total, fileName, path: req.file.path };
+    return next();
+  });
+};
+
+// When every .part is present, build the PDF under catalogs/ and remove the temp folder.
+async function assembleCatalogChunks({ uploadId, total, fileName }) {
+  const dir = path.join(CATALOG_TMP, uploadId);
+  for (let i = 0; i < total; i++) {
+    try {
+      await fs.access(path.join(dir, `${i}.part`));
+    } catch {
+      return { pending: true };
+    }
+  }
+  const finalName = `${crypto.randomBytes(16).toString('hex')}.pdf`;
+  const finalPath = path.join(UPLOAD_ROOT, CATALOG_FOLDER, finalName);
+  await fs.mkdir(path.join(UPLOAD_ROOT, CATALOG_FOLDER), { recursive: true });
+  const out = await fs.open(finalPath, 'w');
+  try {
+    for (let i = 0; i < total; i++) {
+      const part = await fs.readFile(path.join(dir, `${i}.part`));
+      await out.write(part);
+    }
+  } finally {
+    await out.close();
+  }
+  await removeDir(dir);
+  if (!(await isPdfFile(finalPath))) {
+    await fs.unlink(finalPath).catch(() => {});
+    return { status: 400, message: 'Le contenu n\'est pas un PDF' };
+  }
+  const size = (await fs.stat(finalPath)).size;
+  if (size > MAX_CATALOG_BYTES) {
+    await fs.unlink(finalPath).catch(() => {});
+    return { status: 413, message: `Catalogue trop volumineux (${MAX_CATALOG_BYTES / 1024 / 1024} Mo au maximum)` };
+  }
+  return {
+    file_name: fileName,
+    file_url: `/uploads/${CATALOG_FOLDER}/${finalName}`,
+    path: finalPath,
+  };
+}
+
 module.exports = {
-  UPLOAD_ROOT, parseImages, parseCatalog, imageExtension, saveImages, deleteImages,
-  MAX_FILES_PER_REQUEST, MAX_CATALOG_BYTES, CATALOG_FOLDER,
+  UPLOAD_ROOT, parseImages, parseCatalog, parseCatalogChunk, assembleCatalogChunks,
+  imageExtension, saveImages, deleteImages,
+  MAX_FILES_PER_REQUEST, MAX_CATALOG_BYTES, MAX_CHUNK_BYTES, CATALOG_FOLDER,
 };

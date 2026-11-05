@@ -5,7 +5,8 @@ import { PlusOutlined } from '@ant-design/icons';
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 
-const UPLOAD_TIMEOUT_MS = 15 * 60 * 1000; // 15 min for a large PDF on a slow link
+const CHUNK_BYTES = 2 * 1024 * 1024; // 2 Mo — stays under typical nginx / proxy limits
+const UPLOAD_TIMEOUT_MS = 5 * 60 * 1000;
 
 function isPdf(file) {
   return !file.type || file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
@@ -14,23 +15,41 @@ function isPdf(file) {
 function catalogError(err) {
   if (err?.code === 'ECONNABORTED') return 'Envoi trop long : le catalogue n\'a pas pu être envoyé à temps';
   if (err?.response?.status === 413) return 'Catalogue trop volumineux pour le serveur (200 Mo au maximum)';
-  if (!err?.response) return 'Envoi interrompu (réseau ou serveur). Réessayez, ou déployez la version fichiers si le site est encore à l\'ancienne.';
+  if (!err?.response) return 'Envoi interrompu (réseau ou serveur). Réessayez.';
   return apiError(err, 'Erreur lors de l\'ajout du catalogue');
 }
 
-// D77: upload one PDF as multipart (never Base64 — large files crash the browser).
+function newUploadId() {
+  if (globalThis.crypto?.randomUUID) return crypto.randomUUID();
+  return `${Date.now().toString(16)}-${Math.random().toString(16).slice(2, 10)}`;
+}
+
+// D78: large PDFs are split into small pieces (compressing a PDF barely helps). Progress is
+// based on finished pieces so a cut connection does not leave the button spinning forever.
 export async function uploadCatalog(supplierId, file, onProgress) {
   if (!isPdf(file)) throw new Error(`« ${file.name} » n'est pas un PDF`);
-  const body = new FormData();
-  body.append('catalog', file, file.name);
-  const { data } = await axios.post(`${API_BASE_URL}/suppliers/${supplierId}/catalogs`, body, {
-    timeout: UPLOAD_TIMEOUT_MS,
-    onUploadProgress: (e) => {
-      if (!onProgress || !e.total) return;
-      onProgress(Math.min(100, Math.round((e.loaded / e.total) * 100)));
-    },
-  });
-  return data.data;
+  const total = Math.max(1, Math.ceil(file.size / CHUNK_BYTES));
+  const uploadId = newUploadId();
+  let saved = null;
+  for (let index = 0; index < total; index++) {
+    const blob = file.slice(index * CHUNK_BYTES, Math.min(file.size, (index + 1) * CHUNK_BYTES));
+    const body = new FormData();
+    // Fields before the file so multer can read them for the temp path.
+    body.append('uploadId', uploadId);
+    body.append('index', String(index));
+    body.append('total', String(total));
+    body.append('fileName', file.name);
+    body.append('chunk', blob, `part-${index}`);
+    const { data } = await axios.post(
+      `${API_BASE_URL}/suppliers/${supplierId}/catalogs/chunk`,
+      body,
+      { timeout: UPLOAD_TIMEOUT_MS },
+    );
+    onProgress?.(Math.min(100, Math.round(((index + 1) / total) * 100)));
+    if (data.data && data.data.pending === false) saved = data.data;
+  }
+  if (!saved?.file_url) throw new Error('Catalogue incomplet côté serveur');
+  return saved;
 }
 
 // Uploads the files chosen while creating a supplier. A refused one does not undo the supplier.
@@ -105,7 +124,9 @@ export default function CatalogsField({ value, onChange, supplierId }) {
           add(file);
           return false;
         }}>
-        <Button htmlType="button" icon={<PlusOutlined />} loading={busy > 0}>Catalogue PDF</Button>
+        <Button htmlType="button" icon={<PlusOutlined />} loading={busy > 0}>
+          {busy > 0 && percent != null ? `Envoi… ${percent} %` : 'Catalogue PDF'}
+        </Button>
       </Upload>
       {percent != null && <Progress percent={percent} size="small" className="mt-2" style={{ maxWidth: 280 }} />}
     </>
