@@ -5,8 +5,9 @@ import { PlusOutlined } from '@ant-design/icons';
 import { API_BASE_URL } from '../../config/config';
 import { apiError } from '../../utils/apiError';
 
-const CHUNK_BYTES = 2 * 1024 * 1024; // 2 Mo — stays under typical nginx / proxy limits
-const UPLOAD_TIMEOUT_MS = 5 * 60 * 1000;
+const CHUNK_BYTES = 1 * 1024 * 1024; // 1 Mo — under common 10–32 Mo proxy cuts
+const UPLOAD_TIMEOUT_MS = 2 * 60 * 1000;
+const CHUNK_RETRIES = 3;
 
 function isPdf(file) {
   return !file.type || file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
@@ -33,20 +34,31 @@ export async function uploadCatalog(supplierId, file, onProgress) {
   let saved = null;
   for (let index = 0; index < total; index++) {
     const blob = file.slice(index * CHUNK_BYTES, Math.min(file.size, (index + 1) * CHUNK_BYTES));
-    const body = new FormData();
-    // Fields before the file so multer can read them for the temp path.
-    body.append('uploadId', uploadId);
-    body.append('index', String(index));
-    body.append('total', String(total));
-    body.append('fileName', file.name);
-    body.append('chunk', blob, `part-${index}`);
-    const { data } = await axios.post(
-      `${API_BASE_URL}/suppliers/${supplierId}/catalogs/chunk`,
-      body,
-      { timeout: UPLOAD_TIMEOUT_MS },
-    );
-    onProgress?.(Math.min(100, Math.round(((index + 1) / total) * 100)));
-    if (data.data && data.data.pending === false) saved = data.data;
+    let lastErr = null;
+    for (let attempt = 1; attempt <= CHUNK_RETRIES; attempt++) {
+      try {
+        const body = new FormData();
+        // Fields before the file so multer can read them for the temp path.
+        body.append('uploadId', uploadId);
+        body.append('index', String(index));
+        body.append('total', String(total));
+        body.append('fileName', file.name);
+        body.append('chunk', blob, `part-${index}`);
+        const { data } = await axios.post(
+          `${API_BASE_URL}/suppliers/${supplierId}/catalogs/chunk`,
+          body,
+          { timeout: UPLOAD_TIMEOUT_MS },
+        );
+        onProgress?.(Math.min(100, Math.round(((index + 1) / total) * 100)));
+        if (data.data && data.data.pending === false) saved = data.data;
+        lastErr = null;
+        break;
+      } catch (err) {
+        lastErr = err;
+        if (attempt === CHUNK_RETRIES) throw err;
+      }
+    }
+    if (lastErr) throw lastErr;
   }
   if (!saved?.file_url) throw new Error('Catalogue incomplet côté serveur');
   return saved;
