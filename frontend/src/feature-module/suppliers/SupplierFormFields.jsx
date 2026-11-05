@@ -73,7 +73,7 @@ export default function SupplierFormFields({ withContact = false, supplierId, co
       <Form.Item name="rating" label="Évaluation"><Rate allowClear /></Form.Item>
       <Form.Item name="notes" label="Notes"><Input.TextArea rows={3} /></Form.Item>
       <Form.Item name="catalogs" label="Catalogues"
-        extra="PDF, 32 Mo chacun. Plusieurs fichiers à la fois.">
+        extra="PDF. Plusieurs fichiers à la fois.">
         <CatalogsField />
       </Form.Item>
       <Form.Item name="images" label="Images"

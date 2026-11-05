@@ -17,7 +17,7 @@ app.use(cors({ origin: '*', credentials: true, maxAge: 86400 })); // maxAge: avo
 // WeChat QR photos go through multer (utils/upload.js); JSON bodies are small forms (D21).
 // D61: product photos (10 of 1.5 MB at most) and contact avatars (300 KB) travel as Base64 in JSON.
 app.use('/api/products', express.json({ limit: '25mb' }));
-app.use('/api/suppliers', express.json({ limit: '90mb' }));
+app.use('/api/suppliers', express.json({ limit: '500mb' }));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 

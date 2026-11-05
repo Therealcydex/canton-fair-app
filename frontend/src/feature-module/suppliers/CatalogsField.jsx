@@ -2,16 +2,10 @@ import { useRef, useState } from 'react';
 import { App, Button, Upload } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 
-const MAX_BYTES = 32 * 1024 * 1024;
-
 export function readCatalogFile(file) {
   return new Promise((resolve, reject) => {
     if (file.type && file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
       reject(new Error(`« ${file.name} » n'est pas un PDF`));
-      return;
-    }
-    if (file.size > MAX_BYTES) {
-      reject(new Error('Un catalogue fait 32 Mo au maximum'));
       return;
     }
     const reader = new FileReader();

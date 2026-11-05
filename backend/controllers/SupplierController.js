@@ -13,7 +13,6 @@ const MAX_AVATAR_BYTES = 100 * 1024;
 const MAX_IMAGES = 30;
 const MAX_PHOTO_BYTES = 1.5 * 1024 * 1024;
 const MAX_THUMB_BYTES = 100 * 1024;
-const MAX_PDF_BYTES = 32 * 1024 * 1024;
 
 const SUPPLIER_FIELDS = {
   name: { label: 'Nom', type: 'string', required: true, max: 200 },
@@ -196,7 +195,7 @@ function readCatalogs(raw) {
   if (!Array.isArray(raw)) return { status: 400, message: 'Catalogues : liste attendue' };
   const items = [];
   for (const [i, file] of raw.entries()) {
-    const pdf = parseDataPdf(file?.data, file?.name, MAX_PDF_BYTES, `Catalogue ${i + 1}`);
+    const pdf = parseDataPdf(file?.data, file?.name, null, `Catalogue ${i + 1}`);
     if (!pdf.value) return { status: 400, message: pdf.message };
     items.push([pdf.name, pdf.value]);
   }
